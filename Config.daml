@@ -1,4 +1,5 @@
-﻿<ArcGIS defaultAssembly="EAABAddIn.dll" defaultNamespace="EAABAddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+﻿<ArcGIS defaultAssembly="EAABAddIn.dll" defaultNamespace="EAABAddIn" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.0" desktopVersion="3.4.55405">
     <Name>EAABAddIn</Name>
     <Description>EAABAddIn description</Description>
@@ -31,17 +32,24 @@
         <button id="EAABAddIn_Button2" caption="Button 2" className="Button2" loadOnClick="true" smallImage="GenericButtonBlue16" largeImage="GenericButtonBlue32" keytip="B2">
           <tooltip heading="Tooltip Heading">Tooltip text<disabledText /></tooltip>
         </button>
-        <button id="EAABAddIn_PropertySheet1_ShowPropertySheet" caption="Show PropertySheet 1" className="PropertyPage1_ShowButton" loadOnClick="true" smallImage="GenericButtonPurple16" largeImage="GenericButtonPurple32">
+        <!-- <button id="EAABAddIn_PropertySheet1_ShowPropertySheet" caption="Show PropertySheet 1" className="PropertyPage1_ShowButton" loadOnClick="true" smallImage="GenericButtonPurple16" largeImage="GenericButtonPurple32">
           <tooltip heading="Show Property Sheet">Show Property Sheet<disabledText /></tooltip>
-        </button>
+        </button> -->
       </controls>
     </insertModule>
   </modules>
+
+
   <propertySheets>
-    <insertSheet id="EAABAddIn_PropertySheet1" caption="PropertySheet 1" hasGroups="true">
-      <page id="EAABAddIn_PropertyPage1" caption="PropertyPage 1" className="PropertyPage1ViewModel" group="Group 1">
+    <updateSheet refID="esri_core_optionsPropertySheet">
+      <insertPage
+        className="PropertyPage1ViewModel"
+        id="EAABAddIn_PropertyPage1"
+        caption="PropertyPage 1"
+        group="Group 1"
+      >
         <content className="PropertyPage1View" />
-      </page>
-    </insertSheet>
+      </insertPage>
+    </updateSheet>
   </propertySheets>
 </ArcGIS>
