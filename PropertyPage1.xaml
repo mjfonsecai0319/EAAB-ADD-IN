@@ -6,17 +6,110 @@
              xmlns:ui="clr-namespace:EAABAddIn"
              xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
              mc:Ignorable="d" 
-             d:DesignHeight="300" d:DesignWidth="300"
+             d:DesignHeight="400" d:DesignWidth="450"
              d:DataContext="{Binding Path=ui.PropertyPage1ViewModel}">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml"/>
+                <extensions:DesignOnlyResourceDictionary 
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
-    <Grid>
-        <!-- Replace text block below with your UI components. -->
-        <TextBlock Text="{Binding DataUIContent}" Style="{DynamicResource Esri_TextBlockRegular}" />
+
+    <Grid Margin="15" Grid.IsSharedSizeScope="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+ 
+        <TextBlock 
+            Text="Configuración de Base de Datos"
+            Style="{DynamicResource Esri_TextBlockH3}"
+            Margin="0,0,0,15"
+            Grid.Row="0"
+            Grid.Column="0"
+            Grid.ColumnSpan="3"/>
+
+     
+        <TextBlock 
+            Text="Motor:"
+            Style="{DynamicResource Esri_TextBlockRegular}"
+            Margin="0,0,0,5"
+            Grid.Row="1"
+            Grid.Column="0"/>
+        <ComboBox
+            Name="cmbDatabase"
+            Style="{DynamicResource Esri_ComboBox}"
+            Margin="0,0,0,10"
+            Grid.Row="1"
+            Grid.Column="2"
+            ItemsSource="{Binding MotoresBD}"   
+            SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}"/>
+
+     
+        <TextBlock 
+            Text="Usuario:"
+            Style="{DynamicResource Esri_TextBlockRegular}"
+            Margin="0,0,0,5"
+            Grid.Row="3"
+            Grid.Column="0"/>
+        <TextBox
+            Style="{DynamicResource Esri_TextBox}"
+            Grid.Row="3"
+            Grid.Column="2"
+            Text="{Binding Usuario, Mode=TwoWay}"/>
+
+      
+        <TextBlock 
+            Text="Contraseña:"
+            Style="{DynamicResource Esri_TextBlockRegular}"
+            Margin="0,0,0,5"
+            Grid.Row="4"
+            Grid.Column="0"/>
+        <PasswordBox
+            Style="{DynamicResource Esri_TextBox}"
+            Grid.Row="4"
+            Grid.Column="2"
+            PasswordChar="*"
+            PasswordChanged="PasswordBox_PasswordChanged"/>
+
+        <TextBlock 
+            Text="Host:"
+            Style="{DynamicResource Esri_TextBlockRegular}"
+            Margin="0,0,0,5"
+            Grid.Row="5"
+            Grid.Column="0"/>
+        <TextBox
+            Style="{DynamicResource Esri_TextBox}"
+            Grid.Row="5"
+            Grid.Column="2"
+            Text="{Binding Host, Mode=TwoWay}"/>
+
+        <TextBlock 
+            Text="Puerto:"
+            Style="{DynamicResource Esri_TextBlockRegular}"
+            Margin="0,0,0,5"
+            Grid.Row="6"
+            Grid.Column="0"/>
+        <TextBox
+            Style="{DynamicResource Esri_TextBox}"
+            Grid.Row="6"
+            Grid.Column="2"
+            Text="{Binding Puerto, Mode=TwoWay}"/>
     </Grid>
 </UserControl>

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ArcGIS.Core.CIM;
+﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Catalog;
@@ -17,60 +12,90 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.KnowledgeGraph;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using System.Windows;
 
 namespace EAABAddIn
 {
     internal class PropertyPage1ViewModel : Page
     {
-        /// <summary>
-        /// Invoked when the OK or apply button on the property sheet has been clicked.
-        /// </summary>
-        /// <returns>A task that represents the work queued to execute in the ThreadPool.</returns>
-        /// <remarks>This function is only called if the page has set its IsModified flag to true.</remarks>
-        protected override Task CommitAsync()
-        {
-            return Task.FromResult(0);
-        }
+        protected override Task CommitAsync() => Task.FromResult(0);
+        protected override Task InitializeAsync() => Task.FromResult(true);
+        protected override void Uninitialize() { }
 
-        /// <summary>
-        /// Called when the page loads because it has become visible.
-        /// </summary>
-        /// <returns>A task that represents the work queued to execute in the ThreadPool.</returns>
-        protected override Task InitializeAsync()
-        {
-            return Task.FromResult(true);
-        }
-
-        /// <summary>
-        /// Called when the page is destroyed.
-        /// </summary>
-        protected override void Uninitialize()
-        {
-        }
-
-        /// <summary>
-        /// Text shown inside the page hosted by the property sheet
-        /// </summary>
         public string DataUIContent
         {
             get => base.Data[0] as string;
             set => SetProperty(ref base.Data[0], value);
         }
+
+        public ObservableCollection<string> MotoresBD { get; set; } =
+            new ObservableCollection<string> { "Oracle", "PostgreSQL" };
+
+        private string _motorSeleccionado;
+        public string MotorSeleccionado
+        {
+            get => _motorSeleccionado;
+            set
+            {
+                SetProperty(ref _motorSeleccionado, value);
+                IsModified = true;
+            }
+        }
+
+        private string _usuario;
+        public string Usuario
+        {
+            get => _usuario;
+            set
+            {
+                SetProperty(ref _usuario, value);
+                IsModified = true;
+            }
+        }
+
+        private string _contraseña;
+        public string Contraseña
+        {
+            get => _contraseña;
+            set
+            {
+                SetProperty(ref _contraseña, value);
+                IsModified = true;
+            }
+        }
+
+        private string _host;
+        public string Host
+        {
+            get => _host;
+            set
+            {
+                SetProperty(ref _host, value);
+                IsModified = true;
+            }
+        }
+
+        private string _puerto;
+        public string Puerto
+        {
+            get => _puerto;
+            set
+            {
+                SetProperty(ref _puerto, value);
+                IsModified = true;
+            }
+        }
     }
 
-    /// <summary>
-    /// Button implementation to show the property sheet.
-    /// </summary>
     internal class PropertyPage1_ShowButton : Button
     {
         protected override void OnClick()
         {
-            // collect data to be passed to the page(s) of the property sheet
-            Object[] data = new object[] { "Page UI content" };
-
+            object[] data = new object[] { "Page UI content" };
             if (!PropertySheet.IsVisible)
                 PropertySheet.ShowDialog("EAABAddIn_PropertySheet1", "EAABAddIn_PropertyPage1", data);
-
         }
     }
 }
