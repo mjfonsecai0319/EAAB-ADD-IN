@@ -1,12 +1,14 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<ArcGIS defaultAssembly="EAABAddIn.dll"
-        defaultNamespace="EAABAddIn"
-        xmlns="http://schemas.esri.com/DADF/Registry"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-
-  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.0" desktopVersion="3.4.55405" product="ArcGISPro">
-    <Name>EAABAddIn</Name>   
+﻿<ArcGIS
+  defaultAssembly="EAABAddIn.dll"
+  defaultNamespace="EAABAddIn"
+  xmlns="http://schemas.esri.com/DADF/Registry"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
+>
+  <AddInInfo
+    id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.0" desktopVersion="3.4.55405"
+  >
+    <Name>EAABAddIn</Name>
     <Description>EAABAddIn description</Description>
     <Image>Images\AddinDesktop32.png</Image>
     <Author>molarte</Author>
@@ -16,28 +18,46 @@
     <!-- Note subject can be one or more of these topics:
                     Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
   </AddInInfo>
-
   <modules>
     <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="false" caption="Module1">
-      <!-- uncomment to have the control hosted on a separate tab-->
       <tabs>
-        <!--<tab id="EAABAddIn_Tab1" caption="New Tab">
-          <group refID="EAABAddIn_Group1"/>
-        </tab>-->
+        <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
+          <group refID="EAABAddIn_Group1" />
+        </tab>
       </tabs>
-              
+
       <groups>
-        <!-- comment this out if you have no controls on the Addin tab to avoid
-              an empty group-->
-        <group id="EAABAddIn_Group1" caption="Group 1" appearsOnAddInTab="true">
-          <!-- host controls within groups -->
+        <group id="EAABAddIn_Group1" caption="Group 1" appearsOnAddInTab="true" keytip="G1">
+          <button refID="EAABAddIn_Button1" size="large" />
+          <button refID="EAABAddIn_Button2" size="large" />
         </group>
       </groups>
-      
+
       <controls>
-        <!-- add your controls here -->
-      </controls> 
-      
+        <button
+          id="EAABAddIn_Button1"
+          caption="Button 1"
+          className="Button1"
+          loadOnClick="true"
+          smallImage="GenericButtonBlue16"
+          largeImage="GenericButtonBlue32"
+          keytip="B1"
+        >
+          <tooltip heading="Tooltip Heading">Tooltip text<disabledText /></tooltip>
+        </button>
+
+        <button
+          id="EAABAddIn_Button2"
+          caption="Button 2"
+          className="Button2"
+          loadOnClick="true"
+          smallImage="GenericButtonBlue16"
+          largeImage="GenericButtonBlue32"
+          keytip="B2"
+        >
+          <tooltip heading="Tooltip Heading">Tooltip text<disabledText /></tooltip>
+        </button>
+      </controls>
     </insertModule>
   </modules>
 </ArcGIS>
