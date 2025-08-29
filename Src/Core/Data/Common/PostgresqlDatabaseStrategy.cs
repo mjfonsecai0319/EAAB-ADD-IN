@@ -2,7 +2,7 @@ using System;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace EAAB.AddIn.Src.Core.Data.Common;
+namespace EAABAddIn.Src.Core.Data.Common;
 
 /// <summary>
 /// Implementación de estrategia para bases de datos PostgreSQL

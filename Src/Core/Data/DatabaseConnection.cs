@@ -4,11 +4,11 @@ using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 
-using EAAB.AddIn.Src.Core.Data.Common;
+using EAABAddIn.Src.Core.Data.Common;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace EAAB.AddIn.Src.Core.Data;
+namespace EAABAddIn.Src.Core.Data;
 
 /// <summary>
 /// Clase que maneja la conexión con la base de datos usando el patrón Strategy

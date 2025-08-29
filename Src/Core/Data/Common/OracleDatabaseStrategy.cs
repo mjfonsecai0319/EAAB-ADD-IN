@@ -1,10 +1,9 @@
+using System;
 using Microsoft.EntityFrameworkCore;
+using ArcGIS.Desktop.Framework.Dialogs;
 
-namespace EAAB.AddIn.Src.Core.Data.Common;
+namespace EAABAddIn.Src.Core.Data.Common;
 
-/// <summary>
-/// Implementación de estrategia para bases de datos Oracle
-/// </summary>
 public class OracleDatabaseStrategy : IDatabaseStrategy
 {
     private readonly string _connectionString;
@@ -14,7 +13,7 @@ public class OracleDatabaseStrategy : IDatabaseStrategy
     /// </summary>
     public OracleDatabaseStrategy()
     {
-        _connectionString = "User Id=eaab;Password=admin;Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XE)));";
+        _connectionString = "User Id=sgo;Password=sgodev01;Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=172.19.8.169)(PORT=1521))(CONNECT_DATA=(SID=SITIODEV)));";
     }
 
     /// <summary>
@@ -50,11 +49,13 @@ public class OracleDatabaseStrategy : IDatabaseStrategy
         {
             using (var context = new DatabaseContext(this))
             {
+                System.Diagnostics.Debug.WriteLine($"Estado de Conexión: {context.Database.CanConnect()}");
                 return context.Database.CanConnect();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"Error al probar conexiones de base de datos: {ex.Message}\n\n{ex.StackTrace}");
             return false;
         }
     }

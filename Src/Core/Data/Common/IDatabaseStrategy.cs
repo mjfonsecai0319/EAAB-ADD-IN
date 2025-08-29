@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace EAAB.AddIn.Src.Core.Data.Common;
+namespace EAABAddIn.Src.Core.Data.Common;
 
 /// <summary>
 /// Interfaz que define la estrategia para conexiones a bases de datos

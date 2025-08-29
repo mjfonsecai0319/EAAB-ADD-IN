@@ -1,8 +1,8 @@
 using System;
 
-using EAAB.AddIn.Src.Core.Data.Common;
+using EAABAddIn.Src.Core.Data.Common;
 
-namespace EAAB.AddIn.Src.Core.Data;
+namespace EAABAddIn.Src.Core.Data;
 
 /// <summary>
 /// Enumeración que define los tipos de base de datos soportados

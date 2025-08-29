@@ -1,10 +1,10 @@
-using EAAB.AddIn.Src.Core.Data.Common;
+using EAABAddIn.Src.Core.Data.Common;
 
 using EAABAddIn.Src.Core.Entities;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace EAAB.AddIn.Src.Core.Data;
+namespace EAABAddIn.Src.Core.Data;
 
 public class DatabaseContext : DbContext
 {
