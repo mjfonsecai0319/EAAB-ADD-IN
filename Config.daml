@@ -49,7 +49,7 @@
 			<insertPage
 			  className="PropertyPage1ViewModel"
 			  id="EAABAddIn_PropertyPage1"
-			  caption="Base de datos"
+			  caption="Database"
 			  group="Application"
       >
 				<content className="PropertyPage1View" />
