@@ -31,9 +31,9 @@
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="100"/>
             <ColumnDefinition Width="10"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
 
  
@@ -45,7 +45,6 @@
             Grid.Column="0"
             Grid.ColumnSpan="3"/>
 
-     
         <TextBlock 
             Text="Motor:"
             Style="{DynamicResource Esri_TextBlockRegular}"
@@ -55,15 +54,14 @@
         <ComboBox
             Name="cmbDatabase"
             Style="{DynamicResource Esri_ComboBox}"
-            Margin="0,0,0,10"
+            Margin="0,0,0,5"
             Grid.Row="1"
             Grid.Column="2"
             ItemsSource="{Binding MotoresBD}"   
             SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}"/>
 
-     
         <TextBlock 
-            Text="Usuario:"
+            Text="User:"
             Style="{DynamicResource Esri_TextBlockRegular}"
             Margin="0,0,0,5"
             Grid.Row="3"
@@ -72,11 +70,12 @@
             Style="{DynamicResource Esri_TextBox}"
             Grid.Row="3"
             Grid.Column="2"
+            MinWidth="200"
+            Height="28"
             Text="{Binding Usuario, Mode=TwoWay}"/>
 
-      
         <TextBlock 
-            Text="Contraseña:"
+            Text="Password:"
             Style="{DynamicResource Esri_TextBlockRegular}"
             Margin="0,0,0,5"
             Grid.Row="4"
@@ -101,7 +100,7 @@
             Text="{Binding Host, Mode=TwoWay}"/>
 
         <TextBlock 
-            Text="Puerto:"
+            Text="Port:"
             Style="{DynamicResource Esri_TextBlockRegular}"
             Margin="0,0,0,5"
             Grid.Row="6"
@@ -111,5 +110,15 @@
             Grid.Row="6"
             Grid.Column="2"
             Text="{Binding Puerto, Mode=TwoWay}"/>
+        <Button
+            Content="Probar conexión"
+            Style="{DynamicResource Esri_Button}"
+            Grid.Row="7"
+            Grid.Column="2"
+            Width="200"
+            Height="32"
+            Margin="0,10,0,0"
+            Command="{Binding TestConnectionCommand}" />
+
     </Grid>
 </UserControl>
