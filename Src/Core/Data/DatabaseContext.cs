@@ -1,39 +1,23 @@
-using EAABAddIn.Src.Core.Data.Common;
+using System.Data;
 
-using EAABAddIn.Src.Core.Entities;
-
-using Microsoft.EntityFrameworkCore;
-
-namespace EAABAddIn.Src.Core.Data;
-
-public class DatabaseContext : DbContext
+namespace EAABAddIn.Src.Core.Data
 {
-    private readonly IDatabaseStrategy _databaseStrategy;
-
-    public DatabaseContext(IDatabaseStrategy databaseStrategy)
+    public class DatabaseContext
     {
-        _databaseStrategy = databaseStrategy;
-    }
+        private IDatabaseStrategy _strategy;
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
+        public void SetStrategy(IDatabaseStrategy strategy)
         {
-            _databaseStrategy.ConfigureDbContext(optionsBuilder);
+            _strategy = strategy;
         }
 
-        base.OnConfiguring(optionsBuilder);
-    }
-
-    public DbSet<AddressLexEntity> AddressLexEntities { get; set; }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<AddressLexEntity>(entity =>
+        public IDbConnection Connect(string connectionString)
         {
-            
-        });
-        base.OnModelCreating(modelBuilder);
+            if (_strategy == null)
+            {
+                throw new System.InvalidOperationException("Database strategy not set.");
+            }
+            return _strategy.GetConnection(connectionString);
+        }
     }
 }
-
