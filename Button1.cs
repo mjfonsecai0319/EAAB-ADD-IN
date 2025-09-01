@@ -54,10 +54,10 @@ namespace EAABAddIn
         {
             // TODO: Reemplazar con tus credenciales de PostgreSQL
             var connectionProps = ConnectionPropertiesFactory.CreatePostgresConnection(
-                "your_pg_instance",
-                "your_pg_user",
-                "your_pg_password",
-                "your_pg_database");
+                "localhost",
+                "postgres",
+                "1234",
+                "postsanamed");
 
             return await _connectionService.TestConnectionAsync(connectionProps);
         }
