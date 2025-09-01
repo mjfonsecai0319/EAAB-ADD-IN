@@ -69,6 +69,11 @@ namespace EAABAddIn
                 "sgo",
                 "sgodev01");
 
+            if (_connectionService is DatabaseConnectionService s)
+            {
+                var items = s.GetAddressLexEntities(connectionProps);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Número de entidades recuperadas: {items.Count}", "Datos Recuperados");
+            }
             return await _connectionService.TestConnectionAsync(connectionProps);
         }
 
