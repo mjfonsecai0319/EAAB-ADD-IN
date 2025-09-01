@@ -36,7 +36,6 @@
             <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
 
- 
         <TextBlock 
             Text="Configuración de Base de Datos"
             Style="{DynamicResource Esri_TextBlockH3}"
@@ -45,80 +44,60 @@
             Grid.Column="0"
             Grid.ColumnSpan="3"/>
 
-        <TextBlock 
-            Text="Motor:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            Margin="0,0,0,5"
-            Grid.Row="1"
-            Grid.Column="0"/>
-        <ComboBox
-            Name="cmbDatabase"
-            Style="{DynamicResource Esri_ComboBox}"
-            Margin="0,0,0,5"
-            Grid.Row="1"
-            Grid.Column="2"
-            ItemsSource="{Binding MotoresBD}"   
-            SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}"/>
+        <TextBlock Text="Motor:" 
+                   Style="{DynamicResource Esri_TextBlockRegular}" 
+                   VerticalAlignment="Center"
+                   Grid.Row="1" Grid.Column="0"/>
+        <ComboBox Name="cmbDatabase"
+                  Style="{DynamicResource Esri_ComboBox}"
+                  Grid.Row="1" Grid.Column="2"
+                  Height="28" Margin="0,0,0,10"
+                  ItemsSource="{Binding MotoresBD}"   
+                  SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}"/>
 
-        <TextBlock 
-            Text="User:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            Margin="0,0,0,5"
-            Grid.Row="3"
-            Grid.Column="0"/>
-        <TextBox
-            Style="{DynamicResource Esri_TextBox}"
-            Grid.Row="3"
-            Grid.Column="2"
-            MinWidth="200"
-            Height="28"
-            Text="{Binding Usuario, Mode=TwoWay}"/>
+        <TextBlock Text="User:" 
+                   Style="{DynamicResource Esri_TextBlockRegular}" 
+                   VerticalAlignment="Center"
+                   Grid.Row="3" Grid.Column="0"/>
+        <TextBox Style="{DynamicResource Esri_TextBox}"
+                 Grid.Row="3" Grid.Column="2"
+                 MinWidth="200" Height="28"
+                 Margin="0,0,0,10"
+                 Text="{Binding Usuario, Mode=TwoWay}"/>
 
-        <TextBlock 
-            Text="Password:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            Margin="0,0,0,5"
-            Grid.Row="4"
-            Grid.Column="0"/>
-        <PasswordBox
-            Style="{DynamicResource Esri_TextBox}"
-            Grid.Row="4"
-            Grid.Column="2"
-            PasswordChar="*"
-            PasswordChanged="PasswordBox_PasswordChanged"/>
+        <TextBlock Text="Password:" 
+                   Style="{DynamicResource Esri_TextBlockRegular}" 
+                   VerticalAlignment="Center"
+                   Grid.Row="4" Grid.Column="0"/>
+        <PasswordBox Style="{DynamicResource Esri_TextBox}"
+                     Grid.Row="4" Grid.Column="2"
+                     Height="28" Margin="0,0,0,10"
+                     PasswordChar="*"
+                     PasswordChanged="PasswordBox_PasswordChanged"/>
 
-        <TextBlock 
-            Text="Host:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            Margin="0,0,0,5"
-            Grid.Row="5"
-            Grid.Column="0"/>
-        <TextBox
-            Style="{DynamicResource Esri_TextBox}"
-            Grid.Row="5"
-            Grid.Column="2"
-            Text="{Binding Host, Mode=TwoWay}"/>
+        <TextBlock Text="Host:" 
+                   Style="{DynamicResource Esri_TextBlockRegular}" 
+                   VerticalAlignment="Center"
+                   Grid.Row="5" Grid.Column="0"/>
+        <TextBox Style="{DynamicResource Esri_TextBox}"
+                 Grid.Row="5" Grid.Column="2"
+                 Height="28" Margin="0,0,0,10"
+                 Text="{Binding Host, Mode=TwoWay}"/>
 
-        <TextBlock 
-            Text="Port:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            Margin="0,0,0,5"
-            Grid.Row="6"
-            Grid.Column="0"/>
-        <TextBox
-            Style="{DynamicResource Esri_TextBox}"
-            Grid.Row="6"
-            Grid.Column="2"
-            Text="{Binding Puerto, Mode=TwoWay}"/>
-        <Button
-            Content="Probar conexión"
-            Style="{DynamicResource Esri_Button}"
-            Grid.Row="7"
-            Grid.Column="2"
-            Width="200"
-            Height="32"
-            Margin="0,10,0,0"
-            Command="{Binding TestConnectionCommand}" />
+        <TextBlock Text="Port:" 
+                   Style="{DynamicResource Esri_TextBlockRegular}" 
+                   VerticalAlignment="Center"
+                   Grid.Row="6" Grid.Column="0"/>
+        <TextBox Style="{DynamicResource Esri_TextBox}"
+                 Grid.Row="6" Grid.Column="2"
+                 Height="28" Margin="0,0,0,15"
+                 Text="{Binding Puerto, Mode=TwoWay}"/>
 
+        <Button Content="Probar conexión"
+                Style="{DynamicResource Esri_Button}"
+                Grid.Row="7" Grid.Column="2"
+                Width="200" Height="32"
+                Margin="0,10,0,0"
+                Command="{Binding TestConnectionCommand}" />
     </Grid>
 </UserControl>
