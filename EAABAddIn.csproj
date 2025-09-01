@@ -11,11 +11,11 @@
     <None Remove="Config.daml" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Config.daml" />    
+    <Content Include="Config.daml" />
     <Content Include="Images\AddInDesktop16.png" />
     <Content Include="Images\AddInDesktop32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
-    <Content Include="DarkImages\AddInDesktop32.png" />    
+    <Content Include="DarkImages\AddInDesktop32.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\launchSettings.json" />
@@ -66,15 +66,15 @@
       <CopyLocal>False</CopyLocal>
       <Private>False</Private>
     </Reference>
-	<Reference Include="ArcGIS.Desktop.KnowledgeGraph">
-		<HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\KnowledgeGraph\ArcGIS.Desktop.KnowledgeGraph.dll</HintPath>
-		<CopyLocal>False</CopyLocal>
-		<Private>False</Private>
-	</Reference>
-	<Reference Include="ArcGIS.Desktop.Shared.Wpf">
-        <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Shared.Wpf.dll</HintPath>
-        <CopyLocal>False</CopyLocal>
-        <Private>False</Private>
+    <Reference Include="ArcGIS.Desktop.KnowledgeGraph">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\KnowledgeGraph\ArcGIS.Desktop.KnowledgeGraph.dll</HintPath>
+      <CopyLocal>False</CopyLocal>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="ArcGIS.Desktop.Shared.Wpf">
+      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Shared.Wpf.dll</HintPath>
+      <CopyLocal>False</CopyLocal>
+      <Private>False</Private>
     </Reference>
     <Reference Include="ArcGIS.Desktop.Ribbon.Wpf">
       <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Ribbon.Wpf.dll</HintPath>
@@ -101,11 +101,5 @@
     <Folder Include="Src\Core\Data\Common\" />
     <Folder Include="Src\Domain\Entity\" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
-    <PackageReference Include="Oracle.EntityFrameworkCore" Version="9.23.90" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" />
-  </ItemGroup>
-   <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets') AND !Exists('Esri.ArcGISPro.Extensions.targets')" />
+  <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets') AND !Exists('Esri.ArcGISPro.Extensions.targets')" />
 </Project>
