@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
@@ -18,6 +17,8 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.KnowledgeGraph;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
+
+
 
 namespace EAABAddIn
 {
@@ -38,10 +39,9 @@ namespace EAABAddIn
             {
                 try
                 {
-                    bool oracleConnected = await TestOracleConnectionAsync();
                     bool pgConnected = await TestPostgresConnectionAsync();
 
-                    ShowConnectionResults(pgConnected, oracleConnected);
+                    ShowConnectionResults(pgConnected, false);
                 }
                 catch (Exception ex)
                 {
@@ -58,6 +58,11 @@ namespace EAABAddIn
                 "postgres",
                 "1234",
                 "postsanamed");
+                if (_connectionService is DatabaseConnectionService s)
+            {
+                var items = OperacionesSQL.GetAddressLexEntitiesPostgres(connectionProps);
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Número de entidades recuperadas: {items.Count}", "Datos Recuperados");
+            }
 
             return await _connectionService.TestConnectionAsync(connectionProps);
         }
@@ -71,7 +76,7 @@ namespace EAABAddIn
 
             if (_connectionService is DatabaseConnectionService s)
             {
-                var items = s.GetAddressLexEntities(connectionProps);
+                var items = OperacionesSQL.GetAddressLexEntitiesOracle(connectionProps);
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Número de entidades recuperadas: {items.Count}", "Datos Recuperados");
             }
             return await _connectionService.TestConnectionAsync(connectionProps);
