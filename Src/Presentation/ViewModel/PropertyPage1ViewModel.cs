@@ -16,7 +16,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace EAABAddIn
+namespace EAABAddIn.Src.Presentation.ViewModel
 {
     internal class PropertyPage1ViewModel : Page
     {
@@ -26,8 +26,8 @@ namespace EAABAddIn
 
         public string DataUIContent
         {
-            get => base.Data[0] as string;
-            set => SetProperty(ref base.Data[0], value);
+            get => Data[0] as string;
+            set => SetProperty(ref Data[0], value);
         }
 
         public ObservableCollection<string> MotoresBD { get; set; } =
