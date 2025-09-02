@@ -1,4 +1,3 @@
-using EAABAddIn.Src.Presentation.ViewModel;
 using System.Windows.Controls;
 
 namespace EAABAddIn

@@ -16,7 +16,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace EAABAddIn.Src.Presentation.ViewModel
+namespace EAABAddIn
 {
     internal class PropertyPage1ViewModel : Page
     {
