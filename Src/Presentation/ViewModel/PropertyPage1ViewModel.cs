@@ -1,101 +1,140 @@
-﻿using ArcGIS.Core.CIM;
-using ArcGIS.Core.Data;
-using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Catalog;
-using ArcGIS.Desktop.Core;
-using ArcGIS.Desktop.Editing;
-using ArcGIS.Desktop.Extensions;
+﻿using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Dialogs;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.KnowledgeGraph;
-using ArcGIS.Desktop.Layouts;
-using ArcGIS.Desktop.Mapping;
-using System.Collections.ObjectModel;
-using System.Threading.Tasks;
-using System.Windows;
+using Microsoft.Win32; 
+using System.Windows.Input;
 
 namespace EAABAddIn
 {
     internal class PropertyPage1ViewModel : Page
     {
-        protected override Task CommitAsync() => Task.FromResult(0);
-        protected override Task InitializeAsync() => Task.FromResult(true);
-        protected override void Uninitialize() { }
-
-        public string DataUIContent
-        {
-            get => Data[0] as string;
-            set => SetProperty(ref Data[0], value);
-        }
+        private readonly Settings _settings;
 
         public ObservableCollection<string> MotoresBD { get; set; } =
             new ObservableCollection<string> { "Oracle", "PostgreSQL" };
 
-        private string _motorSeleccionado;
+        private string _motorSeleccionado = string.Empty;
         public string MotorSeleccionado
         {
             get => _motorSeleccionado;
-            set
-            {
-                SetProperty(ref _motorSeleccionado, value);
-                IsModified = true;
-            }
+            set { if (SetProperty(ref _motorSeleccionado, value)) IsModified = true; }
         }
+        private string _oraclePath;
+        public string OraclePath
+        {
+            get => _oraclePath;
+            set { if (SetProperty(ref _oraclePath, value)) IsModified = true; }
+        }
+        public ICommand BrowseOracleCommand { get; 
 
-        private string _usuario;
+}
+        private string _usuario = string.Empty;
         public string Usuario
         {
             get => _usuario;
-            set
-            {
-                SetProperty(ref _usuario, value);
-                IsModified = true;
-            }
+            set { if (SetProperty(ref _usuario, value)) IsModified = true; }
         }
 
-        private string _contraseña;
+        private string _contraseña = string.Empty;
         public string Contraseña
         {
             get => _contraseña;
-            set
-            {
-                SetProperty(ref _contraseña, value);
-                IsModified = true;
-            }
+            set { if (SetProperty(ref _contraseña, value)) IsModified = true; }
         }
 
-        private string _host;
+        private string _host = string.Empty;
         public string Host
         {
             get => _host;
-            set
-            {
-                SetProperty(ref _host, value);
-                IsModified = true;
-            }
+            set { if (SetProperty(ref _host, value)) IsModified = true; }
         }
 
-        private string _puerto;
+        private string _puerto = string.Empty;
         public string Puerto
         {
             get => _puerto;
-            set
+            set { if (SetProperty(ref _puerto, value)) IsModified = true; }
+        }
+
+        public PropertyPage1ViewModel()
+        {
+            _settings = Module1.Settings;
+
+            // Inicializamos el comando
+            BrowseOracleCommand = new RelayCommand(OnBrowseOracleExecute);
+
+            LoadSettings();
+        }
+        private void OnBrowseOracleExecute()
+        {
+            var openFileDialog = new OpenFileDialog
             {
-                SetProperty(ref _puerto, value);
-                IsModified = true;
+                Title = "Seleccionar Oracle Client Path",
+                Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                OraclePath = openFileDialog.FileName;
             }
         }
+
+        protected override Task CommitAsync()
+        {
+            // Guardar valores en settings
+            _settings.motor = MotorSeleccionado;
+            _settings.usuario = Usuario;
+            _settings.contraseña = Contraseña;
+            _settings.host = Host;
+            _settings.puerto = Puerto;
+            _settings.oracle_path = OraclePath;
+
+
+            _settings.Save();
+
+            System.Diagnostics.Debug.WriteLine(
+                $"Saving settings: motor={MotorSeleccionado}, usuario={Usuario}, host={Host}, puerto={Puerto}"
+            );
+
+            return Task.FromResult(0);
+        }
+
+        protected override Task InitializeAsync()
+        {
+            LoadSettings();
+            return Task.FromResult(true);
+        }
+
+        protected override void Uninitialize()
+        {
+        }
+
+        private void LoadSettings()
+        {
+            MotorSeleccionado = _settings.motor ?? "PostgreSQL"; // default
+            Usuario = _settings.usuario ?? string.Empty;
+            Contraseña = _settings.contraseña ?? string.Empty;
+            Host = _settings.host ?? "localhost";
+            Puerto = _settings.puerto ?? "5432";
+            OraclePath = _settings.oracle_path ?? string.Empty;
+
+
+            System.Diagnostics.Debug.WriteLine(
+                $"Loaded settings: motor={MotorSeleccionado}, usuario={Usuario}, host={Host}, puerto={Puerto}"
+            );
+        }
     }
+}
 
     internal class PropertyPage1_ShowButton : Button
     {
         protected override void OnClick()
         {
-            object[] data = new object[] { "Page UI content" };
-            if (!PropertySheet.IsVisible)
-                PropertySheet.ShowDialog("EAABAddIn_PropertySheet1", "EAABAddIn_PropertyPage1", data);
+            object[] data = ["Page UI content"];
+
+            if (PropertySheet.IsVisible) return;
+
+            PropertySheet.ShowDialog("EAABAddIn_PropertySheet1", "EAABAddIn_PropertyPage1", data);
         }
     }
-}
