@@ -8,9 +8,13 @@
     <NoWarn>CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Src\Core\Data\Common\**" />
     <Compile Remove="Src\Domain\**" />
+    <EmbeddedResource Remove="Src\Core\Data\Common\**" />
     <EmbeddedResource Remove="Src\Domain\**" />
+    <None Remove="Src\Core\Data\Common\**" />
     <None Remove="Src\Domain\**" />
+    <Page Remove="Src\Core\Data\Common\**" />
     <Page Remove="Src\Domain\**" />
   </ItemGroup>
   <ItemGroup>
@@ -105,9 +109,6 @@
       <CopyLocal>False</CopyLocal>
       <Private>False</Private>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Src\Core\Data\Common\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Src\Core\Config\Config.Designer.cs">

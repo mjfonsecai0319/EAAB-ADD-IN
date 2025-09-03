@@ -26,6 +26,7 @@ public class AddressNormalizer
         ClearAddress(response);
         AddressIdentify(response);
         FindLex(response);
+        response.AddressNormalizer = response.AddressNormalizer.Replace("|", " ").Trim();
         return response;
     }
 

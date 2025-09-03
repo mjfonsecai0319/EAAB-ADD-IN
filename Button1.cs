@@ -83,10 +83,10 @@ internal class Button1 : Button
     private void HandlePostgreSqlConnection(string input)
     {
         var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-            instance: "",
-            user: "",
-            password: "",
-            database: ""
+            instance: Module1.Settings.host,
+            user: Module1.Settings.usuario,
+            password: Module1.Settings.contraseña,
+            database: Module1.Settings.baseDeDatos
         );
         var repository = new AddressLexEntityPostgresRepository();
         var addressNormalizer = new AddressNormalizer(repository, props);
