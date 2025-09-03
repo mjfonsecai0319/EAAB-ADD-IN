@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Src\Domain\Repositories\AddressLexEntityRepository.cs" />
+    <Compile Include="Src\Domain\Repositories\PtAddressGralEntityRepository.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Config.daml" />

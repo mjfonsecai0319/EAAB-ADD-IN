@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -5,6 +6,7 @@ using ArcGIS.Core.Data;
 
 using EAABAddIn.Src.Application.Errors;
 using EAABAddIn.Src.Application.Models;
+using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Domain.Repositories;
 
 namespace EAABAddIn.Src.Application.UseCases;
@@ -14,9 +16,9 @@ public class AddressNormalizer
     private readonly IAddressLexEntityRepository _addressLexRepository;
     private readonly DatabaseConnectionProperties _connectionProperties;
 
-    public AddressNormalizer(IAddressLexEntityRepository addressLexRepository, DatabaseConnectionProperties connectionProperties)
+    public AddressNormalizer(DBEngine engine, DatabaseConnectionProperties connectionProperties)
     {
-        this._addressLexRepository = addressLexRepository;
+        this._addressLexRepository = this.GetRepository(engine);
         this._connectionProperties = connectionProperties;
     }
 
@@ -131,6 +133,7 @@ public class AddressNormalizer
 
                 addressModel.Principal = Regex.Replace(principal, @"\s", "");
                 addressModel.Principal = principal.Replace(word, stdWord);
+                addressModel.AddressNormalizer = addressModel.AddressNormalizer.Replace(word, stdWord);
             }
             else
             {
@@ -138,4 +141,11 @@ public class AddressNormalizer
             }
         }
     }
+
+    private IAddressLexEntityRepository GetRepository(DBEngine engine) => engine switch
+    {
+        DBEngine.Oracle => new AddressLexEntityOracleRepository(),
+        DBEngine.PostgreSQL => new AddressLexEntityPostgresRepository(),
+        _ => throw new NotSupportedException($"El motor de base de datos '{engine}' no es compatible.")
+    };
 }

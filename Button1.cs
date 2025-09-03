@@ -66,17 +66,28 @@ internal class Button1 : Button
             user: Module1.Settings.usuario,
             password: Module1.Settings.contraseña
         );
-        var repository = new AddressLexEntityOracleRepository();
-        var addressNormalizer = new AddressNormalizer(repository, props);
+        var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
+        var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
         var model = new AddressNormalizerModel { Address = input };
-        var response = addressNormalizer.Invoke(model);
+        var address = addressNormalizer.Invoke(model);
+        var result = addressSearch.Invoke(address.AddressNormalizer);
         var responseMessage = new StringBuilder();
 
-        responseMessage.AppendLine($"Dirección Original: {response.Address}");
-        responseMessage.AppendLine($"Normalizada: {response.AddressNormalizer}");
-        responseMessage.AppendLine($"Principal: {response.Principal}");
-        responseMessage.AppendLine($"Generador: {response.Generador}");
-        responseMessage.AppendLine($"Placa: {response.Plate}");
+        responseMessage.AppendLine($"Dirección Original: {address.Address}");
+        responseMessage.AppendLine($"Normalizada: {address.AddressNormalizer}");
+        responseMessage.AppendLine($"Principal: {address.Principal}");
+        responseMessage.AppendLine($"Generador: {address.Generador}");
+        responseMessage.AppendLine($"Placa: {address.Plate}");
+
+        foreach (var addr in result)
+        {
+            responseMessage.AppendLine($"--- Resultado de Búsqueda ---");
+            responseMessage.AppendLine($"ID: {addr.ID}");
+            responseMessage.AppendLine($"Dirección: {addr.FullAddressEAAB}");
+            responseMessage.AppendLine($"Código Ciudad: {addr.CityCode}");
+            responseMessage.AppendLine($"Latitud: {addr.Latitud}");
+            responseMessage.AppendLine($"Longitud: {addr.Longitud}");
+        }
         MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
     }
 
@@ -88,17 +99,28 @@ internal class Button1 : Button
             password: Module1.Settings.contraseña,
             database: Module1.Settings.baseDeDatos
         );
-        var repository = new AddressLexEntityPostgresRepository();
-        var addressNormalizer = new AddressNormalizer(repository, props);
+        var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
+        var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
         var model = new AddressNormalizerModel { Address = input };
-        var response = addressNormalizer.Invoke(model);
+        var address = addressNormalizer.Invoke(model);
+        var result = addressSearch.Invoke(address.AddressNormalizer);
         var responseMessage = new StringBuilder();
 
-        responseMessage.AppendLine($"Dirección Original: {response.Address}");
-        responseMessage.AppendLine($"Normalizada: {response.AddressNormalizer}");
-        responseMessage.AppendLine($"Principal: {response.Principal}");
-        responseMessage.AppendLine($"Generador: {response.Generador}");
-        responseMessage.AppendLine($"Placa: {response.Plate}");
+        responseMessage.AppendLine($"Dirección Original: {address.Address}");
+        responseMessage.AppendLine($"Normalizada: {address.AddressNormalizer}");
+        responseMessage.AppendLine($"Principal: {address.Principal}");
+        responseMessage.AppendLine($"Generador: {address.Generador}");
+        responseMessage.AppendLine($"Placa: {address.Plate}");
+
+        foreach (var addr in result)
+        {
+            responseMessage.AppendLine($"--- Resultado de Búsqueda ---");
+            responseMessage.AppendLine($"ID: {addr.ID}");
+            responseMessage.AppendLine($"Dirección: {addr.FullAddressEAAB}");
+            responseMessage.AppendLine($"Código Ciudad: {addr.CityCode}");
+            responseMessage.AppendLine($"Latitud: {addr.Latitud}");
+            responseMessage.AppendLine($"Longitud: {addr.Longitud}");
+        }
         MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
     }
 }
