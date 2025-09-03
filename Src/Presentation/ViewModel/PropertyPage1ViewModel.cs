@@ -56,6 +56,13 @@ namespace EAABAddIn
             get => _puerto;
             set { if (SetProperty(ref _puerto, value)) IsModified = true; }
         }
+        private string _baseDeDatos = string.Empty;
+        public string BaseDeDatos
+        {
+            get => _baseDeDatos;
+            set { if (SetProperty(ref _baseDeDatos, value)) IsModified = true; }
+        }
+
 
         public PropertyPage1ViewModel()
         {
