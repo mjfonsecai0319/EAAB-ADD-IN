@@ -26,14 +26,11 @@ namespace EAABAddIn
 
                     if (value == "PostgreSQL")
                     {
-                        // Defaults típicos de Postgres
                         if (string.IsNullOrWhiteSpace(Host))   Host = "localhost";
                         if (string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
                     }
                     else if (value == "Oracle")
                     {
-                        // Limpia DB si quieres (no aplica a Oracle)
-                        // BaseDeDatos = string.Empty;
                     }
                 }
             }
