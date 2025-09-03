@@ -27,32 +27,6 @@ namespace EAABAddIn.Src.Core.Data
                 }
             });
         }
-
-        public List<AddressLexEntity> GetAddressLexEntities(DatabaseConnectionProperties connectionProperties)
-        {
-            var result = new List<AddressLexEntity>();
-            using (var geodatabase = new Geodatabase(connectionProperties))
-            using (Table table = geodatabase.OpenDataset<Table>("sgo.sgo_t_address_lex"))
-            using (RowCursor cursor = table.Search(null, false))
-            {
-                while (cursor.MoveNext())
-                {
-                    using (Row row = cursor.Current)
-                    {
-                        var entity = new AddressLexEntity
-                        {
-                            ID = row["OBJECTID"] is long id ? id : 0,
-                            Seq = row["SEQ"] is long seq ? seq : 0,
-                            Word = row["WORD"]?.ToString(),
-                            StdWord = row["STDWORD"]?.ToString(),
-                            Token = row["TOKEN"] as long?,
-                            IsCustom = row["IS_CUSTOM"] is bool isCustom ? isCustom : false
-                        };
-                        result.Add(entity);
-                    }
-                }
-            }
-            return result;
-        }
+        
     }
 }
