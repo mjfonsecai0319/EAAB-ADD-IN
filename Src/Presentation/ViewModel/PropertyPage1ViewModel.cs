@@ -18,8 +18,27 @@ namespace EAABAddIn
         public string MotorSeleccionado
         {
             get => _motorSeleccionado;
-            set { if (SetProperty(ref _motorSeleccionado, value)) IsModified = true; }
+            set
+            {
+                if (SetProperty(ref _motorSeleccionado, value))
+                {
+                    IsModified = true;
+
+                    if (value == "PostgreSQL")
+                    {
+                        // Defaults típicos de Postgres
+                        if (string.IsNullOrWhiteSpace(Host))   Host = "localhost";
+                        if (string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
+                    }
+                    else if (value == "Oracle")
+                    {
+                        // Limpia DB si quieres (no aplica a Oracle)
+                        // BaseDeDatos = string.Empty;
+                    }
+                }
+            }
         }
+
         private string _oraclePath;
         public string OraclePath
         {
@@ -96,7 +115,7 @@ namespace EAABAddIn
             _settings.host = Host;
             _settings.puerto = Puerto;
             _settings.oracle_path = OraclePath;
-
+            _settings.baseDeDatos = BaseDeDatos;
 
             _settings.Save();
 
@@ -125,6 +144,8 @@ namespace EAABAddIn
             Host = _settings.host ?? "localhost";
             Puerto = _settings.puerto ?? "5432";
             OraclePath = _settings.oracle_path ?? string.Empty;
+            BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+
 
 
             System.Diagnostics.Debug.WriteLine(

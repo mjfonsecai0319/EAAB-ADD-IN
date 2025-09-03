@@ -58,11 +58,9 @@
                   ItemsSource="{Binding MotoresBD}"   
                   SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}"/>
         <Button Content="..."
-                Width="30" Height="28"
-                Style="{DynamicResource Esri_Button}"
-                Grid.Row="1" Grid.Column="3"
+                Style="{DynamicResource Esri_Button}" Grid.Column="3"
                 Command="{Binding BrowseOracleCommand}"
-                Visibility="{Binding MotorSeleccionado, Converter={StaticResource OracleVisibilityConverter}}"/>
+                Visibility="{Binding MotorSeleccionado, Converter={StaticResource OracleVisibilityConverter}}" Margin="10,3,-67,9" Grid.Row="1"/>
 
         <!-- Usuario -->
         <TextBlock Text="User:" 
