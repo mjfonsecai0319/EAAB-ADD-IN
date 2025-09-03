@@ -8,9 +8,13 @@
     <NoWarn>CA1416</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Src\Core\Data\Common\**" />
     <Compile Remove="Src\Domain\**" />
+    <EmbeddedResource Remove="Src\Core\Data\Common\**" />
     <EmbeddedResource Remove="Src\Domain\**" />
+    <None Remove="Src\Core\Data\Common\**" />
     <None Remove="Src\Domain\**" />
+    <Page Remove="Src\Core\Data\Common\**" />
     <Page Remove="Src\Domain\**" />
   </ItemGroup>
   <ItemGroup>
@@ -107,7 +111,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Src\Core\Data\Common\" />
+    <Folder Include="Src\Application\" />
   </ItemGroup>
   <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets') AND !Exists('Esri.ArcGISPro.Extensions.targets')" />
 </Project>
