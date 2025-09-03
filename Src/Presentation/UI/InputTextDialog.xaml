@@ -23,7 +23,11 @@
 
         <TextBlock Text="Seleccione opción:" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
 
-        <ComboBox x:Name="SelectionBox" Grid.Row="0" Grid.Column="2" Margin="0 0 0 5" Height="28" />
+       <ComboBox x:Name="SelectionBox" Grid.Row="0" Grid.Column="2" Margin="0 0 0 5" Height="28">
+            <ComboBoxItem Content="Bogotá"/>
+            <ComboBoxItem Content="Gachancipá"/>
+            <ComboBoxItem Content="Soacha"/>
+        </ComboBox>
 
         <TextBlock Text="Ingrese texto:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" />
 

@@ -51,7 +51,7 @@ public class AddressLexEntityPostgresRepository : IAddressLexEntityRepository
     public AddressLexEntity FindByWord(DatabaseConnectionProperties connectionProperties, string word)
     {
         using (var geodatabase = new Geodatabase(connectionProperties))
-        using (Table table = geodatabase.OpenDataset<Table>("public.sgo_t_address_lex"))
+        using (Table table = geodatabase.OpenDataset<Table>("public.eaab_lex"))
         {
             var queryFilter = new QueryFilter
             {
