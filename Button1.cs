@@ -9,6 +9,7 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using EAABAddIn.Src.Application.Errors;
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Application.UseCases;
+using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Data;
 using EAABAddIn.Src.Domain.Repositories;
 
@@ -16,13 +17,6 @@ namespace EAABAddIn;
 
 internal class Button1 : Button
 {
-    private readonly IDatabaseConnectionService _connectionService;
-
-    public Button1()
-    {
-        _connectionService = new DatabaseConnectionService();
-    }
-
     protected override void OnClick()
     {
         var dialog = new Src.UI.InputTextDialog();
@@ -40,33 +34,19 @@ internal class Button1 : Button
         {
             try
             {
-                var connectionProps = ConnectionPropertiesFactory.CreateOracleConnection(
-                    instance: "172.19.8.169:1548/SITIODEV",
-                    user: "sgo",
-                    password: "sgodev01"
-                );
+                var engine = Module1.Settings.motor.ToDBEngine();
 
-                IAddressLexEntityRepository repository = new AddressLexEntityOracleRepository();
-                var addressNormalizer = new AddressNormalizer(repository, connectionProps);
-
-                var model = new AddressNormalizerModel
+                if (engine == DBEngine.Oracle)
                 {
-                    Address = input,
-                    // Asigna otros valores si es necesario
-                    ApplicationId = "EAAB-ADD-IN",
-                    Secret = "some-secret"
-                };
+                    HandleOracleConnection(input);
+                    return;
+                }
 
-                var response = addressNormalizer.Invoke(model);
-
-                var responseMessage = new StringBuilder();
-                responseMessage.AppendLine($"Dirección Original: {response.Address}");
-                responseMessage.AppendLine($"Normalizada: {response.AddressNormalizer}");
-                responseMessage.AppendLine($"Principal: {response.Principal}");
-                responseMessage.AppendLine($"Generador: {response.Generador}");
-                responseMessage.AppendLine($"Placa: {response.Plate}");
-
-                MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
+                if (engine == DBEngine.PostgreSQL)
+                {
+                    HandlePostgreSqlConnection(input);
+                    return;
+                }
             }
             catch (BusinessException bex)
             {
@@ -77,6 +57,49 @@ internal class Button1 : Button
                 MessageBox.Show($"Ha ocurrido un error inesperado: {ex.Message}", "Error");
             }
         });
+    }
+
+    private void HandleOracleConnection(string input)
+    {
+        var props = ConnectionPropertiesFactory.CreateOracleConnection(
+            instance: Module1.Settings.host,
+            user: Module1.Settings.usuario,
+            password: Module1.Settings.contraseña
+        );
+        var repository = new AddressLexEntityOracleRepository();
+        var addressNormalizer = new AddressNormalizer(repository, props);
+        var model = new AddressNormalizerModel { Address = input };
+        var response = addressNormalizer.Invoke(model);
+        var responseMessage = new StringBuilder();
+
+        responseMessage.AppendLine($"Dirección Original: {response.Address}");
+        responseMessage.AppendLine($"Normalizada: {response.AddressNormalizer}");
+        responseMessage.AppendLine($"Principal: {response.Principal}");
+        responseMessage.AppendLine($"Generador: {response.Generador}");
+        responseMessage.AppendLine($"Placa: {response.Plate}");
+        MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
+    }
+
+    private void HandlePostgreSqlConnection(string input)
+    {
+        var props = ConnectionPropertiesFactory.CreatePostgresConnection(
+            instance: "",
+            user: "",
+            password: "",
+            database: ""
+        );
+        var repository = new AddressLexEntityPostgresRepository();
+        var addressNormalizer = new AddressNormalizer(repository, props);
+        var model = new AddressNormalizerModel { Address = input };
+        var response = addressNormalizer.Invoke(model);
+        var responseMessage = new StringBuilder();
+
+        responseMessage.AppendLine($"Dirección Original: {response.Address}");
+        responseMessage.AppendLine($"Normalizada: {response.AddressNormalizer}");
+        responseMessage.AppendLine($"Principal: {response.Principal}");
+        responseMessage.AppendLine($"Generador: {response.Generador}");
+        responseMessage.AppendLine($"Placa: {response.Plate}");
+        MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
     }
 }
 

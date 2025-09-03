@@ -12,12 +12,7 @@ namespace EAABAddIn.Src.Application.Models
 
         public static AddressNormalizerModelResponse FromAddressNormalizer(AddressNormalizerModel model)
         {
-            return new AddressNormalizerModelResponse
-            {
-                ApplicationId = model.ApplicationId,
-                Secret = model.Secret,
-                Address = model.Address
-            };
+            return new AddressNormalizerModelResponse { Address = model.Address };
         }
     }
 }
