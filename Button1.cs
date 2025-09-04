@@ -71,7 +71,7 @@ internal class Button1 : Button
         var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var result = addressSearch.Invoke(address.AddressNormalizer);
+        var result = addressSearch.Invoke(address.AddressEAAB);
         var responseMessage = new StringBuilder();
 
         responseMessage.AppendLine($"Dirección Original: {address.Address}");
@@ -114,7 +114,7 @@ internal class Button1 : Button
         var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var result = addressSearch.Invoke(address.AddressNormalizer);
+        var result = addressSearch.Invoke(address.AddressEAAB);
         var responseMessage = new StringBuilder();
 
         responseMessage.AppendLine($"Dirección Original: {address.Address}");

@@ -28,7 +28,6 @@ public class AddressNormalizer
         ClearAddress(response);
         AddressIdentify(response);
         FindLex(response);
-        response.AddressNormalizer = response.AddressNormalizer.Replace("|", " ").Trim();
         return response;
     }
 
@@ -131,9 +130,10 @@ public class AddressNormalizer
                 string word = tAddressLexEntity.Word;
                 string stdWord = tAddressLexEntity.StdWord;
 
-                addressModel.Principal = Regex.Replace(principal, @"\s", "");
-                addressModel.Principal = principal.Replace(word, stdWord);
-                addressModel.AddressNormalizer = addressModel.AddressNormalizer.Replace(word, stdWord);
+                principal = Regex.Replace(principal, @"\s", "");
+                principal = principal.Replace(word, $"{stdWord} ");
+
+                addressModel.Principal = principal;
             }
             else
             {
