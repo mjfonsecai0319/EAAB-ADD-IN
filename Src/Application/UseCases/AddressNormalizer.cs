@@ -80,6 +80,7 @@ public class AddressNormalizer
                     addressModel.Plate = addressModel.Plate.Replace(cardinalidad, "");
                 }
             }
+
             CleanAddressModel(addressModel);
             return;
         }
@@ -108,10 +109,18 @@ public class AddressNormalizer
 
     private void CleanAddressModel(AddressNormalizerModelResponse addressModel)
     {
-        addressModel.Principal = Regex.Replace(addressModel.Principal.Replace('|', ' '), @" +", " ").Trim();
-        addressModel.Generador = Regex.Replace(addressModel.Generador.Replace('|', ' '), @"\s", "").Trim();
-        addressModel.Plate = Regex.Replace(addressModel.Plate.Replace('|', ' '), @" +", " ").Trim();
-        addressModel.Complement = Regex.Replace(addressModel.Complement.Replace('|', ' '), @" +", " ").Trim();
+        addressModel.Principal = Regex.Replace(addressModel.Principal, @"\|+", " ");
+        addressModel.Principal = Regex.Replace(addressModel.Principal, @" +", " ").Trim();
+
+        addressModel.Generador = Regex.Replace(addressModel.Generador, @"\|+", " ");
+        addressModel.Generador = Regex.Replace(addressModel.Generador, @" +", " ");
+        addressModel.Generador = Regex.Replace(addressModel.Generador, @"\s", "").Trim();
+
+        addressModel.Plate = Regex.Replace(addressModel.Plate, @"\|+", " ");
+        addressModel.Plate = Regex.Replace(addressModel.Plate, @" +", " ").Trim();
+
+        addressModel.Complement = Regex.Replace(addressModel.Complement, @"\|+", " ");
+        addressModel.Complement = Regex.Replace(addressModel.Complement, @" +", " ").Trim();
     }
 
     private void FindLex(AddressNormalizerModelResponse addressModel)
