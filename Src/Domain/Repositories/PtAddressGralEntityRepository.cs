@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 using ArcGIS.Core.Data;
 
@@ -37,6 +39,30 @@ public abstract class PtAddressGralEntityRepositoryBase
     }
 
     protected abstract PtAddressGralEntity MapRowToEntity(Row row);
+
+    // Convierte distintos tipos de valor de fila a decimal? de forma segura
+    protected decimal? ToDecimal(object value)
+    {
+        if (value == null || value is DBNull)
+            return null;
+
+        if (value is decimal d)
+            return d;
+        if (value is double db)
+            return Convert.ToDecimal(db);
+        if (value is float f)
+            return Convert.ToDecimal(f);
+        if (value is long l)
+            return Convert.ToDecimal(l);
+        if (value is int i)
+            return Convert.ToDecimal(i);
+
+        var s = value.ToString();
+        if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+            return parsed;
+
+        return null;
+    }
 }
 
 public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, IPtAddressGralEntityRepository
@@ -73,8 +99,8 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
             FullAddressEAAB = row["FULL_ADDRESS_EAAB"]?.ToString(),
             FullAddressCadastre = row["FULL_ADDRESS_CADASTRE"]?.ToString(),
             FullAddressOld = row["FULL_ADDRESS_OLD"]?.ToString(),
-            Longitud = row["LONGITUD"] as decimal?,
-            Latitud = row["LATITUD"] as decimal?,
+            Longitud = ToDecimal(row["LONGITUD"]),
+            Latitud = ToDecimal(row["LATITUD"]),
             HydraulicDistrictCode = row["HYDRAULIC_DISTRICT_CODE"]?.ToString(),
             HydraulicDistrictDescription = row["HYDRAULIC_DISTRICT_DESC"]?.ToString(),
             ZoneCode = row["ZONE_CODE"]?.ToString(),
@@ -123,8 +149,8 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
             FullAddressEAAB = row["full_address_eaab"]?.ToString(),
             FullAddressCadastre = row["full_address_cadastre"]?.ToString(),
             FullAddressOld = row["full_address_old"]?.ToString(),
-            Longitud = row["longitud"] as decimal?,
-            Latitud = row["latitud"] as decimal?,
+            Longitud = ToDecimal(row["longitud"]),
+            Latitud = ToDecimal(row["latitud"]),
             HydraulicDistrictCode = row["hydraulic_district_code"]?.ToString(),
             HydraulicDistrictDescription = row["hydraulic_district_desc"]?.ToString(),
             ZoneCode = row["zone_code"]?.ToString(),
