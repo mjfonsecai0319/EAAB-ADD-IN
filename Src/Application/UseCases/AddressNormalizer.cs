@@ -155,6 +155,6 @@ public class AddressNormalizer
     {
         DBEngine.Oracle => new AddressLexEntityOracleRepository(),
         DBEngine.PostgreSQL => new AddressLexEntityPostgresRepository(),
-        _ => throw new NotSupportedException($"El motor de base de datos '{engine}' no es compatible.")
+        _ => throw new NotSupportedException($"El motor de base de datoss '{engine}' no es compatible.")
     };
 }
