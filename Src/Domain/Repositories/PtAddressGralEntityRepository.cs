@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 using ArcGIS.Core.Data;
@@ -52,8 +51,6 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
 
     protected override PtAddressGralEntity MapRowToEntity(Row row)
     {
-        ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(row["LONGITUD"].ToString());
-
         return new PtAddressGralEntity
         {
             ID = row["OBJECTID"] is long id ? id : 0,
@@ -76,8 +73,8 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
             FullAddressEAAB = row["FULL_ADDRESS_EAAB"]?.ToString(),
             FullAddressCadastre = row["FULL_ADDRESS_CADASTRE"]?.ToString(),
             FullAddressOld = row["FULL_ADDRESS_OLD"]?.ToString(),
-            Longitud = row["LONGITUD"] != null ? Convert.ToDecimal(row["LONGITUD"]) : (decimal?)null,
-            Latitud = row["LATITUD"] != null ? Convert.ToDecimal(row["LATITUD"]) : (decimal?)null,
+            Longitud = row["LONGITUD"] as decimal?,
+            Latitud = row["LATITUD"] as decimal?,
             HydraulicDistrictCode = row["HYDRAULIC_DISTRICT_CODE"]?.ToString(),
             HydraulicDistrictDescription = row["HYDRAULIC_DISTRICT_DESC"]?.ToString(),
             ZoneCode = row["ZONE_CODE"]?.ToString(),
