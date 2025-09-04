@@ -14,5 +14,14 @@ namespace EAABAddIn.Src.Application.Models
         {
             return new AddressNormalizerModelResponse { Address = model.Address };
         }
+
+        public string AddressEAAB
+        {
+            get
+            {
+                var value = $"{Principal} {CardinalidadPrincipal ?? ""} {Generador} {CardinalidadGenerador ?? ""} {Plate}";
+                return string.Join(" ", value.Split([' '], System.StringSplitOptions.RemoveEmptyEntries));
+            }
+        }
     }
 }
