@@ -12,6 +12,7 @@ using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Data;
 using EAABAddIn.Src.Domain.Repositories;
+using EAABAddIn.Map;
 
 namespace EAABAddIn;
 
@@ -87,6 +88,16 @@ internal class Button1 : Button
             responseMessage.AppendLine($"Código Ciudad: {addr.CityCode}");
             responseMessage.AppendLine($"Latitud: {addr.Latitud}");
             responseMessage.AppendLine($"Longitud: {addr.Longitud}");
+
+            if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+            {
+            _ = ResultsLayerService.AddPointAsync(
+                (double)addr.Latitud.Value,
+                (double)addr.Longitud.Value
+            );
+            }
+
+            
         }
         MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
     }
@@ -120,8 +131,18 @@ internal class Button1 : Button
             responseMessage.AppendLine($"Código Ciudad: {addr.CityCode}");
             responseMessage.AppendLine($"Latitud: {addr.Latitud}");
             responseMessage.AppendLine($"Longitud: {addr.Longitud}");
+
+            if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+            {
+                _ = ResultsLayerService.AddPointAsync(
+                    (double)addr.Latitud.Value,
+                    (double)addr.Longitud.Value
+                );
+            }
+
         }
         MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
+        
     }
 }
 
