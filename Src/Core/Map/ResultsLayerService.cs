@@ -24,10 +24,13 @@ namespace EAABAddIn.Map
 
                 var map = mapView.Map;
 
-                // Crear capa de resultados si no existe
+                // Crear la capa solo si aún no existe
                 if (_resultsLayer == null)
                 {
-                    var layerParams = new GraphicsLayerCreationParams { Name = "Resultados" };
+                    var layerParams = new GraphicsLayerCreationParams
+                    {
+                        Name = "Resultados"
+                    };
                     _resultsLayer = LayerFactory.Instance.CreateLayer<GraphicsLayer>(layerParams, map);
                 }
 
@@ -42,7 +45,7 @@ namespace EAABAddIn.Map
                     Symbol = symbol.MakeSymbolReference()
                 };
 
-                // Agregar el gráfico a la capa
+                // Agregar el gráfico a la capa ya existente
                 _resultsLayer.AddElement(graphic);
 
                 // Hacer zoom al punto
