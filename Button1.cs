@@ -25,11 +25,23 @@ internal class Button1 : Button
 
         if (result == true && !string.IsNullOrWhiteSpace(dialog.InputText))
         {
-            QueuedTask.Run(() => ProcessInput(dialog.InputText));
+            var selectedCity = dialog.SelectedCity;
+
+            QueuedTask.Run(() => ProcessInput(dialog.InputText, selectedCity));
         }
     }
+    private string GetCityCode(string city)
+    {
+        return city switch
+        {
+            "Bogotá"     => "11001",
+            "Soacha"     => "25754",
+            "Gachancipá" => "25317",
+            _ => ""
+        };
+    }
 
-    private async Task ProcessInput(string input)
+        private async Task ProcessInput(string input, string city)
     {
         await QueuedTask.Run(() =>
         {
@@ -39,13 +51,13 @@ internal class Button1 : Button
 
                 if (engine == DBEngine.Oracle)
                 {
-                    HandleOracleConnection(input);
+                    HandleOracleConnection(input, city);
                     return;
                 }
 
                 if (engine == DBEngine.PostgreSQL)
                 {
-                    HandlePostgreSqlConnection(input);
+                    HandlePostgreSqlConnection(input, city);
                     return;
                 }
             }
@@ -60,19 +72,23 @@ internal class Button1 : Button
         });
     }
 
-    private void HandleOracleConnection(string input)
+
+    private void HandleOracleConnection(string input, string city)
     {
         var props = ConnectionPropertiesFactory.CreateOracleConnection(
             instance: Module1.Settings.host,
             user: Module1.Settings.usuario,
             password: Module1.Settings.contraseña
         );
+
         var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
         var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
+
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var result = addressSearch.Invoke(address.AddressEAAB);
         var responseMessage = new StringBuilder();
+        var cityCode = GetCityCode(city);
+        var result = addressSearch.Invoke(address.AddressEAAB, cityCode);
 
         responseMessage.AppendLine($"Dirección Original: {address.Address}");
         responseMessage.AppendLine($"Normalizada: {address.AddressNormalizer}");
@@ -102,7 +118,7 @@ internal class Button1 : Button
         MessageBox.Show(responseMessage.ToString(), "Resultado de Normalización");
     }
 
-    private void HandlePostgreSqlConnection(string input)
+    private void HandlePostgreSqlConnection(string input, string city)
     {
         var props = ConnectionPropertiesFactory.CreatePostgresConnection(
             instance: Module1.Settings.host,
@@ -110,11 +126,14 @@ internal class Button1 : Button
             password: Module1.Settings.contraseña,
             database: Module1.Settings.baseDeDatos
         );
+
         var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
         var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
+
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var result = addressSearch.Invoke(address.AddressEAAB);
+        var cityCode = GetCityCode(city);
+        var result = addressSearch.Invoke(address.AddressEAAB, cityCode);
         var responseMessage = new StringBuilder();
 
         responseMessage.AppendLine($"Dirección Original: {address.Address}");
