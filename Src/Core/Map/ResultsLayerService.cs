@@ -34,9 +34,9 @@ namespace EAABAddIn.Map
                     _resultsLayer = LayerFactory.Instance.CreateLayer<GraphicsLayer>(layerParams, map);
                 }
 
-                // Crear símbolo (círculo rojo)
+                // Crear símbolo 
                 var symbol = SymbolFactory.Instance.ConstructPointSymbol(
-                    ColorFactory.Instance.RedRGB, 12, SimpleMarkerStyle.Circle);
+                    ColorFactory.Instance.BlueRGB, 9, SimpleMarkerStyle.Circle);
 
                 // Crear gráfico
                 var graphic = new CIMPointGraphic
