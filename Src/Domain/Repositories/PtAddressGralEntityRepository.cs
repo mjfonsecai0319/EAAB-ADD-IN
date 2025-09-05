@@ -20,7 +20,8 @@ public abstract class PtAddressGralEntityRepositoryBase
     protected List<PtAddressGralEntity> Find(DatabaseConnectionProperties props, string tableName, string whereClause)
     {
         var result = new List<PtAddressGralEntity>();
-        using (var geodatabase = new Geodatabase(props))
+        var geodatabase = Module1.DatabaseConnection.Geodatabase;
+        
         using (var table = geodatabase.OpenDataset<Table>(tableName))
         {
             var queryFilter = new QueryFilter { WhereClause = whereClause };

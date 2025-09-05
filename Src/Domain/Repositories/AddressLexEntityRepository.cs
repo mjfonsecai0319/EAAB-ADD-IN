@@ -4,18 +4,17 @@ using EAABAddIn.Src.Core.Entities;
 
 namespace EAABAddIn.Src.Domain.Repositories;
 
-
 public interface IAddressLexEntityRepository
 {
     AddressLexEntity FindByWord(DatabaseConnectionProperties connectionProperties, string word);
 }
 
-
 public class AddressLexEntityOracleRepository : IAddressLexEntityRepository
 {
     public AddressLexEntity FindByWord(DatabaseConnectionProperties connectionProperties, string word)
     {
-        using (var geodatabase = new Geodatabase(connectionProperties))
+        var geodatabase = Module1.DatabaseConnection.Geodatabase;
+
         using (Table table = geodatabase.OpenDataset<Table>("sgo.sgo_t_address_lex"))
         {
             var queryFilter = new QueryFilter
@@ -50,7 +49,8 @@ public class AddressLexEntityPostgresRepository : IAddressLexEntityRepository
 {
     public AddressLexEntity FindByWord(DatabaseConnectionProperties connectionProperties, string word)
     {
-        using (var geodatabase = new Geodatabase(connectionProperties))
+        var geodatabase = Module1.DatabaseConnection.Geodatabase;
+        
         using (Table table = geodatabase.OpenDataset<Table>("public.eaab_lex"))
         {
             var queryFilter = new QueryFilter

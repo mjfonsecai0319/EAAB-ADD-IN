@@ -1,28 +1,62 @@
 ﻿using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 
+using EAABAddIn.Src.Core;
+using EAABAddIn.Src.Core.Data;
 
-namespace EAABAddIn
+namespace EAABAddIn;
+
+internal class Module1 : Module
 {
-    internal class Module1 : Module
+    private static Module1 _this = null;
+    private static Settings _settings;
+    private static DatabaseConnectionService _geodatabaseService;
+
+    public static Module1 Current => _this ??= (Module1)FrameworkApplication.FindModule("EAABAddIn_Module");
+    public static Settings Settings => _settings ??= Settings.Load();
+    public static DatabaseConnectionService DatabaseConnection => _geodatabaseService;
+
+    protected override bool Initialize()
     {
-        private static Module1 _this = null;
-        public static Module1 Current =>
-            _this ??= (Module1)FrameworkApplication.FindModule("EAABAddIn_Module");
+        var result = base.Initialize();
+        var engine = Settings.motor.ToDBEngine();
 
-        // 🔹 Instancia única de Settings (carga desde JSON al inicio)
-        private static Settings _settings;
-        public static Settings Settings => _settings ??= Settings.Load();
+        QueuedTask.Run(() => HandleDatabaseConnection(engine));
+        return result;
+    }
 
-        // Si necesitas lógica extra de inicialización/cierre la agregas aquí:
-        protected override bool Initialize()
+    protected override bool CanUnload()
+    {
+        QueuedTask.Run(() => _geodatabaseService?.DisposeConnectionAsync());
+        return base.CanUnload();
+    }
+
+    private async void HandleDatabaseConnection(DBEngine engine)
+    {
+        _geodatabaseService = new DatabaseConnectionService();
+
+        if (engine == DBEngine.Oracle)
         {
-            return base.Initialize();
+            var props = ConnectionPropertiesFactory.CreateOracleConnection(
+                instance: Settings.host,
+                user: Settings.usuario,
+                password: Settings.contraseña
+            );
+            await _geodatabaseService.CreateConnectionAsync(props);
+            return;
         }
 
-        protected override bool CanUnload()
+        if (engine == DBEngine.PostgreSQL)
         {
-            return true;
+            var props = ConnectionPropertiesFactory.CreatePostgresConnection(
+                instance: Settings.host,
+                user: Settings.usuario,
+                password: Settings.contraseña,
+                database: Settings.baseDeDatos
+            );
+            await _geodatabaseService.CreateConnectionAsync(props);
+            return;
         }
     }
 }
