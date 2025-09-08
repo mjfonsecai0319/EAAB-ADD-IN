@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -74,9 +74,24 @@ internal class Button1 : Button
 
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var responseMessage = new StringBuilder();
-        var result = addressSearch.Invoke(address.AddressEAAB, cityCode);
 
+        // ✅ Fallback inteligente
+        var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+            ? address.AddressEAAB
+            : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                ? address.AddressNormalizer
+                : input);
+
+        var result = addressSearch.Invoke(searchAddress, cityCode);
+
+        if (result == null || result.Count == 0)
+        {
+            MessageBox.Show("No se encontró una coincidencia. Valide la ciudad y la dirección.",
+                            "Validación");
+            return;
+        }
+
+        var responseMessage = new StringBuilder();
         responseMessage.AppendLine($"Dirección Original: {address.Address}");
         responseMessage.AppendLine($"Normalizada: {address.AddressNormalizer}");
         responseMessage.AppendLine($"Principal: {address.Principal}");
@@ -118,9 +133,24 @@ internal class Button1 : Button
 
         var model = new AddressNormalizerModel { Address = input };
         var address = addressNormalizer.Invoke(model);
-        var result = addressSearch.Invoke(address.AddressEAAB, cityCode);
-        var responseMessage = new StringBuilder();
 
+        // ✅ Fallback inteligente
+        var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+            ? address.AddressEAAB
+            : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                ? address.AddressNormalizer
+                : input);
+
+        var result = addressSearch.Invoke(searchAddress, cityCode);
+
+        if (result == null || result.Count == 0)
+        {
+            MessageBox.Show("No se encontró una coincidencia. Valide la ciudad y la dirección.",
+                            "Validación");
+            return;
+        }
+
+        var responseMessage = new StringBuilder();
         responseMessage.AppendLine($"Dirección Original: {address.Address}");
         responseMessage.AppendLine($"Normalizada: {address.AddressNormalizer}");
         responseMessage.AppendLine($"Principal: {address.Principal}");
