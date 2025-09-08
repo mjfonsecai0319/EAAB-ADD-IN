@@ -20,22 +20,43 @@ namespace EAABAddIn.Src.Domain.Repositories
 
     public abstract class PtAddressGralEntityRepositoryBase
     {
-        protected List<PtAddressGralEntity> Find(DatabaseConnectionProperties props, string tableName, string whereClause)
+        protected List<PtAddressGralEntity> Find(
+            DatabaseConnectionProperties props,
+            string tableName,
+            string address,
+            string fieldId,
+            string fieldFullEAAB,
+            string fieldFullCad,
+            string fieldFullOld,
+            string fieldLat,
+            string fieldLon)
         {
             var result = new List<PtAddressGralEntity>();
             var geodatabase = Module1.DatabaseConnection.Geodatabase;
 
-            using (var table = geodatabase.OpenDataset<Table>(tableName))
+            string whereClause = $"'{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld})";
+            string postfixClause =
+                $"ORDER BY CASE " +
+                $"WHEN {fieldFullEAAB} = '{address}' THEN 1 " +
+                $"WHEN {fieldFullCad} = '{address}' THEN 2 " +
+                $"WHEN {fieldFullOld} = '{address}' THEN 3 " +
+                $"END";
+
+            var queryFilter = new QueryFilter
             {
-                var queryFilter = new QueryFilter { WhereClause = whereClause };
-                using (var cursor = table.Search(queryFilter, false))
+                SubFields = $"{fieldId}, {fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}, {fieldLat}, {fieldLon}",
+                WhereClause = whereClause,
+                PostfixClause = postfixClause
+            };
+
+            using (var table = geodatabase.OpenDataset<Table>(tableName))
+            using (var cursor = table.Search(queryFilter, false))
+            {
+                while (cursor.MoveNext())
                 {
-                    while (cursor.MoveNext())
+                    using (var row = cursor.Current)
                     {
-                        using (var row = cursor.Current)
-                        {
-                            result.Add(MapRowToEntity(row));
-                        }
+                        result.Add(MapRowToEntity(row));
                     }
                 }
             }
@@ -67,9 +88,18 @@ namespace EAABAddIn.Src.Domain.Repositories
             DatabaseConnectionProperties props, string cityCode, string address
         )
         {
-            string whereClause =
-                $"city_code = '{cityCode}' AND (full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}')";
-            return Find(props, "sgo.sgo_pt_address_gral", whereClause);
+            // Para Oracle
+            return Find(
+                props,
+                "sgo.sgo_pt_address_gral",
+                address,
+                "OBJECTID",
+                "FULL_ADDRESS_EAAB",
+                "FULL_ADDRESS_CADASTRE",
+                "FULL_ADDRESS_OLD",
+                "LATITUD",
+                "LONGITUD"
+            );
         }
 
         public List<PtAddressGralEntity> GetAllCities(DatabaseConnectionProperties props)
@@ -105,9 +135,17 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
         public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
         {
-            string whereClause =
-                $"full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}'";
-            return Find(props, "sgo.sgo_pt_address_gral", whereClause);
+            return Find(
+                props,
+                "sgo.sgo_pt_address_gral",
+                address,
+                "OBJECTID",
+                "FULL_ADDRESS_EAAB",
+                "FULL_ADDRESS_CADASTRE",
+                "FULL_ADDRESS_OLD",
+                "LATITUD",
+                "LONGITUD"
+            );
         }
 
         protected override PtAddressGralEntity MapRowToEntity(Row row)
@@ -156,9 +194,18 @@ namespace EAABAddIn.Src.Domain.Repositories
             DatabaseConnectionProperties props, string cityCode, string address
         )
         {
-            string whereClause =
-                $"city_code = '{cityCode}' AND (full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}')";
-            return Find(props, "public.sgo_pt_address_gral", whereClause);
+            // Para PostgreSQL
+            return Find(
+                props,
+                "public.sgo_pt_address_gral",
+                address,
+                "id",
+                "full_address_eaab",
+                "full_address_cadastre",
+                "full_address_old",
+                "latitud",
+                "longitud"
+            );
         }
 
         public List<PtAddressGralEntity> GetAllCities(DatabaseConnectionProperties props)
@@ -194,9 +241,17 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
         public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
         {
-            string whereClause =
-                $"full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}'";
-            return Find(props, "public.sgo_pt_address_gral", whereClause);
+            return Find(
+                props,
+                "public.sgo_pt_address_gral",
+                address,
+                "id",
+                "full_address_eaab",
+                "full_address_cadastre",
+                "full_address_old",
+                "latitud",
+                "longitud"
+            );
         }
 
         protected override PtAddressGralEntity MapRowToEntity(Row row)

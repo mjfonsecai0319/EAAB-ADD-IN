@@ -11,7 +11,6 @@ using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Data;
-using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Src.Core.Map;        
 
 namespace EAABAddIn.Src.Presentation.View;
@@ -20,7 +19,7 @@ internal class Button1 : Button
 {
     protected override void OnClick()
     {
-        var dialog = new Src.UI.InputTextDialog();
+        var dialog = new UI.InputTextDialog();
         bool? result = dialog.ShowDialog();
 
         if (result == true && !string.IsNullOrWhiteSpace(dialog.InputText))
