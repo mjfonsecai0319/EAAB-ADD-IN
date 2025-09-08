@@ -14,7 +14,7 @@ using EAABAddIn.Src.Core.Data;
 using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Map;
 
-namespace EAABAddIn;
+namespace EAABAddIn.Src.Presentation.View;
 
 internal class Button1 : Button
 {

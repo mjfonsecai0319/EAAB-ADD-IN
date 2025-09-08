@@ -1,0 +1,41 @@
+<Window
+    x:Class="EAABAddIn.Src.UI.FileUploadDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Seleccionar archivo"
+    Width="400"
+    Height="150"
+    WindowStartupLocation="CenterScreen"
+    ResizeMode="NoResize">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Selector de archivo -->
+        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBox Width="220" Margin="0,0,8,0" IsReadOnly="True" Text="{Binding FilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Content="Examinar..." Width="90" Click="Browse_Click" Style="{DynamicResource Esri_Button}" />
+        </StackPanel>
+
+        <!-- Botones -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Aceptar"
+                Width="75"
+                Margin="0,0,5,0"
+                IsDefault="True"
+                Click="Accept_Click"
+                Style="{DynamicResource Esri_Button}" />
+            <Button Content="Cancelar"
+                Width="75"
+                IsCancel="True"
+                Click="Cancel_Click"
+                Style="{DynamicResource Esri_ButtonBorderless}" />
+        </StackPanel>
+    </Grid>
+</Window>
