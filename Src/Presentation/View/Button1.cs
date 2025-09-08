@@ -12,7 +12,7 @@ using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Data;
 using EAABAddIn.Src.Domain.Repositories;
-using EAABAddIn.Map;
+using EAABAddIn.Src.Core.Map;        
 
 namespace EAABAddIn.Src.Presentation.View;
 
@@ -110,8 +110,8 @@ internal class Button1 : Button
             if (addr.Latitud.HasValue && addr.Longitud.HasValue)
             {
                 _ = ResultsLayerService.AddPointAsync(
-                    (double)addr.Latitud.Value,
-                    (double)addr.Longitud.Value
+                    (decimal)addr.Latitud.Value,
+                    (decimal)addr.Longitud.Value
                 );
             }
         }
@@ -169,8 +169,8 @@ internal class Button1 : Button
             if (addr.Latitud.HasValue && addr.Longitud.HasValue)
             {
                 _ = ResultsLayerService.AddPointAsync(
-                    (double)addr.Latitud.Value,
-                    (double)addr.Longitud.Value
+                    (decimal)addr.Latitud.Value,
+                    (decimal)addr.Longitud.Value
                 );
             }
         }

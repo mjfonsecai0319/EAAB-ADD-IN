@@ -4,18 +4,22 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 using System.Threading.Tasks;
 
-namespace EAABAddIn.Map
+namespace EAABAddIn.Src.Core.Map
 {
     public static class ResultsLayerService
     {
         private static GraphicsLayer _resultsLayer;
 
-        public static Task AddPointAsync(double latitud, double longitud)
+        // Ahora recibe decimal y hace el cast internamente
+        public static Task AddPointAsync(decimal latitud, decimal longitud)
         {
             return QueuedTask.Run(() =>
             {
                 // Crear punto en WGS84
-                MapPoint mapPoint = MapPointBuilderEx.CreateMapPoint(longitud, latitud, SpatialReferences.WGS84);
+                MapPoint mapPoint = MapPointBuilderEx.CreateMapPoint(
+                    (double)longitud,
+                    (double)latitud,
+                    SpatialReferences.WGS84);
 
                 // Obtener mapa activo
                 var mapView = MapView.Active;

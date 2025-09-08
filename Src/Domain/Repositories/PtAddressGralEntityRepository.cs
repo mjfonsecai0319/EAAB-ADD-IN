@@ -13,6 +13,9 @@ namespace EAABAddIn.Src.Domain.Repositories
         );
 
         List<PtAddressGralEntity> GetAllCities(DatabaseConnectionProperties props);
+
+        List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address);
+
     }
 
     public abstract class PtAddressGralEntityRepositoryBase
@@ -58,7 +61,6 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
     }
 
-    // 🔹 ORACLE
     public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, IPtAddressGralEntityRepository
     {
         public List<PtAddressGralEntity> FindByCityCodeAndAddresses(
@@ -101,7 +103,12 @@ namespace EAABAddIn.Src.Domain.Repositories
             }
             return result;
         }
-
+        public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
+        {
+            string whereClause =
+                $"full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}'";
+            return Find(props, "sgo.sgo_pt_address_gral", whereClause);
+        }
 
         protected override PtAddressGralEntity MapRowToEntity(Row row)
         {
@@ -143,7 +150,6 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
     }
 
-    // 🔹 POSTGRES
     public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase, IPtAddressGralEntityRepository
     {
         public List<PtAddressGralEntity> FindByCityCodeAndAddresses(
@@ -186,8 +192,12 @@ namespace EAABAddIn.Src.Domain.Repositories
             }
             return result;
         }
-
-
+        public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
+        {
+            string whereClause =
+                $"full_address_cadastre = '{address}' OR full_address_eaab = '{address}' OR full_address_old = '{address}'";
+            return Find(props, "public.sgo_pt_address_gral", whereClause);
+        }
 
         protected override PtAddressGralEntity MapRowToEntity(Row row)
         {
