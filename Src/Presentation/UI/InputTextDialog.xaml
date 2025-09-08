@@ -22,16 +22,13 @@
         </Grid.ColumnDefinitions>
 
         <!-- Selección de ciudad -->
+
         <TextBlock Text="Seleccione ciudad:" 
                    Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
 
         <ComboBox x:Name="CityComboBox" 
                   Grid.Row="0" Grid.Column="2" 
-                  Margin="0 0 0 5" Height="28">
-            <ComboBoxItem Content="Bogotá" IsSelected="True"/>
-            <ComboBoxItem Content="Soacha"/>
-            <ComboBoxItem Content="Gachancipá"/>
-        </ComboBox>
+                  Margin="0 0 0 5" Height="28" />
 
         <!-- Ingreso de dirección -->
         <TextBlock Text="Ingrese dirección:" 
