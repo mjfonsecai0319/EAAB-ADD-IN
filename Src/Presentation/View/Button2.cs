@@ -1,15 +1,20 @@
 ﻿using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using ExcelDataReader;
 using EAABAddIn.Src.UI;
+using EAABAddIn.Src.Core;
+using EAABAddIn.Src.Core.Entities;
+using EAABAddIn.Src.Core.Map;
+using EAABAddIn.Src.Domain.Repositories;
 
 namespace EAABAddIn.Src.Presentation.View
 {
     internal class Button2 : Button
     {
-        protected override void OnClick()
+        protected override async void OnClick()
         {
             var dialog = new FileUploadDialog();
             bool? result = dialog.ShowDialog();
@@ -27,35 +32,86 @@ namespace EAABAddIn.Src.Presentation.View
                 return;
             }
 
+            List<RegistroDireccion> registros;
             try
             {
-                var registros = LeerDireccionesExcel(filePath);
-
-                if (registros.Count == 0)
-                {
-                    MessageBox.Show("⚠️ No se encontraron direcciones en el archivo.", "Información");
-                    return;
-                }
-
-                // ✅ Mostrar un ejemplo
-                MessageBox.Show(
-                    $"Se leyeron {registros.Count} direcciones.\n" +
-                    $"Ejemplo:\n{registros[0].Identificador} - {registros[0].Direccion} - {registros[0].Poblacion}",
-                    "Lectura Excel"
-                );
-
-                // 🔹 Aquí después haces la lógica de marcar puntos usando repo + ResultsLayerService
+                registros = LeerDireccionesExcel(filePath);
             }
             catch (System.Exception ex)
             {
                 MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
+                return;
             }
+
+            if (registros.Count == 0)
+            {
+                MessageBox.Show("⚠️ No se encontraron direcciones en el archivo.", "Información");
+                return;
+            }
+
+            // 🔹 Determinar motor
+            var engine = Module1.Settings.motor.ToDBEngine();
+            IPtAddressGralEntityRepository repo = engine switch
+            {
+                DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                _ => null
+            };
+
+            if (repo == null)
+            {
+                MessageBox.Show("❌ Motor de base de datos no soportado.", "Error");
+                return;
+            }
+
+            int encontrados = 0, noEncontrados = 0;
+
+            await QueuedTask.Run(async () =>
+            {
+                foreach (var registro in registros)
+                {
+                    try
+                    {
+                        var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
+
+                        if (resultados.Count > 0)
+                        {
+                            var entidad = resultados[0];
+
+                            if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
+                            {
+                                await ResultsLayerService.AddPointAsync(
+                                    (decimal)entidad.Latitud.Value,
+                                    (decimal)entidad.Longitud.Value
+                                );
+                                encontrados++;
+                            }
+                            else
+                            {
+                                noEncontrados++;
+                            }
+                        }
+                        else
+                        {
+                            noEncontrados++;
+                        }
+                    }
+                    catch
+                    {
+                        noEncontrados++;
+                    }
+                }
+            });
+
+            MessageBox.Show(
+                $"✅ Se marcaron {encontrados} direcciones.\n⚠️ No se encontraron {noEncontrados}.",
+                "Resultado geocodificación"
+            );
         }
 
         private List<RegistroDireccion> LeerDireccionesExcel(string filePath)
         {
             var lista = new List<RegistroDireccion>();
-
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
             using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
@@ -73,8 +129,11 @@ namespace EAABAddIn.Src.Presentation.View
                         Poblacion = reader.GetValue(2)?.ToString()
                     };
 
-                    if (!string.IsNullOrWhiteSpace(registro.Direccion))
+                    if (!string.IsNullOrWhiteSpace(registro.Direccion) &&
+                        !string.IsNullOrWhiteSpace(registro.Poblacion))
+                    {
                         lista.Add(registro);
+                    }
                 }
             }
 
