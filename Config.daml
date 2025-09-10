@@ -1,76 +1,80 @@
 ﻿<ArcGIS
-	defaultAssembly="EAABAddIn.dll"
-	defaultNamespace="EAABAddIn"
-	xmlns="http://schemas.esri.com/DADF/Registry"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
+  defaultAssembly="EAABAddIn.dll"
+  defaultNamespace="EAABAddIn"
+  xmlns="http://schemas.esri.com/DADF/Registry"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
 >
-	<AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.0" desktopVersion="3.4.55405">
-		<Name>EAAB Add-In</Name>
-		<Description>EAABAddIn description</Description>
-		<Image>Images\AddinDesktop32.png</Image>
-		<Author>EAAB</Author>
-		<Company>EAAB</Company>
-		<Date>29/08/2025 8:39:42</Date>
-		<Subject>Framework</Subject>
-	</AddInInfo>
+  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.0" desktopVersion="3.4.55405">
+    <Name>EAAB Add-In</Name>
+    <Description>EAABAddIn description</Description>
+    <Image>Images\AddinDesktop32.png</Image>
+    <Author>EAAB</Author>
+    <Company>EAAB</Company>
+    <Date>29/08/2025 8:39:42</Date>
+    <Subject>Framework</Subject>
+  </AddInInfo>
 
-	<modules>
-		<insertModule id="EAABAddIn_Module" className="Module1" autoLoad="false" caption="Module1">
-			<tabs>
-				<tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
-					<group refID="EAABAddIn_Group1" />
-				</tab>
-			</tabs>
+  <modules>
+    <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="false" caption="Module1">
+      <tabs>
+        <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
+          <group refID="EAABAddIn_Group1" />
+        </tab>
+      </tabs>
 
-			<groups>
-				<group id="EAABAddIn_Group1" caption="Group 1" appearsOnAddInTab="false" keytip="G1">
-					<button refID="EAABAddIn_Button1" size="large" />
-					<button refID="EAABAddIn_Button2" size="large" />
-					<button refID="EAABAddIn_PropertySheet1_ShowPropertySheet" size="large" />
-				</group>
-			</groups>
+      <groups>
+        <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1">
+          <button refID="EAABAddIn_Button1" size="large" />
+          <button refID="EAABAddIn_Button2" size="large" />
+        </group>
+      </groups>
 
-			<controls>
-				<button
-					id="EAABAddIn_Button1"
-					caption="Button 1"
-					className="EAABAddIn.Src.Presentation.View.Button1"
-					loadOnClick="true"
-					smallImage="GenericButtonBlue16"
-					largeImage="GenericButtonBlue32"
-					keytip="B1"
-				>
-					<tooltip heading="Tooltip Heading"> Tooltip text<disabledText />
-					</tooltip>
-				</button>
+      <controls>
+        <button
+          id="EAABAddIn_Button1"
+          caption="Buscar"
+          className="EAABAddIn.Src.Presentation.View.Button1"
+          loadOnClick="true"
+          smallImage="GenericButtonRed16"
+          largeImage="GenericButtonRed32"
+          keytip="B1"
+        >
+          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+        </button>
 
-				<button
-					id="EAABAddIn_Button2"
-					caption="Button 2"
-					className="EAABAddIn.Src.Presentation.View.Button2"
-					loadOnClick="true"
-					smallImage="GenericButtonBlue16"
-					largeImage="GenericButtonBlue32"
-					keytip="B2"
-				>
-					<tooltip heading="Tooltip Heading"> Tooltip text<disabledText />
-					</tooltip>
-				</button>
-			</controls>
-		</insertModule>
-	</modules>
+        <button
+          id="EAABAddIn_Button2"
+          caption="Masivo"
+          className="EAABAddIn.Src.Presentation.View.Button2"
+          loadOnClick="true"
+          smallImage="GenericButtonBlue16"
+          largeImage="GenericButtonBlue32"
+          keytip="B2"
+        >
+          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+        </button>
+      </controls>
 
-	<propertySheets>
-		<updateSheet refID="esri_core_optionsPropertySheet">
-			<insertPage
-				className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel"
-				id="EAABAddIn_PropertyPage1"
-				caption="Database"
-				group="Application"
-			>
-				<content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
-			</insertPage>
-		</updateSheet>
-	</propertySheets>
+      <dockPanes>
+        <dockPane
+          id="EAABAddIn_Src_Presentation_View_GeocoderDockpane"
+          caption="Geocoder"
+          className="EAABAddIn.Src.Presentation.ViewModel.GeocoderDockpaneViewModel"
+          dock="group"
+          dockWith="esri_core_projectDockPane"
+        >
+          <content className="EAABAddIn.Src.Presentation.View.GeocoderDockpaneView" />
+        </dockPane>
+      </dockPanes>
+    </insertModule>
+  </modules>
+
+  <propertySheets>
+    <updateSheet refID="esri_core_optionsPropertySheet">
+      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="Database" group="Application">
+        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
+      </insertPage>
+    </updateSheet>
+  </propertySheets>
 </ArcGIS>
