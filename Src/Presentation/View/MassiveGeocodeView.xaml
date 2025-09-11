@@ -1,0 +1,79 @@
+<UserControl
+    x:Class="EAABAddIn.Src.Presentation.View.MassiveGeocodeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:EAABAddIn.Src.Presentation.View"
+    xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    mc:Ignorable="d"
+    d:DesignHeight="800" d:DesignWidth="450"
+>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <!-- Label principal para el input de archivo -->
+            <TextBlock
+                Text="Archivo Excel con direcciones a geocodificar:"
+                Margin="0 0 0 2"
+                VerticalAlignment="Center"
+                Style="{DynamicResource Esri_TextBlockH3}"
+            />
+
+            <Grid Grid.Row="0" Margin="0 0 0 2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBox
+                        x:Name="InputBox"
+                        Text="{Binding FileInput, UpdateSourceTrigger=PropertyChanged}"
+                        IsReadOnly="True"
+                    />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="2" 
+                    Content="Examinar..." 
+                    Style="{DynamicResource Esri_Button}"
+                    Command="{Binding OpenFileDialogCommand}"
+                />
+            </Grid>
+
+            <!-- Helper/descripción para el usuario -->
+            <TextBlock
+                Text="El archivo Excel debe tener una hoja con una columna llamada 'Identificador', 'Direccion' y 'Poblacion'."
+                Margin="0 0 0 5"
+                VerticalAlignment="Center"
+                Style="{DynamicResource Esri_TextBlockRegular}"
+                TextWrapping="Wrap"
+            />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button
+                x:Name="SearchButton"
+                Content="Buscar"
+                Margin="5 0 0 0"
+                Style="{DynamicResource Esri_Button}"
+                Command="{Binding SearchCommand}"
+            />
+        </StackPanel>
+    </Grid>
+</UserControl>

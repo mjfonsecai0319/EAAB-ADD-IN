@@ -59,7 +59,7 @@
       <dockPanes>
         <dockPane
           id="EAABAddIn_Src_Presentation_View_GeocoderDockpane"
-          caption="Geocoder"
+          caption="Geocoder EAAB"
           className="EAABAddIn.Src.Presentation.ViewModel.GeocoderDockpaneViewModel"
           dock="group"
           dockWith="esri_core_projectDockPane"

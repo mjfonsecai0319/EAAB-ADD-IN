@@ -23,9 +23,9 @@
         <view:AddressSearchView />
       </DataTemplate>
 
-      <!-- <DataTemplate DataType="{x:Type viewModel:PaneHeader2ViewModel}">
-        <view:PaneHeader2View />
-      </DataTemplate> -->
+      <DataTemplate DataType="{x:Type viewModel:MassiveGeocodeViewModel}">
+        <view:MassiveGeocodeView />
+      </DataTemplate>
     </ResourceDictionary>
   </UserControl.Resources>
 
