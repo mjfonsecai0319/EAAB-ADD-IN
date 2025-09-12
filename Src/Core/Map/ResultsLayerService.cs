@@ -1,60 +1,112 @@
-using ArcGIS.Core.CIM;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
-using System.Threading.Tasks;
 
 namespace EAABAddIn.Src.Core.Map
 {
     public static class ResultsLayerService
     {
-        private static GraphicsLayer _resultsLayer;
+        private static FeatureLayer _addressPointLayer;
+        private const string FeatureClassName = "GeocodedAddresses";
 
-        // Ahora recibe decimal y hace el cast internamente
         public static Task AddPointAsync(decimal latitud, decimal longitud)
         {
-            return QueuedTask.Run(() =>
+            // The entire operation is wrapped in QueuedTask.Run to ensure it runs on the MCT.
+            return QueuedTask.Run(() => _AddPointAsync((double)latitud, (double)longitud));
+        }
+
+        private static async Task _AddPointAsync(double latitud, double longitud)
+        {
+            var mapView = MapView.Active;
+            if (mapView?.Map == null)
             {
-                // Crear punto en WGS84
-                MapPoint mapPoint = MapPointBuilderEx.CreateMapPoint(
-                    (double)longitud,
-                    (double)latitud,
-                    SpatialReferences.WGS84);
+                return;
+            }
 
-                // Obtener mapa activo
-                var mapView = MapView.Active;
-                if (mapView == null || mapView.Map == null)
-                    return;
+            // Find layer in the current map by its underlying feature class name
+            _addressPointLayer = mapView.Map.GetLayersAsFlattenedList()
+                .OfType<FeatureLayer>()
+                .FirstOrDefault(l => l.GetTable()?.GetName() == FeatureClassName);
 
-                var map = mapView.Map;
-
-                // Crear la capa solo si aún no existe
-                if (_resultsLayer == null)
+            // If layer is not in the map, create it
+            if (_addressPointLayer == null)
+            {
+                var gdbPath = Project.Current.DefaultGeodatabasePath;
+                if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(Path.GetDirectoryName(gdbPath)))
                 {
-                    var layerParams = new GraphicsLayerCreationParams
-                    {
-                        Name = "Resultados"
-                    };
-                    _resultsLayer = LayerFactory.Instance.CreateLayer<GraphicsLayer>(layerParams, map);
+                    // Handle case where default GDB is not available
+                    return;
                 }
 
-                // Crear símbolo 
-                var symbol = SymbolFactory.Instance.ConstructPointSymbol(
-                    ColorFactory.Instance.BlueRGB, 9, SimpleMarkerStyle.Circle);
+                var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
 
-                // Crear gráfico
-                var graphic = new CIMPointGraphic
+                // Create Feature Class if it doesn't exist
+                using (var geodatabase = new Geodatabase(gdbConnectionPath))
                 {
-                    Location = mapPoint,
-                    Symbol = symbol.MakeSymbolReference()
-                };
+                    if (geodatabase.GetDefinitions<FeatureClassDefinition>().All(d => d.GetName() != FeatureClassName))
+                    {
+                        var parameters = Geoprocessing.MakeValueArray(
+                            gdbPath,
+                            FeatureClassName,
+                            "POINT",
+                            "",
+                            "DISABLED",
+                            "DISABLED",
+                            SpatialReferences.WGS84
+                        );
+                        var result = await Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", parameters);
 
-                // Agregar el gráfico a la capa ya existente
-                _resultsLayer.AddElement(graphic);
+                        if (result.IsFailed)
+                        {
+                            // Handle geoprocessing error
+                            return;
+                        }
+                    }
+                }
 
-                // Hacer zoom al punto
-                mapView.ZoomTo(mapPoint);
-            });
+                // Add the feature class to the map as a new layer
+                using (var geodatabase = new Geodatabase(gdbConnectionPath))
+                using (var featureClass = geodatabase.OpenDataset<FeatureClass>(FeatureClassName))
+                {
+                    var layerParams = new FeatureLayerCreationParams(featureClass)
+                    {
+                        Name = FeatureClassName
+                    };
+                    _addressPointLayer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
+                }
+            }
+
+            if (_addressPointLayer == null) return;
+
+            // Create the point and add it to the feature class
+            var createOperation = new EditOperation
+            {
+                Name = "Add Geocoded Point"
+            };
+
+            var mapPoint = MapPointBuilderEx.CreateMapPoint(longitud, latitud, SpatialReferences.WGS84);
+            var attributes = new Dictionary<string, object>
+            {
+                { "Shape", mapPoint }
+            };
+            createOperation.Create(_addressPointLayer, attributes);
+
+            var success = await createOperation.ExecuteAsync();
+
+            if (success)
+            {
+                await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+            }
         }
     }
 }
