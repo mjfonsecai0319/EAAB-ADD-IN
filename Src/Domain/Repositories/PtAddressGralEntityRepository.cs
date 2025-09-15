@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Text;
 using ArcGIS.Core.Data;
+
 using EAABAddIn.Src.Core.Entities;
 
 namespace EAABAddIn.Src.Domain.Repositories
@@ -36,7 +39,7 @@ namespace EAABAddIn.Src.Domain.Repositories
 
             // 🔎 Filtro por ciudad + dirección
             string whereClause = $"CITY_CODE = '{cityCode}' AND " +
-                                 $"('{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}))";
+                                 $"'{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld})";
 
             string postfixClause =
                 $"ORDER BY CASE " +
@@ -64,6 +67,13 @@ namespace EAABAddIn.Src.Domain.Repositories
                     }
                 }
             }
+
+            var builder =  new StringBuilder();
+
+            result.ForEach(r => builder.AppendLine(r.ToString()));
+
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(builder.ToString());
+
             return result;
         }
 

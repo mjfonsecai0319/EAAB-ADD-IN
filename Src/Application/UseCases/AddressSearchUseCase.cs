@@ -31,20 +31,17 @@ public class AddressSearchUseCase
 
     public List<PtAddressGralEntity> Invoke(string address, string cityCode = "11001")
     {
-        ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(cityCode);
-        
         var searchResults = _ptAddressGralRepository.FindByCityCodeAndAddresses(
             _connectionProperties,
             cityCode,
             address
         );
 
-        if (searchResults.Count == 0)
+        if (searchResults.Count == 0 && cityCode == "11001")
         {
             // Fallback a IDECA cuando BD local no retorna resultados
             var externo = GetFromIDECA(address);
-            if (externo.Count > 0)
-                return externo.Take(5).ToList();
+            if (externo.Count > 0) return externo.Take(5).ToList();
         }
 
         return searchResults.Take(5).ToList();
