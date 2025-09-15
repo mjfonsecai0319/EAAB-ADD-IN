@@ -15,7 +15,6 @@ namespace EAABAddIn.Src.Domain.Repositories
         List<PtAddressGralEntity> GetAllCities(DatabaseConnectionProperties props);
 
         List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address);
-
     }
 
     public abstract class PtAddressGralEntityRepositoryBase
@@ -23,6 +22,7 @@ namespace EAABAddIn.Src.Domain.Repositories
         protected List<PtAddressGralEntity> Find(
             DatabaseConnectionProperties props,
             string tableName,
+            string cityCode,
             string address,
             string fieldId,
             string fieldFullEAAB,
@@ -34,7 +34,10 @@ namespace EAABAddIn.Src.Domain.Repositories
             var result = new List<PtAddressGralEntity>();
             var geodatabase = Module1.DatabaseConnection.Geodatabase;
 
-            string whereClause = $"'{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld})";
+            // 🔎 Filtro por ciudad + dirección
+            string whereClause = $"CITY_CODE = '{cityCode}' AND " +
+                                 $"('{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}))";
+
             string postfixClause =
                 $"ORDER BY CASE " +
                 $"WHEN {fieldFullEAAB} = '{address}' THEN 1 " +
@@ -44,7 +47,8 @@ namespace EAABAddIn.Src.Domain.Repositories
 
             var queryFilter = new QueryFilter
             {
-                SubFields = $"{fieldId}, {fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}, {fieldLat}, {fieldLon}",
+                SubFields = $"{fieldId}, {fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}, " +
+                            $"{fieldLat}, {fieldLon}, CITY_CODE, CITY_DESC",
                 WhereClause = whereClause,
                 PostfixClause = postfixClause
             };
@@ -82,16 +86,17 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
     }
 
+    // 🔹 Repositorio Oracle
     public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, IPtAddressGralEntityRepository
     {
         public List<PtAddressGralEntity> FindByCityCodeAndAddresses(
             DatabaseConnectionProperties props, string cityCode, string address
         )
         {
-            // Para Oracle
             return Find(
                 props,
                 "sgo.sgo_pt_address_gral",
+                cityCode,
                 address,
                 "OBJECTID",
                 "FULL_ADDRESS_EAAB",
@@ -133,11 +138,13 @@ namespace EAABAddIn.Src.Domain.Repositories
             }
             return result;
         }
+
         public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
         {
             return Find(
                 props,
                 "sgo.sgo_pt_address_gral",
+                null, // sin filtro de ciudad
                 address,
                 "OBJECTID",
                 "FULL_ADDRESS_EAAB",
@@ -188,16 +195,17 @@ namespace EAABAddIn.Src.Domain.Repositories
         }
     }
 
+    // 🔹 Repositorio PostgreSQL
     public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase, IPtAddressGralEntityRepository
     {
         public List<PtAddressGralEntity> FindByCityCodeAndAddresses(
             DatabaseConnectionProperties props, string cityCode, string address
         )
         {
-            // Para PostgreSQL
             return Find(
                 props,
                 "public.sgo_pt_address_gral",
+                cityCode,
                 address,
                 "id",
                 "full_address_eaab",
@@ -239,11 +247,13 @@ namespace EAABAddIn.Src.Domain.Repositories
             }
             return result;
         }
+
         public List<PtAddressGralEntity> FindByAddress(DatabaseConnectionProperties props, string address)
         {
             return Find(
                 props,
                 "public.sgo_pt_address_gral",
+                null, // sin filtro de ciudad
                 address,
                 "id",
                 "full_address_eaab",

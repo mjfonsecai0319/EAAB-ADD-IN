@@ -18,222 +18,235 @@ using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Src.Presentation.Base;
 
-namespace EAABAddIn.Src.Presentation.ViewModel;
-
-internal class AddressSearchViewModel : PanelViewModelBase
+namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    public override string DisplayName => "Buscar Dirección";
-    public override string Tooltip => "Buscar una dirección específica en el mapa";
-
-    public ObservableCollection<PtAddressGralEntity> Cities { get; }
-
-    private PtAddressGralEntity _selectedCity;
-    public PtAddressGralEntity SelectedCity
+    internal class AddressSearchViewModel : PanelViewModelBase
     {
-        get => _selectedCity;
-        set
+        public override string DisplayName => "Buscar Dirección";
+        public override string Tooltip => "Buscar una dirección específica en el mapa";
+
+        public ObservableCollection<PtAddressGralEntity> Cities { get; }
+
+        private PtAddressGralEntity _selectedCity;
+        public PtAddressGralEntity SelectedCity
         {
-            if (_selectedCity != value)
+            get => _selectedCity;
+            set
             {
-                _selectedCity = value;
-                NotifyPropertyChanged(nameof(SelectedCity));
-            }
-        }
-    }
-
-    private string _addressInput;
-    public string AddressInput
-    {
-        get => _addressInput;
-        set
-        {
-            if (_addressInput != value)
-            {
-                _addressInput = value;
-                NotifyPropertyChanged(nameof(AddressInput));
-            }
-        }
-    }
-
-    public ICommand SearchCommand { get; }
-
-    public AddressSearchViewModel()
-    {
-        Cities = new ObservableCollection<PtAddressGralEntity>();
-        SelectedCity = null;
-        SearchCommand = new AsyncRelayCommand(OnSearchAsync);
-        _ = LoadCitiesAsync();
-    }
-
-    private async Task LoadCitiesAsync()
-    {
-        try
-        {
-            var engine = Module1.Settings.motor.ToDBEngine();
-
-            // Construir props desde Settings (NO intentamos tocar DatabaseConnection aquí)
-            var props = engine == DBEngine.Oracle
-                ? ConnectionPropertiesFactory.CreateOracleConnection(
-                    instance: Module1.Settings.host,
-                    user: Module1.Settings.usuario,
-                    password: Module1.Settings.contraseña
-                  )
-                : ConnectionPropertiesFactory.CreatePostgresConnection(
-                    instance: Module1.Settings.host,
-                    user: Module1.Settings.usuario,
-                    password: Module1.Settings.contraseña,
-                    database: Module1.Settings.baseDeDatos
-                  );
-
-            List<PtAddressGralEntity> ciudades = null;
-
-            await QueuedTask.Run(() =>
-            {
-                IPtAddressGralEntityRepository repo = engine switch
+                if (_selectedCity != value)
                 {
-                    DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                    DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
-                    _ => throw new NotSupportedException("Motor no soportado")
-                };
-
-                ciudades = repo.GetAllCities(props);
-            });
-
-            Cities.Clear();
-            ciudades.ForEach(Cities.Add);
-            SelectedCity = ciudades?.FirstOrDefault();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Error al cargar ciudades: {ex.Message}", "Error");
-        }
-    }
-
-    private async Task OnSearchAsync()
-    {
-        await QueuedTask.Run(() =>
-        {
-            if (string.IsNullOrWhiteSpace(AddressInput))
-            {
-                MessageBox.Show("Por favor ingrese una dirección para buscar.", "Validación");
-                return;
+                    _selectedCity = value;
+                    NotifyPropertyChanged(nameof(SelectedCity));
+                }
             }
-            if (SelectedCity is null)
+        }
+
+        private string _addressInput;
+        public string AddressInput
+        {
+            get => _addressInput;
+            set
             {
-                MessageBox.Show("Por favor seleccione una ciudad.", "Validación");
-                return;
+                if (_addressInput != value)
+                {
+                    _addressInput = value;
+                    NotifyPropertyChanged(nameof(AddressInput));
+                }
             }
+        }
+
+        public ICommand SearchCommand { get; }
+
+        public AddressSearchViewModel()
+        {
+            Cities = new ObservableCollection<PtAddressGralEntity>();
+            SelectedCity = null;
+            SearchCommand = new AsyncRelayCommand(OnSearchAsync);
+            _ = LoadCitiesAsync();
+        }
+
+        private async Task LoadCitiesAsync()
+        {
             try
             {
                 var engine = Module1.Settings.motor.ToDBEngine();
 
-                if (engine == DBEngine.Oracle)
+                var props = engine == DBEngine.Oracle
+                    ? ConnectionPropertiesFactory.CreateOracleConnection(
+                        instance: Module1.Settings.host,
+                        user: Module1.Settings.usuario,
+                        password: Module1.Settings.contraseña
+                      )
+                    : ConnectionPropertiesFactory.CreatePostgresConnection(
+                        instance: Module1.Settings.host,
+                        user: Module1.Settings.usuario,
+                        password: Module1.Settings.contraseña,
+                        database: Module1.Settings.baseDeDatos
+                      );
+
+                List<PtAddressGralEntity> ciudades = null;
+
+                await QueuedTask.Run(() =>
                 {
-                    HandleOracleConnection(AddressInput, SelectedCity.CityCode);
-                    return;
-                }
-                if (engine == DBEngine.PostgreSQL)
-                {
-                    HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode);
-                    return;
-                }
-            }
-            catch (BusinessException bex)
-            {
-                MessageBox.Show($"Error de negocio: {bex.Message}", "Error de Normalización");
+                    IPtAddressGralEntityRepository repo = engine switch
+                    {
+                        DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                        DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                        _ => throw new NotSupportedException("Motor no soportado")
+                    };
+
+                    ciudades = repo.GetAllCities(props);
+                });
+
+                Cities.Clear();
+                ciudades.ForEach(Cities.Add);
+                SelectedCity = ciudades?.FirstOrDefault();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ha ocurrido un error inesperado: {ex.Message}", "Error");
+                MessageBox.Show($"Error al cargar ciudades: {ex.Message}", "Error");
             }
-        });
-    }
-
-    private void HandleOracleConnection(string input, string cityCode)
-    {
-        var props = ConnectionPropertiesFactory.CreateOracleConnection(
-            instance: Module1.Settings.host,
-            user: Module1.Settings.usuario,
-            password: Module1.Settings.contraseña
-        );
-
-        var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
-        var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
-
-        var model = new AddressNormalizerModel { Address = input };
-        var address = addressNormalizer.Invoke(model);
-
-        // ✅ Fallback inteligente
-        var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-            ? address.AddressEAAB
-            : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                ? address.AddressNormalizer
-                : input);
-
-        var result = addressSearch.Invoke(searchAddress, cityCode);
-
-        if (result == null || result.Count == 0)
-        {
-            MessageBox.Show($"No se encontró una coincidencia. Valide la ciudad y la dirección {searchAddress}.", "Validación");
-            return;
         }
 
-        foreach (var addr in result)
+        private async Task OnSearchAsync()
         {
-            if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+            await QueuedTask.Run(() =>
             {
-                addr.CityDesc = SelectedCity.CityDesc; 
-                addr.FullAddressOld = AddressInput;
-                _ = ResultsLayerService.AddPointAsync(addr);
-            }
+                if (string.IsNullOrWhiteSpace(AddressInput))
+                {
+                    MessageBox.Show("Por favor ingrese una dirección para buscar.", "Validación");
+                    return;
+                }
+                if (SelectedCity is null)
+                {
+                    MessageBox.Show("Por favor seleccione una ciudad.", "Validación");
+                    return;
+                }
+                try
+                {
+                    var engine = Module1.Settings.motor.ToDBEngine();
+
+                    if (engine == DBEngine.Oracle)
+                    {
+                        HandleOracleConnection(AddressInput, SelectedCity.CityCode);
+                        return;
+                    }
+                    if (engine == DBEngine.PostgreSQL)
+                    {
+                        HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode);
+                        return;
+                    }
+                }
+                catch (BusinessException bex)
+                {
+                    MessageBox.Show($"Error de negocio: {bex.Message}", "Error de Normalización");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ha ocurrido un error inesperado: {ex.Message}", "Error");
+                }
+            });
         }
 
-        AddressInput = string.Empty;
-        MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
-    }
-
-    private void HandlePostgreSqlConnection(string input, string cityCode)
-    {
-        var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-            instance: Module1.Settings.host,
-            user: Module1.Settings.usuario,
-            password: Module1.Settings.contraseña,
-            database: Module1.Settings.baseDeDatos
-        );
-
-        var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
-        var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
-
-        var model = new AddressNormalizerModel { Address = input };
-        var address = addressNormalizer.Invoke(model);
-
-        // ✅ Fallback inteligente
-        var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-            ? address.AddressEAAB
-            : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                ? address.AddressNormalizer
-                : input);
- 
-        var result = addressSearch.Invoke(searchAddress, cityCode);
-
-        if (result == null || result.Count == 0)
+        private void HandleOracleConnection(string input, string cityCode)
         {
-            MessageBox.Show($"No se encontró una coincidencia. Valide la ciudad y la dirección {searchAddress}.", "Validación");
-            return;
-        }
+            var props = ConnectionPropertiesFactory.CreateOracleConnection(
+                instance: Module1.Settings.host,
+                user: Module1.Settings.usuario,
+                password: Module1.Settings.contraseña
+            );
 
-        foreach (var addr in result)
-        {
-            if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+            var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
+            var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
+
+            var model = new AddressNormalizerModel { Address = input };
+            var address = addressNormalizer.Invoke(model);
+
+            // Dirección a usar en la búsqueda
+            var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                ? address.AddressEAAB
+                : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                    ? address.AddressNormalizer
+                    : input);
+
+            var result = addressSearch.Invoke(searchAddress, cityCode);
+
+            // 🔎 Doble verificación
+            result = result.Where(r => r.CityCode == cityCode).ToList();
+
+            if (result == null || result.Count == 0)
             {
-                addr.CityDesc = SelectedCity.CityDesc; 
-                addr.FullAddressOld = AddressInput;
-                _ = ResultsLayerService.AddPointAsync(addr); 
+                MessageBox.Show(
+                    $"No se encontró una coincidencia en {SelectedCity.CityDesc}. " +
+                    $"Verifique la ciudad y la dirección {searchAddress}.",
+                    "Validación"
+                );
+                return;
             }
+
+            foreach (var addr in result)
+            {
+                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                {
+                    addr.CityDesc = SelectedCity.CityDesc;
+                    addr.FullAddressOld = AddressInput;
+                    _ = ResultsLayerService.AddPointAsync(addr);
+                }
+            }
+
+            AddressInput = string.Empty;
+            MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
         }
 
+        private void HandlePostgreSqlConnection(string input, string cityCode)
+        {
+            var props = ConnectionPropertiesFactory.CreatePostgresConnection(
+                instance: Module1.Settings.host,
+                user: Module1.Settings.usuario,
+                password: Module1.Settings.contraseña,
+                database: Module1.Settings.baseDeDatos
+            );
 
-        AddressInput = string.Empty;
-        MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
+            var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
+            var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
+
+            var model = new AddressNormalizerModel { Address = input };
+            var address = addressNormalizer.Invoke(model);
+
+            // Dirección a usar en la búsqueda
+            var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                ? address.AddressEAAB
+                : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                    ? address.AddressNormalizer
+                    : input);
+
+            var result = addressSearch.Invoke(searchAddress, cityCode);
+
+            // 🔎 Doble verificación
+            result = result.Where(r => r.CityCode == cityCode).ToList();
+
+            if (result == null || result.Count == 0)
+            {
+                MessageBox.Show(
+                    $"No se encontró una coincidencia en {SelectedCity.CityDesc}. " +
+                    $"Verifique la ciudad y la dirección {searchAddress}.",
+                    "Validación"
+                );
+                return;
+            }
+
+            foreach (var addr in result)
+            {
+                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                {
+                    addr.CityDesc = SelectedCity.CityDesc;
+                    addr.FullAddressOld = AddressInput;
+                    _ = ResultsLayerService.AddPointAsync(addr);
+                }
+            }
+
+            AddressInput = string.Empty;
+            MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
+        }
     }
 }
