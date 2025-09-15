@@ -182,7 +182,9 @@ internal class AddressSearchViewModel : PanelViewModelBase
         {
             if (addr.Latitud.HasValue && addr.Longitud.HasValue)
             {
-                _ = ResultsLayerService.AddPointAsync(addr.Latitud.Value, addr.Longitud.Value);
+                addr.CityDesc = SelectedCity.CityDesc; 
+                addr.FullAddressOld = AddressInput;
+                _ = ResultsLayerService.AddPointAsync(addr);
             }
         }
 
@@ -222,12 +224,14 @@ internal class AddressSearchViewModel : PanelViewModelBase
 
         foreach (var addr in result)
         {
-
             if (addr.Latitud.HasValue && addr.Longitud.HasValue)
             {
-                _ = ResultsLayerService.AddPointAsync(addr.Latitud.Value, addr.Longitud.Value);
+                addr.CityDesc = SelectedCity.CityDesc; 
+                addr.FullAddressOld = AddressInput;
+                _ = ResultsLayerService.AddPointAsync(addr); 
             }
         }
+
 
         AddressInput = string.Empty;
         MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");

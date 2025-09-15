@@ -37,7 +37,7 @@ namespace EAABAddIn.Src.Core.Entities
         public string StormUgaDesc { get; set; }
         public string GridH3Index { get; set; }
         public string ZipCode { get; set; }
-
+        public double? Score { get; set; }
         public override bool Equals(object obj)
         {
             if (obj is not PtAddressGralEntity other)

@@ -9,7 +9,7 @@ namespace EAABAddIn.Src.Application.Models
         public string Complement { get; set; }
         public string CardinalidadPrincipal { get; set; }
         public string CardinalidadGenerador { get; set; }
-
+        public double? Score { get; set; }
         public static AddressNormalizerModelResponse FromAddressNormalizer(AddressNormalizerModel model)
         {
             return new AddressNormalizerModelResponse { Address = model.Address };
