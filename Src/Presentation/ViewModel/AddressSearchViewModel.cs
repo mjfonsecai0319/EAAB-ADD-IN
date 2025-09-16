@@ -220,7 +220,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             var result = addressSearch.Invoke(searchAddress, cityCode);
 
             // 🔎 Doble verificación
-            result = result.Where(r => r.CityCode == cityCode).ToList();
+           //  result = result.Where(r => r.CityCode == cityCode).ToList();
 
             if (result == null || result.Count == 0)
             {
