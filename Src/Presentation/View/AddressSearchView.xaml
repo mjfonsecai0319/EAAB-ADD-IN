@@ -6,14 +6,18 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:EAABAddIn.Src.Presentation.View"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
     mc:Ignorable="d"
-    d:DesignHeight="800" d:DesignWidth="450"
->
+    d:DesignHeight="800" d:DesignWidth="450">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converter para mostrar/ocultar -->
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -21,15 +25,16 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Contenido principal -->
         <StackPanel Grid.Row="0">
             <TextBlock
                 Text="Seleccione ciudad:"
                 Margin="0 0 0 2"
                 VerticalAlignment="Center"
-                Style="{DynamicResource Esri_TextBlockH3}"
-            />
+                Style="{DynamicResource Esri_TextBlockH3}" />
 
             <ComboBox
                 x:Name="CityComboBox"
@@ -37,31 +42,36 @@
                 ItemsSource="{Binding Cities}"
                 SelectedItem="{Binding SelectedCity}"
                 DisplayMemberPath="CityDesc"
-                SelectedValuePath="CityCode"
-            />
+                SelectedValuePath="CityCode" />
 
             <TextBlock
                 Text="Ingrese dirección:"
                 Margin="0 0 0 2"
                 VerticalAlignment="Center"
-                Style="{DynamicResource Esri_TextBlockH3}"
-            />
-            
+                Style="{DynamicResource Esri_TextBlockH3}" />
+
             <TextBox
                 x:Name="InputBox"
                 Margin="0 0 0 5"
-                Text="{Binding AddressInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-            />
+                Text="{Binding AddressInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </StackPanel>
 
+        <!-- Botón de buscar -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button
                 x:Name="SearchButton"
                 Content="Buscar"
                 Margin="5 0 0 0"
                 Style="{DynamicResource Esri_Button}"
-                Command="{Binding SearchCommand}"
-            />
+                Command="{Binding SearchCommand}" />
         </StackPanel>
+
+        <!-- Barra de progreso -->
+        <ProgressBar
+            Grid.Row="2"
+            Height="20"
+            Margin="0,10,0,0"
+            IsIndeterminate="True"
+            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
     </Grid>
 </UserControl>
