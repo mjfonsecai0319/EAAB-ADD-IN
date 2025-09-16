@@ -95,7 +95,7 @@ namespace EAABAddIn.Src.Core.Map
                 { "Poblacion", entidad.CityDesc ?? entidad.CityCode },
                 { "FullAdressEAAB", entidad.FullAddressEAAB },
                 { "FullAdressUACD", entidad.FullAddressCadastre },
-                { "Geocoder", entidad.Source },
+                { "Geocoder", string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source },
                 { "Score", entidad.Score } 
             };
 
