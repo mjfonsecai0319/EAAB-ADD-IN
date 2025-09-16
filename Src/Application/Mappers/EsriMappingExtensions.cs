@@ -11,8 +11,8 @@ internal static class EsriMappingExtensions
         return new PtAddressGralEntity
         {
             Source = "ESRI GEOCODE",
-            CityCode = "11001",
-            CityDesc = "BOGOTA D.C.",
+            CityCode = null,
+            CityDesc = null,
             FullAddressCadastre = candidate.Address,
             FullAddressEAAB = candidate.Address,
             FullAddressOld = candidate.Address,

@@ -48,7 +48,7 @@ public class AddressSearchUseCase
         if (searchResults.Count == 0)
         {
             // Fallback a ESRI cuando BD local e IDECA no retornan resultados
-            var externo = GetFromESRI(address, cityDesc);
+            var externo = GetFromESRI(address, cityCode, cityDesc);
             if (externo.Count > 0) return externo.OrderByDescending(it => it.Score).Take(1).ToList();
         }
 
@@ -112,7 +112,7 @@ public class AddressSearchUseCase
         }
     }
 
-    private List<PtAddressGralEntity> GetFromESRI(string address, string cityDesc)
+    private List<PtAddressGralEntity> GetFromESRI(string address, string cityCode, string cityDesc)
     {
         var list = new List<PtAddressGralEntity>();
         var full = $"{address}, {cityDesc}";
@@ -152,8 +152,13 @@ public class AddressSearchUseCase
             foreach (var candidate in envelope.Candidates)
             {
                 var entidad = candidate.ToPtAddressGral();
+
                 if (entidad != null)
+                {
+                    entidad.CityCode = cityCode;
+                    entidad.CityDesc = cityDesc;
                     list.Add(entidad);
+                }
             }
 
             return list;
