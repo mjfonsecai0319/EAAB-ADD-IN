@@ -16,7 +16,7 @@
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Converter para mostrar/ocultar -->
+            <!-- Converter -->
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -25,7 +25,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" /> <!-- Nueva fila -->
         </Grid.RowDefinitions>
 
         <!-- Contenido principal -->
@@ -56,7 +56,7 @@
                 Text="{Binding AddressInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </StackPanel>
 
-        <!-- Botón de buscar -->
+        <!-- Botón -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button
                 x:Name="SearchButton"
@@ -66,12 +66,16 @@
                 Command="{Binding SearchCommand}" />
         </StackPanel>
 
-        <!-- Barra de progreso -->
-        <ProgressBar
-            Grid.Row="2"
-            Height="20"
-            Margin="0,10,0,0"
-            IsIndeterminate="True"
-            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <!-- Barra de progreso + mensaje -->
+        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+            <TextBlock Text="{Binding StatusMessage}"
+                       Foreground="DarkBlue"
+                       FontWeight="Bold"
+                       Margin="0,0,0,5"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <ProgressBar Height="20"
+                         IsIndeterminate="True"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </StackPanel>
     </Grid>
 </UserControl>

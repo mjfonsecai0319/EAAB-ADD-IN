@@ -19,7 +19,7 @@ using Microsoft.Win32;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    internal class MassiveGeocodeViewModel : PanelViewModelBase
+    internal class MassiveGeocodeViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Geocodificación Masiva";
         public override string Tooltip => "Buscar múltiples direcciones a la vez desde un archivo .xlsx o .xls";
@@ -64,92 +64,97 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private async Task Search_Click()
         {
-            List<RegistroDireccion> registros;
+            IsBusy = true;
+            StatusMessage = "Procesando geocodificación masiva...";
 
             try
             {
-                registros = LeerDireccionesExcel(FileInput);
-            }
-            catch (Exception ex)
-            {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
-                return;
-            }
+                List<RegistroDireccion> registros;
 
-            if (registros.Count == 0)
-            {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
-                return;
-            }
-
-            // 🔹 Determinar motor
-            var engine = Module1.Settings.motor.ToDBEngine();
-            IPtAddressGralEntityRepository repo = engine switch
-            {
-                DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
-                _ => null
-            };
-            if (repo == null)
-            {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Motor de base de datos no soportado.", "Error");
-                return;
-            }
-
-            int encontrados = 0, noEncontrados = 0;
-
-            await QueuedTask.Run(async () =>
-            {
-                // 📌 Traemos todas las ciudades para armar un diccionario código → nombre
-                var ciudades = repo.GetAllCities(null);
-                var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
-
-                foreach (var registro in registros)
+                try
                 {
-                    try
+                    registros = LeerDireccionesExcel(FileInput);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
+                    return;
+                }
+
+                if (registros.Count == 0)
+                {
+                    MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
+                    return;
+                }
+
+                var engine = Module1.Settings.motor.ToDBEngine();
+                IPtAddressGralEntityRepository repo = engine switch
+                {
+                    DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                    DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                    _ => null
+                };
+                if (repo == null)
+                {
+                    MessageBox.Show("Motor de base de datos no soportado.", "Error");
+                    return;
+                }
+
+                int encontrados = 0, noEncontrados = 0;
+
+                await QueuedTask.Run(async () =>
+                {
+                    var ciudades = repo.GetAllCities(null);
+                    var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
+
+                    foreach (var registro in registros)
                     {
-                        var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
-
-                        if (resultados.Count > 0)
+                        try
                         {
-                            var entidad = resultados[0];
+                            var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
 
-                            if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
+                            if (resultados.Count > 0)
                             {
-                                // Dirección que viene del Excel
-                                entidad.FullAddressOld = registro.Direccion;
+                                var entidad = resultados[0];
+                                if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
+                                {
+                                    entidad.FullAddressOld = registro.Direccion;
+                                    entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
+                                        ? nombreCiudad
+                                        : registro.Poblacion;
 
-                                // Ciudad: traducir código a nombre
-                                if (ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad))
-                                    entidad.CityDesc = nombreCiudad;
+                                    await ResultsLayerService.AddPointAsync(entidad);
+                                    encontrados++;
+                                }
                                 else
-                                    entidad.CityDesc = registro.Poblacion; // fallback si no existe en diccionario
-
-                                await ResultsLayerService.AddPointAsync(entidad);
-                                encontrados++;
+                                {
+                                    noEncontrados++;
+                                }
                             }
                             else
                             {
                                 noEncontrados++;
                             }
                         }
-                        else
+                        catch
                         {
                             noEncontrados++;
                         }
                     }
-                    catch
-                    {
-                        noEncontrados++;
-                    }
-                }
-            });
+                });
 
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
-                "Resultado geocodificación"
-            );
+                MessageBox.Show(
+                    $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
+                    "Resultado geocodificación"
+                );
+            }
+            finally
+            {
+                IsBusy = false;
+                StatusMessage = string.Empty;
+            }
         }
+
 
         private List<RegistroDireccion> LeerDireccionesExcel(string filePath)
         {

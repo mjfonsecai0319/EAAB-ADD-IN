@@ -4,76 +4,86 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="clr-namespace:EAABAddIn.Src.Presentation.View"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
     mc:Ignorable="d"
-    d:DesignHeight="800" d:DesignWidth="450"
->
+    d:DesignHeight="800" d:DesignWidth="450">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converter para visibilidad -->
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />  <!-- Entrada archivo -->
+            <RowDefinition Height="Auto" />  <!-- Botones -->
+            <RowDefinition Height="Auto" />  <!-- Estado + progreso -->
         </Grid.RowDefinitions>
 
-        <StackPanel>
-            <!-- Label principal para el input de archivo -->
+        <!-- Entrada archivo -->
+        <StackPanel Grid.Row="0">
             <TextBlock
                 Text="Archivo Excel con direcciones a geocodificar:"
                 Margin="0 0 0 2"
                 VerticalAlignment="Center"
-                Style="{DynamicResource Esri_TextBlockH3}"
-            />
+                Style="{DynamicResource Esri_TextBlockH3}" />
 
-            <Grid Grid.Row="0" Margin="0 0 0 2">
+            <Grid Margin="0 0 0 2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="5" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBox
-                        x:Name="InputBox"
-                        Text="{Binding FileInput, UpdateSourceTrigger=PropertyChanged}"
-                        IsReadOnly="True"
-                    />
-                </StackPanel>
+                <TextBox
+                    Grid.Column="0"
+                    x:Name="InputBox"
+                    Text="{Binding FileInput, UpdateSourceTrigger=PropertyChanged}"
+                    IsReadOnly="True" />
 
                 <Button
                     Grid.Column="2" 
                     Content="Examinar..." 
                     Style="{DynamicResource Esri_Button}"
-                    Command="{Binding OpenFileDialogCommand}"
-                />
+                    Command="{Binding OpenFileDialogCommand}" />
             </Grid>
 
-            <!-- Helper/descripción para el usuario -->
             <TextBlock
-                Text="El archivo Excel debe tener una hoja con una columna llamada 'Identificador', 'Direccion' y 'Poblacion'."
+                Text="El archivo Excel debe tener una hoja con columnas: 'Identificador', 'Direccion' y 'Poblacion'."
                 Margin="0 0 0 5"
-                VerticalAlignment="Center"
                 Style="{DynamicResource Esri_TextBlockRegular}"
-                TextWrapping="Wrap"
-            />
+                TextWrapping="Wrap" />
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+        <!-- Botón ejecutar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button
                 x:Name="SearchButton"
-                Content="Buscar"
+                Content="Procesar"
                 Margin="5 0 0 0"
                 Style="{DynamicResource Esri_Button}"
-                Command="{Binding SearchCommand}"
-            />
+                Command="{Binding SearchCommand}" />
         </StackPanel>
+
+        <!-- Barra de progreso + mensaje de estado -->
+        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+            <TextBlock Text="{Binding StatusMessage}"
+                       Foreground="DarkBlue"
+                       FontWeight="Bold"
+                       Margin="0,0,0,5"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            <ProgressBar Height="20"
+                         IsIndeterminate="True"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </StackPanel>
+
+      
     </Grid>
 </UserControl>
