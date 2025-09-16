@@ -128,12 +128,16 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (engine == DBEngine.Oracle)
                     {
-                        HandleOracleConnection(AddressInput, SelectedCity.CityCode);
+                        HandleOracleConnection(
+                            AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc
+                        );
                         return;
                     }
                     if (engine == DBEngine.PostgreSQL)
                     {
-                        HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode);
+                        HandlePostgreSqlConnection(
+                            AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc
+                        );
                         return;
                     }
                 }
@@ -148,7 +152,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             });
         }
 
-        private void HandleOracleConnection(string input, string cityCode)
+        private void HandleOracleConnection(string input, string cityCode, string cityDesc)
         {
             var props = ConnectionPropertiesFactory.CreateOracleConnection(
                 instance: Module1.Settings.host,
@@ -169,7 +173,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     ? address.AddressNormalizer
                     : input);
 
-            var result = addressSearch.Invoke(searchAddress, cityCode);
+            var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
 
             if (result == null || result.Count == 0)
             {
@@ -195,7 +199,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
         }
 
-        private void HandlePostgreSqlConnection(string input, string cityCode)
+        private void HandlePostgreSqlConnection(string input, string cityCode, string cityDesc)
         {
             var props = ConnectionPropertiesFactory.CreatePostgresConnection(
                 instance: Module1.Settings.host,
@@ -217,7 +221,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     ? address.AddressNormalizer
                     : input);
 
-            var result = addressSearch.Invoke(searchAddress, cityCode);
+            var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
 
             // 🔎 Doble verificación
             result = result.Where(r => r.CityCode == cityCode).ToList();

@@ -72,8 +72,6 @@ namespace EAABAddIn.Src.Domain.Repositories
 
             result.ForEach(r => builder.AppendLine(r.ToString()));
 
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(builder.ToString());
-
             return result;
         }
 
