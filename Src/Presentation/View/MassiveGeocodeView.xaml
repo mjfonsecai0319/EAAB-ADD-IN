@@ -16,13 +16,13 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Converter para visibilidad -->
-            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- Entrada archivo -->
+            <RowDefinition Height="*" />  <!-- Entrada archivo -->
             <RowDefinition Height="Auto" />  <!-- Botones -->
             <RowDefinition Height="Auto" />  <!-- Estado + progreso -->
         </Grid.RowDefinitions>
@@ -49,8 +49,8 @@
                     IsReadOnly="True" />
 
                 <Button
-                    Grid.Column="2" 
-                    Content="Examinar..." 
+                    Grid.Column="2"
+                    Content="Examinar..."
                     Style="{DynamicResource Esri_Button}"
                     Command="{Binding OpenFileDialogCommand}" />
             </Grid>
@@ -62,8 +62,24 @@
                 TextWrapping="Wrap" />
         </StackPanel>
 
+        <!-- Barra de progreso + mensaje de estado -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBlock
+                Text="{Binding StatusMessage}"
+                Style="{DynamicResource Esri_TextBlockRegular}"
+                FontWeight="Bold"
+                Margin="0,0,0,5"
+                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+            />
+            <ProgressBar
+                Height="20"
+                IsIndeterminate="True"
+                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+            />
+        </StackPanel>
+
         <!-- Botón ejecutar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button
                 x:Name="SearchButton"
                 Content="Procesar"
@@ -71,19 +87,5 @@
                 Style="{DynamicResource Esri_Button}"
                 Command="{Binding SearchCommand}" />
         </StackPanel>
-
-        <!-- Barra de progreso + mensaje de estado -->
-        <StackPanel Grid.Row="2" Margin="0,10,0,0">
-            <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="DarkBlue"
-                       FontWeight="Bold"
-                       Margin="0,0,0,5"
-                       Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            <ProgressBar Height="20"
-                         IsIndeterminate="True"
-                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-        </StackPanel>
-
-      
     </Grid>
 </UserControl>
