@@ -5,13 +5,14 @@ using System.Text.Json;
 
 // Para parsing ligero opcional
 using ArcGIS.Core.Data;
-
+using ArcGIS.Core.Data.UtilityNetwork.Trace;
 using EAABAddIn.Src.Application.Mappers.EsriMappingExtensions;
 using EAABAddIn.Src.Application.Mappers.IdecaMappingExtensions;
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Entities;
 using EAABAddIn.Src.Core.Http;
+using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
 
 // HttpService
@@ -36,13 +37,13 @@ public class AddressSearchUseCase
             _connectionProperties,
             cityCode,
             address
-        );
+        ).Take(1).ToList();
 
         if (searchResults.Count == 0 && cityCode == "11001")
         {
             // Fallback a IDECA cuando BD local no retorna resultados
             var externo = GetFromIDECA(address);
-            if (externo.Count > 0) return externo.Take(5).ToList();
+            if (externo.Count > 0) return externo.Take(1).ToList();
         }
 
         if (searchResults.Count == 0)
@@ -52,7 +53,22 @@ public class AddressSearchUseCase
             if (externo.Count > 0) return externo.OrderByDescending(it => it.Score).Take(1).ToList();
         }
 
-        return searchResults.Take(5).ToList();
+
+        if (searchResults.Count == 0)
+        {
+            var record = new AddressNotFoundRecord(
+                identificador: string.Empty,
+                direccion: address,
+                poblacion: cityCode,
+                fullAddressEaab: address,
+                fullAddressUacd: address,
+                geocoder: null,
+                score: null
+            );
+            _ = AddressNotFoundTableService.AddRecordAsync(record);
+        }
+
+        return searchResults;
     }
 
     private IPtAddressGralEntityRepository GetRepository(DBEngine engine) => engine switch
@@ -161,7 +177,7 @@ public class AddressSearchUseCase
                 }
             }
 
-            return list;
+            return list.Select(it => it).Where(it => it.Score >= 95).ToList();
         }
         catch (Exception)
         {
