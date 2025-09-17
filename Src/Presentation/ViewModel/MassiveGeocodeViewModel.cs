@@ -62,98 +62,104 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        private async Task Search_Click()
+    private async Task Search_Click()
+    {
+        IsBusy = true;
+        StatusMessage = "Procesando geocodificación masiva...";
+
+        try
         {
-            IsBusy = true;
-            StatusMessage = "Procesando geocodificación masiva...";
+            List<RegistroDireccion> registros;
 
             try
             {
-                List<RegistroDireccion> registros;
+                registros = LeerDireccionesExcel(FileInput);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
+                return;
+            }
 
-                try
-                {
-                    registros = LeerDireccionesExcel(FileInput);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
-                    return;
-                }
+            if (registros.Count == 0)
+            {
+                MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
+                return;
+            }
 
-                if (registros.Count == 0)
-                {
-                    MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
-                    return;
-                }
+            var engine = Module1.Settings.motor.ToDBEngine();
+            IPtAddressGralEntityRepository repo = engine switch
+            {
+                DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                _ => null
+            };
+            if (repo == null)
+            {
+                MessageBox.Show("Motor de base de datos no soportado.", "Error");
+                return;
+            }
 
-                var engine = Module1.Settings.motor.ToDBEngine();
-                IPtAddressGralEntityRepository repo = engine switch
-                {
-                    DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                    DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
-                    _ => null
-                };
-                if (repo == null)
-                {
-                    MessageBox.Show("Motor de base de datos no soportado.", "Error");
-                    return;
-                }
+            int encontrados = 0, noEncontrados = 0;
+            int total = registros.Count;
+            int contador = 0;
 
-                int encontrados = 0, noEncontrados = 0;
+            await QueuedTask.Run(async () =>
+            {
+                var ciudades = repo.GetAllCities(null);
+                var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
 
-                await QueuedTask.Run(async () =>
+                foreach (var registro in registros)
                 {
-                    var ciudades = repo.GetAllCities(null);
-                    var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
+                    contador++;
+                    StatusMessage = $"Procesando {contador}/{total}...";
 
-                    foreach (var registro in registros)
+                    try
                     {
-                        try
+                        var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
+
+                        if (resultados.Count > 0)
                         {
-                            var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
-
-                            if (resultados.Count > 0)
+                            var entidad = resultados[0];
+                            if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
                             {
-                                var entidad = resultados[0];
-                                if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
-                                {
-                                    entidad.FullAddressOld = registro.Direccion;
-                                    entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
-                                        ? nombreCiudad
-                                        : registro.Poblacion;
+                                entidad.FullAddressOld = registro.Direccion;
+                                entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
+                                    ? nombreCiudad
+                                    : registro.Poblacion;
 
-                                    await ResultsLayerService.AddPointAsync(entidad);
-                                    encontrados++;
-                                }
-                                else
-                                {
-                                    noEncontrados++;
-                                }
+                                await ResultsLayerService.AddPointAsync(entidad);
+                                encontrados++;
                             }
                             else
                             {
                                 noEncontrados++;
                             }
                         }
-                        catch
+                        else
                         {
                             noEncontrados++;
                         }
                     }
-                });
+                    catch
+                    {
+                        noEncontrados++;
+                    }
+                }
+            });
 
-                MessageBox.Show(
-                    $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
-                    "Resultado geocodificación"
-                );
-            }
-            finally
-            {
-                IsBusy = false;
-                StatusMessage = string.Empty;
-            }
+            MessageBox.Show(
+                $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
+                "Resultado geocodificación"
+            );
         }
+        finally
+        {
+            IsBusy = false;
+            StatusMessage = string.Empty;
+        }
+    }
+
 
 
         private List<RegistroDireccion> LeerDireccionesExcel(string filePath)
