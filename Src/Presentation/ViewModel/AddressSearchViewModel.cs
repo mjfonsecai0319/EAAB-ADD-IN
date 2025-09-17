@@ -20,7 +20,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    internal class AddressSearchViewModel : PanelViewModelBase
+    internal class AddressSearchViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Buscar Dirección";
         public override string Tooltip => "Buscar una dirección específica en el mapa";
@@ -110,47 +110,39 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private async Task OnSearchAsync()
         {
-            await QueuedTask.Run(() =>
+            IsBusy = true;
+            StatusMessage = "Buscando dirección...";
+
+            try
             {
-                if (string.IsNullOrWhiteSpace(AddressInput))
+                await QueuedTask.Run(() =>
                 {
-                    MessageBox.Show("Por favor ingrese una dirección para buscar.", "Validación");
-                    return;
-                }
-                if (SelectedCity is null)
-                {
-                    MessageBox.Show("Por favor seleccione una ciudad.", "Validación");
-                    return;
-                }
-                try
-                {
+                    if (string.IsNullOrWhiteSpace(AddressInput))
+                    {
+                        MessageBox.Show("Por favor ingrese una dirección para buscar.", "Validación");
+                        return;
+                    }
+                    if (SelectedCity is null)
+                    {
+                        MessageBox.Show("Por favor seleccione una ciudad.", "Validación");
+                        return;
+                    }
+
                     var engine = Module1.Settings.motor.ToDBEngine();
 
                     if (engine == DBEngine.Oracle)
-                    {
-                        HandleOracleConnection(
-                            AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc
-                        );
-                        return;
-                    }
-                    if (engine == DBEngine.PostgreSQL)
-                    {
-                        HandlePostgreSqlConnection(
-                            AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc
-                        );
-                        return;
-                    }
-                }
-                catch (BusinessException bex)
-                {
-                    MessageBox.Show($"Error de negocio: {bex.Message}", "Error de Normalización");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ha ocurrido un error inesperado: {ex.Message}", "Error");
-                }
-            });
+                        HandleOracleConnection(AddressInput, SelectedCity.CityCode);
+                    else if (engine == DBEngine.PostgreSQL)
+                        HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode);
+                });
+            }
+            finally
+            {
+                IsBusy = false;
+                StatusMessage = string.Empty;
+            }
         }
+
 
         private void HandleOracleConnection(string input, string cityCode, string cityDesc)
         {
@@ -224,7 +216,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
 
             // 🔎 Doble verificación
-            result = result.Where(r => r.CityCode == cityCode).ToList();
+           //  result = result.Where(r => r.CityCode == cityCode).ToList();
 
             if (result == null || result.Count == 0)
             {
