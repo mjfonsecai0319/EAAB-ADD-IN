@@ -131,9 +131,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     var engine = Module1.Settings.motor.ToDBEngine();
 
                     if (engine == DBEngine.Oracle)
-                        HandleOracleConnection(AddressInput, SelectedCity.CityCode);
+                        HandleOracleConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else if (engine == DBEngine.PostgreSQL)
-                        HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode);
+                        HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                 });
             }
             finally
