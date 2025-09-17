@@ -8,6 +8,7 @@ internal static class EsriMappingExtensions
     internal static PtAddressGralEntity ToPtAddressGral(this EsriCandidate candidate)
     {
         if (candidate == null || candidate.Location == null) return null;
+
         return new PtAddressGralEntity
         {
             Source = "ESRI GEOCODE",
@@ -26,7 +27,11 @@ internal static class EsriMappingExtensions
             ZoneCode = null,
             PointType = "GEOCODE_CANDIDATE",
             HouseNumber = "00",
-            Score = candidate.Score ?? 0
+            
+            // Aquí ya va como texto
+            Score = candidate.Score ?? 0,
+            ScoreText = $"{candidate.Score?.ToString("F2")}"
+
         };
     }
 }

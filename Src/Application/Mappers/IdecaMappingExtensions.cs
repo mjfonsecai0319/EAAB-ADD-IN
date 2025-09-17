@@ -31,8 +31,12 @@ internal static class IdecaMappingExtensions
             ZoneDesc = data.Nomupz,
             ZoneCode = data.Codupz,
             PointType = data.Tipo_Direccion,
-            HouseNumber = "00"
+            HouseNumber = "00",
+
+            Score = null,
+            ScoreText = "Aproximada por Catastro"
         };
+
     }
 
     private static decimal? TryParseDecimal(string s)

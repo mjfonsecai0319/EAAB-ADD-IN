@@ -13,6 +13,7 @@ using EAABAddIn.Src.Core.Entities;
 using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Src.Presentation.Base;
+using EAABAddIn.Src.Application.Models;
 
 using ExcelDataReader;
 using Microsoft.Win32;
@@ -62,103 +63,137 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-    private async Task Search_Click()
-    {
-        IsBusy = true;
-        StatusMessage = "Procesando geocodificación masiva...";
-
-        try
+        private async Task Search_Click()
         {
-            List<RegistroDireccion> registros;
+            IsBusy = true;
+            StatusMessage = "Procesando geocodificación masiva...";
 
             try
             {
-                registros = LeerDireccionesExcel(FileInput);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
-                return;
-            }
+                List<RegistroDireccion> registros;
 
-            if (registros.Count == 0)
-            {
-                MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
-                return;
-            }
-
-            var engine = Module1.Settings.motor.ToDBEngine();
-            IPtAddressGralEntityRepository repo = engine switch
-            {
-                DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
-                _ => null
-            };
-            if (repo == null)
-            {
-                MessageBox.Show("Motor de base de datos no soportado.", "Error");
-                return;
-            }
-
-            int encontrados = 0, noEncontrados = 0;
-            int total = registros.Count;
-            int contador = 0;
-
-            await QueuedTask.Run(async () =>
-            {
-                var ciudades = repo.GetAllCities(null);
-                var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
-
-                foreach (var registro in registros)
+                try
                 {
-                    contador++;
-                    StatusMessage = $"Procesando {contador}/{total}...";
+                    registros = LeerDireccionesExcel(FileInput);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al leer el archivo Excel: {ex.Message}", "Error");
+                    return;
+                }
 
-                    try
+                if (registros.Count == 0)
+                {
+                    MessageBox.Show("No se encontraron direcciones en el archivo", "Información");
+                    return;
+                }
+
+                var engine = Module1.Settings.motor.ToDBEngine();
+                IPtAddressGralEntityRepository repo = engine switch
+                {
+                    DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                    DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                    _ => null
+                };
+                if (repo == null)
+                {
+                    MessageBox.Show("Motor de base de datos no soportado.", "Error");
+                    return;
+                }
+
+                int encontrados = 0, noEncontrados = 0;
+                int total = registros.Count;
+                int contador = 0;
+
+                // Limpiamos cualquier resultado pendiente de ejecuciones anteriores
+                ResultsLayerService.ClearPending();
+
+                await QueuedTask.Run(() =>
+                {
+                    var ciudades = repo.GetAllCities(null);
+                    var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
+
+                    foreach (var registro in registros)
                     {
-                        var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
+                        contador++;
 
-                        if (resultados.Count > 0)
+                        // Si StatusMessage da problemas por threads, sacalo a UI thread; dejamos así por simplicidad.
+                        StatusMessage = $"Procesando {contador}/{total}...";
+
+                        try
                         {
-                            var entidad = resultados[0];
-                            if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
-                            {
-                                entidad.FullAddressOld = registro.Direccion;
-                                entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
-                                    ? nombreCiudad
-                                    : registro.Poblacion;
+                            var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
 
-                                await ResultsLayerService.AddPointAsync(entidad);
-                                encontrados++;
+                            if (resultados.Count > 0)
+                            {
+                                var entidad = resultados[0];
+                                if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
+                                {
+                                    entidad.FullAddressOld = registro.Direccion;
+                                    entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
+                                        ? nombreCiudad
+                                        : registro.Poblacion;
+                                    // --- Asignar ScoreText según origen ---
+                                    var src = (entidad.Source ?? string.Empty).ToLowerInvariant();
+
+                                    // Si viene de Catastro (ajusta 'catastro' según cómo lo devuelva tu repo)
+                                    if (src.Contains("cat") || src.Contains("catastro"))
+                                    {
+                                        entidad.ScoreText = "Aproximada por Catastro";
+                                    }
+                                    // Si es la BD interna (EAAB) — muchas veces Source viene vacío o con "eaab"
+                                    else if (string.IsNullOrWhiteSpace(entidad.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
+                                    {
+                                        entidad.ScoreText = "Exacta";
+                                    }
+                                    // Si la fuente es ESRI (o viene con puntaje numérico)
+                                    else if (src.Contains("esri"))
+                                    {
+                                        // Si existe campo numérico Score lo convertimos, si no usamos "N/A"
+                                        entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
+                                    }
+                                    // Fallback: si no aplican los anteriores, usar Score si existe o "N/A"
+                                    else
+                                    {
+                                        entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
+                                    }
+
+                                    // Guardamos en memoria (rápido)
+                                    ResultsLayerService.AddPointToMemory(entidad);
+                                    encontrados++;
+                                }
+                                else
+                                {
+                                    noEncontrados++;
+                                }
                             }
                             else
                             {
                                 noEncontrados++;
                             }
                         }
-                        else
+                        catch
                         {
                             noEncontrados++;
                         }
                     }
-                    catch
-                    {
-                        noEncontrados++;
-                    }
-                }
-            });
+                });
 
-            MessageBox.Show(
-                $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
-                "Resultado geocodificación"
-            );
+                // Ahora sí: insertar todos los puntos en el mapa de una sola vez
+                await ResultsLayerService.CommitPointsAsync();
+
+                MessageBox.Show(
+                    $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
+                    "Resultado geocodificación"
+                );
+            }
+            finally
+            {
+                IsBusy = false;
+                StatusMessage = string.Empty;
+            }
         }
-        finally
-        {
-            IsBusy = false;
-            StatusMessage = string.Empty;
-        }
-    }
+
 
 
 
@@ -179,7 +214,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     {
                         Identificador = reader.GetValue(0)?.ToString(),
                         Direccion = reader.GetValue(1)?.ToString(),
-                        Poblacion = reader.GetValue(2)?.ToString() // aquí viene el código de ciudad
+                        Poblacion = reader.GetValue(2)?.ToString() 
                     };
 
                     if (!string.IsNullOrWhiteSpace(registro.Direccion) &&
