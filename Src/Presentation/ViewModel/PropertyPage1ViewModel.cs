@@ -1,169 +1,129 @@
-﻿using System.Collections.ObjectModel;
+﻿﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
-
-using ArcGIS.Desktop.Framework;
-using ArcGIS.Desktop.Framework.Contracts;
-
 using Microsoft.Win32;
+using EAABAddIn.Src.Core.Data;
+using ArcGIS.Core.Data;
+using ArcGIS.Desktop.Framework.Contracts;
+using System;
+using EAABAddIn.Src.Presentation.Base;
 
-namespace EAABAddIn.Src.Presentation.ViewModel;
 
-internal class PropertyPage1ViewModel : Page
+namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    private readonly Settings _settings;
-
-    public ObservableCollection<string> MotoresBD { get; set; } =
-        new ObservableCollection<string> { "Oracle", "PostgreSQL" };
-
-    private string _motorSeleccionado = string.Empty;
-    public string MotorSeleccionado
+    public class PropertyPage1ViewModel : Page, INotifyPropertyChanged
     {
-        get => _motorSeleccionado;
-        set
-        {
-            if (SetProperty(ref _motorSeleccionado, value))
-            {
-                IsModified = true;
+        private readonly Settings _settings;
+        private readonly ConnectionValidatorService _validator;
 
-                if (value == "PostgreSQL")
+        public new event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        protected new bool SetProperty<T>(ref T storage, T value, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
+        {
+            if (Equals(storage, value)) return false;
+            storage = value;
+            OnPropertyChanged(propertyName);
+
+            // 🔹 Guardar automáticamente en settings cuando cambie una propiedad
+            SaveSettings();
+            return true;
+        }
+
+        public ObservableCollection<string> MotoresBD { get; set; } = new ObservableCollection<string> { "Oracle", "PostgreSQL" };
+
+        private string _motorSeleccionado;
+        public string MotorSeleccionado
+        {
+            get => _motorSeleccionado;
+            set
+            {
+                if (SetProperty(ref _motorSeleccionado, value))
                 {
-                    if (string.IsNullOrWhiteSpace(Host)) Host = "localhost";
-                    if (string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
-                }
-                else if (value == "Oracle")
-                {
+                    if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
+                    else if (value == "Oracle" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "1521";
                 }
             }
         }
-    }
 
-    private string _oraclePath;
-    public string OraclePath
-    {
-        get => _oraclePath;
-        set { if (SetProperty(ref _oraclePath, value)) IsModified = true; }
-    }
-    public ICommand BrowseOracleCommand
-    {
-        get;
+        private string _usuario;
+        public string Usuario { get => _usuario; set => SetProperty(ref _usuario, value); }
 
-    }
-    private string _usuario = string.Empty;
-    public string Usuario
-    {
-        get => _usuario;
-        set { if (SetProperty(ref _usuario, value)) IsModified = true; }
-    }
+        private string _contraseña;
+        public string Contraseña { get => _contraseña; set => SetProperty(ref _contraseña, value); }
 
-    private string _contraseña = string.Empty;
-    public string Contraseña
-    {
-        get => _contraseña;
-        set { if (SetProperty(ref _contraseña, value)) IsModified = true; }
-    }
+        private string _host;
+        public string Host { get => _host; set => SetProperty(ref _host, value); }
 
-    private string _host = string.Empty;
-    public string Host
-    {
-        get => _host;
-        set { if (SetProperty(ref _host, value)) IsModified = true; }
-    }
+        private string _puerto;
+        public string Puerto { get => _puerto; set => SetProperty(ref _puerto, value); }
 
-    private string _puerto = string.Empty;
-    public string Puerto
-    {
-        get => _puerto;
-        set { if (SetProperty(ref _puerto, value)) IsModified = true; }
-    }
-    private string _baseDeDatos = string.Empty;
-    public string BaseDeDatos
-    {
-        get => _baseDeDatos;
-        set { if (SetProperty(ref _baseDeDatos, value)) IsModified = true; }
-    }
+        private string _baseDeDatos;
+        public string BaseDeDatos { get => _baseDeDatos; set => SetProperty(ref _baseDeDatos, value); }
 
+        private string _oraclePath;
+        public string OraclePath { get => _oraclePath; set => SetProperty(ref _oraclePath, value); }
 
-    public PropertyPage1ViewModel()
-    {
-        _settings = Module1.Settings;
-
-        // Inicializamos el comando
-        BrowseOracleCommand = new RelayCommand(OnBrowseOracleExecute);
-
-        LoadSettings();
-    }
-    private void OnBrowseOracleExecute()
-    {
-        var openFileDialog = new OpenFileDialog
+        private string _mensajeConexion;
+        public string MensajeConexion
         {
-            Title = "Seleccionar Oracle Client Path",
-            Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*"
-        };
-
-        if (openFileDialog.ShowDialog() == true)
-        {
-            OraclePath = openFileDialog.FileName;
+            get => _mensajeConexion;
+            set => SetProperty(ref _mensajeConexion, value);
         }
-    }
 
-    protected override Task CommitAsync()
-    {
-        // Guardar valores en settings
-        _settings.motor = MotorSeleccionado;
-        _settings.usuario = Usuario;
-        _settings.contraseña = Contraseña;
-        _settings.host = Host;
-        _settings.puerto = Puerto;
-        _settings.oracle_path = OraclePath;
-        _settings.baseDeDatos = BaseDeDatos;
+        public ICommand ProbarConexionCommand { get; }
 
-        _settings.Save();
+        public PropertyPage1ViewModel()
+        {
+            _settings = Module1.Settings;
+            _validator = new ConnectionValidatorService();
+            LoadSettings();
 
-        System.Diagnostics.Debug.WriteLine(
-            $"Saving settings: motor={MotorSeleccionado}, usuario={Usuario}, host={Host}, puerto={Puerto}"
-        );
+            ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync());
+        }
 
-        return Task.FromResult(0);
-    }
+        private void LoadSettings()
+        {
+            MotorSeleccionado = _settings.motor ?? "PostgreSQL";
+            Usuario = _settings.usuario ?? string.Empty;
+            Contraseña = _settings.contraseña ?? string.Empty;
+            Host = _settings.host ?? "localhost";
+            Puerto = _settings.puerto ?? (MotorSeleccionado == "Oracle" ? "1521" : "5432");
+            OraclePath = _settings.oracle_path ?? string.Empty;
+            BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+        }
 
-    protected override Task InitializeAsync()
-    {
-        LoadSettings();
-        return Task.FromResult(true);
-    }
+        private void SaveSettings()
+        {
+            _settings.motor = MotorSeleccionado;
+            _settings.usuario = Usuario;
+            _settings.contraseña = Contraseña;
+            _settings.host = Host;
+            _settings.puerto = Puerto;
+            _settings.oracle_path = OraclePath;
+            _settings.baseDeDatos = BaseDeDatos;
+            _settings.Save();
+        }
 
-    protected override void Uninitialize()
-    {
-    }
+        public DatabaseConnectionProperties GetDatabaseConnectionProperties()
+        {
+            if (MotorSeleccionado == "Oracle")
+                return ConnectionPropertiesFactory.CreateOracleConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
+            else
+                return ConnectionPropertiesFactory.CreatePostgresConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
+        }
 
-    private void LoadSettings()
-    {
-        MotorSeleccionado = _settings.motor ?? "PostgreSQL"; // default
-        Usuario = _settings.usuario ?? string.Empty;
-        Contraseña = _settings.contraseña ?? string.Empty;
-        Host = _settings.host ?? "localhost";
-        Puerto = _settings.puerto ?? "5432";
-        OraclePath = _settings.oracle_path ?? string.Empty;
-        BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+        public async Task ProbarConexionAsync()
+        {
+            var connectionProps = GetDatabaseConnectionProperties();
+            var result = await _validator.TestConnectionAsync(connectionProps, MotorSeleccionado);
 
-
-
-        System.Diagnostics.Debug.WriteLine(
-            $"Loaded settings: motor={MotorSeleccionado}, usuario={Usuario}, host={Host}, puerto={Puerto}"
-        );
-    }
-}
-
-
-internal class PropertyPage1_ShowButton : Button
-{
-    protected override void OnClick()
-    {
-        object[] data = ["Page UI content"];
-
-        if (PropertySheet.IsVisible) return;
-
-        PropertySheet.ShowDialog("EAABAddIn_PropertySheet1", "EAABAddIn_PropertyPage1", data);
+            MensajeConexion = result.IsSuccess
+                ? "✅ Conexión exitosa"
+                : $"❌ Error: {result.Message}";
+        }
     }
 }

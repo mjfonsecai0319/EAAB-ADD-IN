@@ -34,15 +34,16 @@ namespace EAABAddIn.Src.UI
             {
                 var engine = Module1.Settings.motor.ToDBEngine();
 
-                // Construir props desde Settings (NO intentamos tocar DatabaseConnection aquí)
+                // Construir props con la firma correcta (usa host, no server)
                 var props = engine == DBEngine.Oracle
                     ? ConnectionPropertiesFactory.CreateOracleConnection(
-                        instance: Module1.Settings.host,
+                        host: Module1.Settings.host,
                         user: Module1.Settings.usuario,
-                        password: Module1.Settings.contraseña
+                        password: Module1.Settings.contraseña,
+                        database: Module1.Settings.baseDeDatos
                       )
                     : ConnectionPropertiesFactory.CreatePostgresConnection(
-                        instance: Module1.Settings.host,
+                        host: Module1.Settings.host,
                         user: Module1.Settings.usuario,
                         password: Module1.Settings.contraseña,
                         database: Module1.Settings.baseDeDatos
@@ -65,7 +66,6 @@ namespace EAABAddIn.Src.UI
                 CityComboBox.ItemsSource = ciudades;
                 CityComboBox.DisplayMemberPath = "CityDesc";
                 CityComboBox.SelectedValuePath = "CityCode";
-                
             }
             catch (Exception ex)
             {

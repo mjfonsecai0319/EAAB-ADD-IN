@@ -1,21 +1,21 @@
 using System.Windows.Controls;
-
 using EAABAddIn.Src.Presentation.ViewModel;
 
-namespace EAABAddIn.Src.Presentation.View;
-
-public partial class PropertyPage1View : UserControl
+namespace EAABAddIn.Src.Presentation.View
 {
-    public PropertyPage1View()
+    public partial class PropertyPage1View : UserControl
     {
-        InitializeComponent();
-    }
-
-    private void PasswordBox_PasswordChanged(object sender, System.Windows.RoutedEventArgs e)
-    {
-        if (DataContext is PropertyPage1ViewModel vm)
+        public PropertyPage1View()
         {
-            vm.Contraseña = ((PasswordBox)sender).Password;
+            InitializeComponent();
+        }
+
+        private void PasswordBox_PasswordChanged(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (DataContext is PropertyPage1ViewModel vm)
+            {
+                vm.Contraseña = ((PasswordBox)sender).Password;
+            }
         }
     }
 }

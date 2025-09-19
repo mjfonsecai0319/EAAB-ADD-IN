@@ -1,126 +1,88 @@
 ﻿<UserControl x:Class="EAABAddIn.Src.Presentation.View.PropertyPage1View"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:ui="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
-    xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
-    xmlns:conv="clr-namespace:EAABAddIn.Data"
-    mc:Ignorable="d"
-    d:DesignHeight="400" d:DesignWidth="480"
-    d:DataContext="{Binding Path=ui.PropertyPage1ViewModel}">
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
+             xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
+             mc:Ignorable="d">
 
     <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <extensions:DesignOnlyResourceDictionary
-                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-            <conv:OracleVisibilityConverter x:Key="OracleVisibilityConverter" />
-            <conv:PostgresVisibilityConverter x:Key="PostgresVisibilityConverter" />
-        </ResourceDictionary>
+        <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </UserControl.Resources>
 
-    <Grid Margin="15" Grid.IsSharedSizeScope="True">
+    <UserControl.DataContext>
+        <vm:PropertyPage1ViewModel/>
+    </UserControl.DataContext>
+
+    <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100" />
-            <ColumnDefinition Width="10" />
-            <ColumnDefinition Width="250" />
-            <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="0,5">
+            <TextBlock Text="Motor:" Width="120" VerticalAlignment="Center"/>
+            <ComboBox Width="200"
+                      ItemsSource="{Binding MotoresBD}"
+                      SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Título -->
-        <TextBlock Text="Configuración de Base de Datos"
-            Style="{DynamicResource Esri_TextBlockH3}"
-            Margin="0,0,0,15"
-            Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="1">
+            <TextBlock Text="Host:" Width="120" VerticalAlignment="Center"/>
+            <TextBox Width="200"
+                     Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Motor -->
-        <TextBlock Text="Motor:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="1" Grid.Column="0" />
-        <ComboBox Grid.Row="1" Grid.Column="2"
-            Style="{DynamicResource Esri_ComboBox}"
-            Height="28" Margin="0,0,0,5"
-            ItemsSource="{Binding MotoresBD}"
-            SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay}" />
-        <Button Content="..."
-            Style="{DynamicResource Esri_Button}" Grid.Column="3"
-            Command="{Binding BrowseOracleCommand}"
-            Visibility="{Binding MotorSeleccionado, Converter={StaticResource OracleVisibilityConverter}}" Margin="10,3,-67,9" Grid.Row="1" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="2">
+            <TextBlock Text="Puerto:" Width="120" VerticalAlignment="Center"/>
+            <TextBox Width="200"
+                     Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Usuario -->
-        <TextBlock Text="User:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="2" Grid.Column="0" />
-        <TextBox Grid.Row="2" Grid.Column="2"
-            Style="{DynamicResource Esri_TextBox}"
-            Height="28" Margin="0,0,0,5"
-            Text="{Binding Usuario, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="3">
+            <TextBlock Text="Base de Datos:" Width="120" VerticalAlignment="Center"/>
+            <TextBox Width="200"
+                     Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Password -->
-        <TextBlock Text="Password:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="3" Grid.Column="0" />
-        <PasswordBox Grid.Row="3" Grid.Column="2"
-            Style="{DynamicResource Esri_TextBox}"
-            Height="28" Margin="0,0,0,5"
-            PasswordChar="*"
-            PasswordChanged="PasswordBox_PasswordChanged" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="4">
+            <TextBlock Text="Usuario:" Width="120" VerticalAlignment="Center"/>
+            <TextBox Width="200"
+                     Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Host -->
-        <TextBlock Text="Host:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="4" Grid.Column="0" />
-        <TextBox Grid.Row="4" Grid.Column="2"
-            Style="{DynamicResource Esri_TextBox}"
-            Height="28" Margin="0,0,0,5"
-            Text="{Binding Host, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="5">
+            <TextBlock Text="Contraseña:" Width="120" VerticalAlignment="Center"/>
+            <PasswordBox Width="200"
+                         PasswordChanged="PasswordBox_PasswordChanged"/>
+        </StackPanel>
 
-        <!-- Puerto -->
-        <TextBlock Text="Port:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="5" Grid.Column="0" />
-        <TextBox Grid.Row="5" Grid.Column="2"
-            Style="{DynamicResource Esri_TextBox}"
-            Height="28" Margin="0,0,0,5"
-            Text="{Binding Puerto, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="6"
+                    Visibility="{Binding MotorSeleccionado,
+                                         Converter={StaticResource BooleanToVisibilityConverter},
+                                         ConverterParameter=Oracle}">
+            <TextBlock Text="Oracle Path:" Width="120" VerticalAlignment="Center"/>
+            <TextBox Width="200"
+                     Text="{Binding OraclePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+        </StackPanel>
 
-        <!-- Database (solo PostgreSQL) -->
-        <TextBlock Text="Database:"
-            Style="{DynamicResource Esri_TextBlockRegular}"
-            VerticalAlignment="Center"
-            Grid.Row="6" Grid.Column="0"
-            Visibility="{Binding MotorSeleccionado, Converter={StaticResource PostgresVisibilityConverter}}" />
-        <TextBox Grid.Row="6" Grid.Column="2"
-            Style="{DynamicResource Esri_TextBox}"
-            Height="28" Margin="0,0,0,5"
-            Text="{Binding BaseDeDatos, Mode=TwoWay}"
-            Visibility="{Binding MotorSeleccionado, Converter={StaticResource PostgresVisibilityConverter}}" />
+        <Button Grid.Row="7"
+                Content="Probar Conexión"
+                Width="150" Height="30" Margin="0,10,0,0"
+                Command="{Binding ProbarConexionCommand}"/>
 
-        <!-- Botón de prueba -->
-        <Button Content="Probar conexión"
-            Style="{DynamicResource Esri_Button}"
-            Grid.Row="7" Grid.Column="2"
-            Width="200" Height="32"
-            Margin="0,10,0,0"
-            Command="{Binding TestConnectionCommand}" />
+        <TextBlock Grid.Row="8"
+                   Text="{Binding MensajeConexion}"
+                   FontWeight="Bold"
+                   Foreground="DarkRed"
+                   Margin="0,10,0,0"/>
     </Grid>
 </UserControl>

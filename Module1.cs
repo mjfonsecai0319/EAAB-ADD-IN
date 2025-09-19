@@ -1,62 +1,54 @@
 ﻿using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-
-using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Data;
+using EAABAddIn.Src.Core;
 
-namespace EAABAddIn;
-
-internal class Module1 : Module
+namespace EAABAddIn
 {
-    private static Module1 _this = null;
-    private static Settings _settings;
-    private static DatabaseConnectionService _geodatabaseService;
-
-    public static Module1 Current => _this ??= (Module1)FrameworkApplication.FindModule("EAABAddIn_Module");
-    public static Settings Settings => _settings ??= Settings.Load();
-    public static DatabaseConnectionService DatabaseConnection => _geodatabaseService;
-
-    protected override bool Initialize()
+    internal class Module1 : Module
     {
-        var result = base.Initialize();
-        var engine = Settings.motor.ToDBEngine();
+        private static Module1 _this = null;
+        private static Settings _settings;
+        private static DatabaseConnectionService _geodatabaseService;
 
-        QueuedTask.Run(() => HandleDatabaseConnection(engine));
-        return result;
-    }
+        public static Module1 Current => _this ??= (Module1)FrameworkApplication.FindModule("EAABAddIn_Module");
+        public static Settings Settings => _settings ??= Settings.Load();
+        public static DatabaseConnectionService DatabaseConnection => _geodatabaseService;
 
-    protected override bool CanUnload()
-    {
-        QueuedTask.Run(() => _geodatabaseService?.DisposeConnectionAsync());
-        return base.CanUnload();
-    }
-
-    private async void HandleDatabaseConnection(DBEngine engine)
-    {
-        _geodatabaseService = new DatabaseConnectionService();
-
-        if (engine == DBEngine.Oracle)
+        protected override bool Initialize()
         {
-            var props = ConnectionPropertiesFactory.CreateOracleConnection(
-                instance: Settings.host,
-                user: Settings.usuario,
-                password: Settings.contraseña
-            );
-            await _geodatabaseService.CreateConnectionAsync(props);
-            return;
+            var result = base.Initialize();
+            var engine = Settings.motor.ToDBEngine();
+
+            QueuedTask.Run(() => HandleDatabaseConnection(engine));
+            return result;
         }
 
-        if (engine == DBEngine.PostgreSQL)
+        protected override bool CanUnload()
         {
-            var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-                instance: Settings.host,
-                user: Settings.usuario,
-                password: Settings.contraseña,
-                database: Settings.baseDeDatos
-            );
-            await _geodatabaseService.CreateConnectionAsync(props);
-            return;
+            QueuedTask.Run(() => _geodatabaseService?.DisposeConnectionAsync());
+            return base.CanUnload();
+        }
+
+        private async void HandleDatabaseConnection(DBEngine engine)
+        {
+            _geodatabaseService = new DatabaseConnectionService();
+
+            if (engine == DBEngine.Oracle)
+            {
+                var props = ConnectionPropertiesFactory.CreateOracleConnection(
+                    Settings.host, Settings.usuario, Settings.contraseña, Settings.baseDeDatos, Settings.puerto
+                );
+                await _geodatabaseService.CreateConnectionAsync(props);
+            }
+            else if (engine == DBEngine.PostgreSQL)
+            {
+                var props = ConnectionPropertiesFactory.CreatePostgresConnection(
+                    Settings.host, Settings.usuario, Settings.contraseña, Settings.baseDeDatos, Settings.puerto
+                );
+                await _geodatabaseService.CreateConnectionAsync(props);
+            }
         }
     }
 }

@@ -73,16 +73,17 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                 var props = engine == DBEngine.Oracle
                     ? ConnectionPropertiesFactory.CreateOracleConnection(
-                        instance: Module1.Settings.host,
-                        user: Module1.Settings.usuario,
-                        password: Module1.Settings.contraseña
-                      )
-                    : ConnectionPropertiesFactory.CreatePostgresConnection(
-                        instance: Module1.Settings.host,
+                        host: Module1.Settings.host,
                         user: Module1.Settings.usuario,
                         password: Module1.Settings.contraseña,
                         database: Module1.Settings.baseDeDatos
-                      );
+                    )
+                    : ConnectionPropertiesFactory.CreatePostgresConnection(
+                        host: Module1.Settings.host,
+                        user: Module1.Settings.usuario,
+                        password: Module1.Settings.contraseña,
+                        database: Module1.Settings.baseDeDatos
+                    );
 
                 List<PtAddressGralEntity> ciudades = null;
 
@@ -147,9 +148,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         private void HandleOracleConnection(string input, string cityCode, string cityDesc)
         {
             var props = ConnectionPropertiesFactory.CreateOracleConnection(
-                instance: Module1.Settings.host,
+                host: Module1.Settings.host,
                 user: Module1.Settings.usuario,
-                password: Module1.Settings.contraseña
+                password: Module1.Settings.contraseña,
+                database: Module1.Settings.baseDeDatos
             );
 
             var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
@@ -194,7 +196,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         private void HandlePostgreSqlConnection(string input, string cityCode, string cityDesc)
         {
             var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-                instance: Module1.Settings.host,
+                host: Module1.Settings.host,
                 user: Module1.Settings.usuario,
                 password: Module1.Settings.contraseña,
                 database: Module1.Settings.baseDeDatos
