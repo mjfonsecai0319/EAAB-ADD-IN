@@ -16,61 +16,187 @@
                     Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Converter -->
+            <!-- Converters -->
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <conv:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            
+            <!-- Estilos Adaptativos para Tema Claro/Oscuro -->
+            
+            <!-- Estado de Conexión - Se adapta automáticamente al tema -->
+            <Style x:Key="ConnectionStatusBorderStyle" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="10"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+            </Style>
+
+            <!-- TextBlocks con tema adaptativo -->
+            <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,5"/>
+            </Style>
+
+            <Style x:Key="StatusTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextSecondaryBrush}"/>
+            </Style>
+
+            <!-- ComboBox con tema adaptativo -->
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+            </Style>
+
+            <!-- TextBox con tema adaptativo -->
+            <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- Botón de refrescar -->
+            <Style x:Key="RefreshButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="5"/>
+                <Setter Property="Margin" Value="8,0,0,0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Botón principal -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="16,8"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray155}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- ProgressBar con tema -->
+            <Style x:Key="ThemedProgressBarStyle" TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_Blue}"/>
+                <Setter Property="Height" Value="4"/>
+                <Setter Property="Margin" Value="0,8,0,0"/>
+            </Style>
+
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Contenido principal -->
-        <StackPanel Grid.Row="0">
-            <TextBlock Text="Seleccione ciudad:"
-                       Margin="0 0 0 2"
-                       VerticalAlignment="Center"
-                       Style="{DynamicResource Esri_TextBlockH3}" />
+        <!-- Estado de conexión -->
+        <Border Grid.Row="0" Style="{StaticResource ConnectionStatusBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" Text="Estado:" 
+                          Style="{StaticResource StatusTextStyle}"
+                          VerticalAlignment="Center"/>
+                
+                <TextBlock Grid.Column="1" Text="{Binding ConnectionStatus}" 
+                          Style="{StaticResource StatusTextStyle}"
+                          FontWeight="SemiBold"
+                          Margin="5,0,0,0"
+                          VerticalAlignment="Center"/>
+                
+                <Button Grid.Column="2" 
+                        Content="⟳" 
+                        Style="{StaticResource RefreshButtonStyle}"
+                        Command="{Binding RefreshCitiesCommand}"
+                        ToolTip="Refrescar ciudades"
+                        Width="24" Height="24"/>
+            </Grid>
+        </Border>
 
+        <!-- Contenido principal -->
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="Seleccione ciudad:" Style="{StaticResource HeaderTextStyle}" />
+            
             <ComboBox x:Name="CityComboBox"
-                      Margin="0 0 0 5"
+                      Style="{StaticResource ThemedComboBoxStyle}"
                       ItemsSource="{Binding Cities}"
                       SelectedItem="{Binding SelectedCity}"
                       DisplayMemberPath="CityDesc"
-                      SelectedValuePath="CityCode" />
+                      SelectedValuePath="CityCode">
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                        <Setter Property="Padding" Value="8,4"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+            </ComboBox>
 
-            <TextBlock Text="Ingrese dirección:"
-                       Margin="0 0 0 2"
-                       VerticalAlignment="Center"
-                       Style="{DynamicResource Esri_TextBlockH3}" />
-
+            <TextBlock Text="Ingrese dirección:" Style="{StaticResource HeaderTextStyle}" />
+            
             <TextBox x:Name="InputBox"
-                     Margin="0 0 0 5"
-                     Text="{Binding AddressInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                     Style="{StaticResource ThemedTextBoxStyle}"
+                     Text="{Binding AddressInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Segoe UI" />
         </StackPanel>
 
         <!-- Barra de progreso + mensaje -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+        <StackPanel Grid.Row="2" Margin="0,10,0,15">
             <TextBlock Text="{Binding StatusMessage}"
-                       Style="{DynamicResource Esri_TextBlockRegular}"
-                       FontWeight="Bold"
-                       Margin="0,0,0,5"
+                       Style="{StaticResource StatusTextStyle}"
+                       FontWeight="Medium"
+                       TextWrapping="Wrap"
                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ProgressBar Height="20"
+            
+            <ProgressBar Style="{StaticResource ThemedProgressBarStyle}"
                          IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
 
-        <!-- Botón -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+        <!-- Botones -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="SearchButton"
-                    Content="Buscar"
-                    Margin="5 0 0 0"
-                    Style="{DynamicResource Esri_Button}"
-                    Command="{Binding SearchCommand}" />
+                    Content="Buscar Dirección"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Command="{Binding SearchCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}" />
         </StackPanel>
     </Grid>
 </UserControl>

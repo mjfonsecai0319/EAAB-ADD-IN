@@ -5,84 +5,269 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
              xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
+             xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
              mc:Ignorable="d">
 
     <UserControl.Resources>
-        <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <extensions:DesignOnlyResourceDictionary 
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            
+            <!-- Estilos adaptativos para tema claro/oscuro -->
+            
+            <!-- Container principal -->
+            <Style x:Key="MainContainerStyle" TargetType="Grid">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+            </Style>
+
+            <!-- Headers -->
+            <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+            </Style>
+
+            <!-- Labels -->
+            <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+                <Setter Property="Width" Value="120"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- Inputs generales -->
+            <Style x:Key="BaseInputStyle">
+                <Setter Property="FrameworkElement.Width" Value="220"/>
+                <Setter Property="FrameworkElement.Height" Value="28"/>
+                <Setter Property="FrameworkElement.Margin" Value="0,0,0,12"/>
+            </Style>
+
+            <!-- TextBox -->
+            <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseInputStyle}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Style.Triggers>
+                    <Trigger Property="IsFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- ComboBox -->
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource BaseInputStyle}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- PasswordBox -->
+            <Style x:Key="ThemedPasswordBoxStyle" TargetType="PasswordBox" BasedOn="{StaticResource BaseInputStyle}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Style.Triggers>
+                    <Trigger Property="IsFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Botón primario -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="16,8"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BluePressed}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Botón secundario -->
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="16,8"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Status containers -->
+            <Style x:Key="StatusContainerStyle" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="12"/>
+                <Setter Property="Margin" Value="0,15,0,0"/>
+            </Style>
+
+            <Style x:Key="InstructionsContainerStyle" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="15"/>
+                <Setter Property="Margin" Value="0,20,0,0"/>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <UserControl.DataContext>
         <vm:PropertyPage1ViewModel/>
     </UserControl.DataContext>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Style="{StaticResource MainContainerStyle}" Margin="25">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource SectionHeaderStyle}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5">
-            <TextBlock Text="Motor:" Width="120" VerticalAlignment="Center"/>
-            <ComboBox Width="200"
-                      ItemsSource="{Binding MotoresBD}"
-                      SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                <!-- Campos de configuración -->
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="1">
-            <TextBlock Text="Host:" Width="120" VerticalAlignment="Center"/>
-            <TextBox Width="200"
-                     Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                    <!-- Motor -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                              Style="{StaticResource ThemedComboBoxStyle}"
+                              ItemsSource="{Binding MotoresBD}"
+                              SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="2">
-            <TextBlock Text="Puerto:" Width="120" VerticalAlignment="Center"/>
-            <TextBox Width="200"
-                     Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                    <!-- Host -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Style="{StaticResource ThemedTextBoxStyle}"
+                             Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="3">
-            <TextBlock Text="Base de Datos:" Width="120" VerticalAlignment="Center"/>
-            <TextBox Width="200"
-                     Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                    <!-- Puerto -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" 
+                             Style="{StaticResource ThemedTextBoxStyle}"
+                             Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="4">
-            <TextBlock Text="Usuario:" Width="120" VerticalAlignment="Center"/>
-            <TextBox Width="200"
-                     Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                    <!-- Base de Datos -->
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBox Grid.Row="3" Grid.Column="1" 
+                             Style="{StaticResource ThemedTextBoxStyle}"
+                             Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="5">
-            <TextBlock Text="Contraseña:" Width="120" VerticalAlignment="Center"/>
-            <PasswordBox Width="200"
-                         PasswordChanged="PasswordBox_PasswordChanged"/>
-        </StackPanel>
+                    <!-- Usuario -->
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBox Grid.Row="4" Grid.Column="1" 
+                             Style="{StaticResource ThemedTextBoxStyle}"
+                             Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,5" Grid.Row="6"
-                    Visibility="{Binding MotorSeleccionado,
-                                         Converter={StaticResource BooleanToVisibilityConverter},
-                                         ConverterParameter=Oracle}">
-            <TextBlock Text="Oracle Path:" Width="120" VerticalAlignment="Center"/>
-            <TextBox Width="200"
-                     Text="{Binding OraclePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-        </StackPanel>
+                    <!-- Contraseña -->
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"/>
+                    <PasswordBox Grid.Row="5" Grid.Column="1" 
+                                 Style="{StaticResource ThemedPasswordBoxStyle}"
+                                 x:Name="PasswordBox"
+                                 PasswordChanged="PasswordBox_PasswordChanged"/>
 
-        <Button Grid.Row="7"
-                Content="Probar Conexión"
-                Width="150" Height="30" Margin="0,10,0,0"
-                Command="{Binding ProbarConexionCommand}"/>
+                    <!-- Oracle Path (solo visible para Oracle) -->
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Oracle Path:" Style="{StaticResource FieldLabelStyle}"
+                               Visibility="{Binding MotorSeleccionado, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Oracle}"/>
+                    <TextBox Grid.Row="6" Grid.Column="1" 
+                             Style="{StaticResource ThemedTextBoxStyle}"
+                             Text="{Binding OraclePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Visibility="{Binding MotorSeleccionado, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Oracle}"/>
+                </Grid>
 
-        <TextBlock Grid.Row="8"
-                   Text="{Binding MensajeConexion}"
-                   FontWeight="Bold"
-                   Foreground="DarkRed"
-                   Margin="0,10,0,0"/>
+                <!-- Botones de acción -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0">
+                    <Button Content="Probar Conexión"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,10,0"
+                            Command="{Binding ProbarConexionCommand}"/>
+                    
+                    <Button Content="Guardar y Conectar"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding GuardarYReconectarCommand}"/>
+                </StackPanel>
+
+                <!-- Mensaje de estado -->
+                <Border Style="{StaticResource StatusContainerStyle}" 
+                        Visibility="{Binding MensajeConexion, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="{Binding MensajeConexion}"
+                               FontWeight="Medium"
+                               Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- Instrucciones -->
+                <Border Style="{StaticResource InstructionsContainerStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Instrucciones:" 
+                                   FontWeight="Bold" 
+                                   FontSize="14"
+                                   Foreground="{DynamicResource Esri_Blue}"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock TextWrapping="Wrap" 
+                                   LineHeight="20"
+                                   Foreground="{DynamicResource Esri_TextPrimaryBrush}">
+                            <Run Text="1. Configure todos los parámetros de conexión"/>
+                            <LineBreak/>
+                            <Run Text="2. Haga clic en "/>
+                            <Run Text="'Probar Conexión'" FontWeight="Medium"/>
+                            <Run Text=" para verificar"/>
+                            <LineBreak/>
+                            <Run Text="3. Si la prueba es exitosa, haga clic en "/>
+                            <Run Text="'Guardar y Conectar'" FontWeight="Medium"/>
+                            <LineBreak/>
+                            <Run Text="4. La configuración se guardará automáticamente para futuras sesiones"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

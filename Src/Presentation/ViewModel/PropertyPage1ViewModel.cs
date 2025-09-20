@@ -8,7 +8,7 @@ using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Framework.Contracts;
 using System;
 using EAABAddIn.Src.Presentation.Base;
-
+using System.Diagnostics;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
@@ -16,6 +16,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
     {
         private readonly Settings _settings;
         private readonly ConnectionValidatorService _validator;
+        private bool _isConnecting = false;
 
         public new event PropertyChangedEventHandler PropertyChanged;
 
@@ -74,7 +75,16 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _mensajeConexion, value);
         }
 
+        // 🔹 Nueva propiedad para mostrar estado de conexión
+        private bool _isConnected;
+        public bool IsConnected
+        {
+            get => _isConnected;
+            set => SetProperty(ref _isConnected, value);
+        }
+
         public ICommand ProbarConexionCommand { get; }
+        public ICommand GuardarYReconectarCommand { get; }
 
         public PropertyPage1ViewModel()
         {
@@ -82,7 +92,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _validator = new ConnectionValidatorService();
             LoadSettings();
 
-            ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync());
+            ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync(), () => !_isConnecting);
+            GuardarYReconectarCommand = new RelayCommand(async () => await GuardarYReconectarAsync(), () => !_isConnecting && IsValidConfiguration());
         }
 
         private void LoadSettings()
@@ -94,6 +105,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             Puerto = _settings.puerto ?? (MotorSeleccionado == "Oracle" ? "1521" : "5432");
             OraclePath = _settings.oracle_path ?? string.Empty;
             BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+
+            // Verificar si hay una configuración válida guardada
+            CheckConnectionStatus();
         }
 
         private void SaveSettings()
@@ -106,6 +120,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.oracle_path = OraclePath;
             _settings.baseDeDatos = BaseDeDatos;
             _settings.Save();
+
+            Debug.WriteLine("💾 Configuración guardada automáticamente");
         }
 
         public DatabaseConnectionProperties GetDatabaseConnectionProperties()
@@ -118,12 +134,113 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         public async Task ProbarConexionAsync()
         {
-            var connectionProps = GetDatabaseConnectionProperties();
-            var result = await _validator.TestConnectionAsync(connectionProps, MotorSeleccionado);
+            if (_isConnecting) return;
 
-            MensajeConexion = result.IsSuccess
-                ? "✅ Conexión exitosa"
-                : $"❌ Error: {result.Message}";
+            _isConnecting = true;
+            MensajeConexion = "🔄 Probando conexión...";
+            
+            try
+            {
+                var connectionProps = GetDatabaseConnectionProperties();
+                var result = await _validator.TestConnectionAsync(connectionProps, MotorSeleccionado);
+
+                if (result.IsSuccess)
+                {
+                    MensajeConexion = "✅ Conexión exitosa";
+                    IsConnected = true;
+                }
+                else
+                {
+                    MensajeConexion = $"❌ Error: {result.Message}";
+                    IsConnected = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                MensajeConexion = $"❌ Error inesperado: {ex.Message}";
+                IsConnected = false;
+            }
+            finally
+            {
+                _isConnecting = false;
+            }
+        }
+
+        /// <summary>
+        /// Guarda la configuración y establece la conexión en el módulo principal
+        /// </summary>
+        public async Task GuardarYReconectarAsync()
+        {
+            if (_isConnecting) return;
+
+            _isConnecting = true;
+            MensajeConexion = "🔄 Guardando configuración y conectando...";
+
+            try
+            {
+                // Primero guardar la configuración
+                SaveSettings();
+
+                // Luego reconectar el módulo principal
+                await Module1.ReconnectDatabaseAsync();
+
+                MensajeConexion = "✅ Configuración guardada y conexión establecida";
+                IsConnected = true;
+            }
+            catch (Exception ex)
+            {
+                MensajeConexion = $"❌ Error al conectar: {ex.Message}";
+                IsConnected = false;
+            }
+            finally
+            {
+                _isConnecting = false;
+            }
+        }
+
+        /// <summary>
+        /// Verifica si la configuración actual es válida
+        /// </summary>
+        private bool IsValidConfiguration()
+        {
+            return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
+                   !string.IsNullOrWhiteSpace(Host) &&
+                   !string.IsNullOrWhiteSpace(Usuario) &&
+                   !string.IsNullOrWhiteSpace(Contraseña) &&
+                   !string.IsNullOrWhiteSpace(BaseDeDatos);
+        }
+
+        /// <summary>
+        /// Verifica el estado de la conexión actual
+        /// </summary>
+        private void CheckConnectionStatus()
+        {
+            try
+            {
+                var dbService = Module1.DatabaseConnection;
+                if (dbService?.Geodatabase != null)
+                {
+                    IsConnected = true;
+                    MensajeConexion = "✅ Conexión activa";
+                }
+                else
+                {
+                    IsConnected = false;
+                    if (IsValidConfiguration())
+                    {
+                        MensajeConexion = "⚠️ Configuración válida pero no conectado. Haga clic en 'Guardar y Conectar'";
+                    }
+                    else
+                    {
+                        MensajeConexion = "❌ Configure los parámetros de conexión";
+                    }
+                }
+            }
+            catch
+            {
+                IsConnected = false;
+                MensajeConexion = "❌ Error al verificar el estado de conexión";
+            }
         }
     }
 }

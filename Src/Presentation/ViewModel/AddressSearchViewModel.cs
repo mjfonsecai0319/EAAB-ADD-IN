@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Diagnostics;
 
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
@@ -37,6 +38,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 {
                     _selectedCity = value;
                     NotifyPropertyChanged(nameof(SelectedCity));
+                    Debug.WriteLine($"Ciudad seleccionada: {value?.CityDesc}");
                 }
             }
         }
@@ -55,57 +57,189 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
+        private string _connectionStatus;
+        public string ConnectionStatus
+        {
+            get => _connectionStatus;
+            set
+            {
+                if (_connectionStatus != value)
+                {
+                    _connectionStatus = value;
+                    NotifyPropertyChanged(nameof(ConnectionStatus));
+                }
+            }
+        }
+
         public ICommand SearchCommand { get; }
+        public ICommand RefreshCitiesCommand { get; }
 
         public AddressSearchViewModel()
         {
+            Debug.WriteLine("=== Inicializando AddressSearchViewModel ===");
             Cities = new ObservableCollection<PtAddressGralEntity>();
             SelectedCity = null;
             SearchCommand = new AsyncRelayCommand(OnSearchAsync);
-            _ = LoadCitiesAsync();
+            RefreshCitiesCommand = new AsyncRelayCommand(LoadCitiesAsync);
+            
+            // Verificar estado inicial
+            CheckInitialConnectionStatus();
+            
+            // NO cargar ciudades automáticamente - solo cuando el usuario haga clic en refrescar
+            // O cuando se detecte una conexión válida
+            if (IsConnectionReady())
+            {
+                _ = LoadCitiesAsync();
+            }
+            else
+            {
+                ConnectionStatus = " Configure la conexión primero";
+                StatusMessage = "Configure la conexión a la base de datos en las opciones";
+            }
+        }
+
+        private void CheckInitialConnectionStatus()
+        {
+            try
+            {
+                var settings = Module1.Settings;
+                var dbService = Module1.DatabaseConnection;
+                
+                Debug.WriteLine($"Settings motor: {settings?.motor}");
+                Debug.WriteLine($"Settings host: {settings?.host}");
+                Debug.WriteLine($"Settings usuario: {settings?.usuario}");
+                Debug.WriteLine($"Settings baseDeDatos: {settings?.baseDeDatos}");
+                Debug.WriteLine($"DatabaseConnection service: {(dbService != null ? "EXISTS" : "NULL")}");
+                Debug.WriteLine($"Geodatabase: {(dbService?.Geodatabase != null ? "CONNECTED" : "NOT CONNECTED")}");
+
+                if (dbService?.Geodatabase == null)
+                {
+                    ConnectionStatus = "Sin conexión a BD";
+                }
+                else
+                {
+                    ConnectionStatus = "Conectado a BD";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error checking connection status: {ex.Message}");
+                ConnectionStatus = "Error de conexión";
+            }
         }
 
         private async Task LoadCitiesAsync()
         {
+            Debug.WriteLine("=== Iniciando carga de ciudades ===");
+            IsBusy = true;
+            StatusMessage = "Cargando ciudades...";
+
             try
             {
-                var engine = Module1.Settings.motor.ToDBEngine();
+                // Verificar configuración
+                var settings = Module1.Settings;
+                if (string.IsNullOrWhiteSpace(settings?.motor) || 
+                    string.IsNullOrWhiteSpace(settings?.host) ||
+                    string.IsNullOrWhiteSpace(settings?.usuario))
+                {
+                    Debug.WriteLine("Configuración incompleta");
+                    ConnectionStatus = "Configuración incompleta";
+                    StatusMessage = "Configure la conexión en las opciones";
+                    return;
+                }
 
-                var props = engine == DBEngine.Oracle
-                    ? ConnectionPropertiesFactory.CreateOracleConnection(
-                        host: Module1.Settings.host,
-                        user: Module1.Settings.usuario,
-                        password: Module1.Settings.contraseña,
-                        database: Module1.Settings.baseDeDatos
-                    )
-                    : ConnectionPropertiesFactory.CreatePostgresConnection(
-                        host: Module1.Settings.host,
-                        user: Module1.Settings.usuario,
-                        password: Module1.Settings.contraseña,
-                        database: Module1.Settings.baseDeDatos
-                    );
+                // Verificar que la conexión esté disponible
+                var dbService = Module1.DatabaseConnection;
+                if (dbService?.Geodatabase == null)
+                {
+                    Debug.WriteLine("No hay conexión a la base de datos");
+                    ConnectionStatus = "Sin conexión a BD";
+                    StatusMessage = "No hay conexión a la base de datos";
+                    
+                    // Intentar reconectar
+                    Debug.WriteLine("Intentando reconectar...");
+                    try
+                    {
+                        await Module1.ReconnectDatabaseAsync();
+                        Debug.WriteLine("Reconexión exitosa");
+                        ConnectionStatus = "Reconectado";
+                    }
+                    catch (Exception reconnectEx)
+                    {
+                        Debug.WriteLine($"Fallo al reconectar: {reconnectEx.Message}");
+                        ConnectionStatus = "Fallo al reconectar";
+                        StatusMessage = "Configure la conexión en las opciones";
+                        return;
+                    }
+                }
 
+                var engine = settings.motor.ToDBEngine();
+                var props = GetDatabaseConnectionProperties();
+                
+                Debug.WriteLine($"Motor de BD: {engine}");
+                Debug.WriteLine($"Propiedades de conexión creadas");
+                
                 List<PtAddressGralEntity> ciudades = null;
 
                 await QueuedTask.Run(() =>
                 {
-                    IPtAddressGralEntityRepository repo = engine switch
+                    try
                     {
-                        DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                        DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
-                        _ => throw new NotSupportedException("Motor no soportado")
-                    };
+                        Debug.WriteLine("Creando repositorio...");
+                        IPtAddressGralEntityRepository repo = engine switch
+                        {
+                            DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                            DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                            _ => throw new NotSupportedException($"Motor {engine} no soportado")
+                        };
 
-                    ciudades = repo.GetAllCities(props);
+                        Debug.WriteLine("Obteniendo ciudades del repositorio...");
+                        ciudades = repo.GetAllCities(props);
+                        Debug.WriteLine($"Ciudades obtenidas: {ciudades?.Count ?? 0}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($" Error en QueuedTask: {ex.Message}");
+                        Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+                        throw;
+                    }
                 });
 
+                // Actualizar UI
                 Cities.Clear();
-                ciudades.ForEach(Cities.Add);
-                SelectedCity = ciudades?.FirstOrDefault();
+                if (ciudades != null && ciudades.Any())
+                {
+                    foreach (var ciudad in ciudades)
+                    {
+                        Cities.Add(ciudad);
+                        Debug.WriteLine($"Ciudad agregada: {ciudad.CityDesc} ({ciudad.CityCode})");
+                    }
+                    
+                    SelectedCity = ciudades.FirstOrDefault();
+                    ConnectionStatus = $" {ciudades.Count} ciudades cargadas";
+                    StatusMessage = string.Empty;
+                    Debug.WriteLine($"Se cargaron {ciudades.Count} ciudades exitosamente");
+                }
+                else
+                {
+                    Debug.WriteLine("No se encontraron ciudades");
+                    ConnectionStatus = "Sin ciudades disponibles";
+                    StatusMessage = "No se encontraron ciudades en la base de datos";
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar ciudades: {ex.Message}", "Error");
+                Debug.WriteLine($"Error al cargar ciudades: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+                ConnectionStatus = "Error al cargar ciudades";
+                StatusMessage = $"Error: {ex.Message}";
+                // NO mostrar MessageBox - solo logging y UI status
+            }
+            finally
+            {
+                IsBusy = false;
+                if (string.IsNullOrEmpty(StatusMessage))
+                    StatusMessage = string.Empty;
             }
         }
 
@@ -116,132 +250,190 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
+                // Validaciones iniciales
+                if (string.IsNullOrWhiteSpace(AddressInput))
+                {
+                    StatusMessage = "Ingrese una dirección para buscar";
+                    return;
+                }
+                if (SelectedCity is null)
+                {
+                    StatusMessage = "Seleccione una ciudad";
+                    return;
+                }
+
+                // Verificar conexión a base de datos
+                var dbService = Module1.DatabaseConnection;
+                if (dbService?.Geodatabase == null)
+                {
+                    StatusMessage = "Sin conexión a BD - Configure en opciones";
+                    return;
+                }
+
                 await QueuedTask.Run(() =>
                 {
-                    if (string.IsNullOrWhiteSpace(AddressInput))
-                    {
-                        MessageBox.Show("Por favor ingrese una dirección para buscar.", "Validación");
-                        return;
-                    }
-                    if (SelectedCity is null)
-                    {
-                        MessageBox.Show("Por favor seleccione una ciudad.", "Validación");
-                        return;
-                    }
-
                     var engine = Module1.Settings.motor.ToDBEngine();
-
+                    
                     if (engine == DBEngine.Oracle)
                         HandleOracleConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else if (engine == DBEngine.PostgreSQL)
                         HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
+                    else
+                        StatusMessage = "Motor de BD no configurado";
                 });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error durante la búsqueda: {ex.Message}");
+                StatusMessage = $"Error: {ex.Message}";
             }
             finally
             {
                 IsBusy = false;
-                StatusMessage = string.Empty;
+                // No limpiar StatusMessage automáticamente para mostrar el resultado
             }
         }
 
-
         private void HandleOracleConnection(string input, string cityCode, string cityDesc)
         {
-            var props = ConnectionPropertiesFactory.CreateOracleConnection(
-                host: Module1.Settings.host,
-                user: Module1.Settings.usuario,
-                password: Module1.Settings.contraseña,
-                database: Module1.Settings.baseDeDatos
-            );
-
-            var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
-            var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
-
-            var model = new AddressNormalizerModel { Address = input };
-            var address = addressNormalizer.Invoke(model);
-
-            // Dirección a usar en la búsqueda
-            var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-                ? address.AddressEAAB
-                : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                    ? address.AddressNormalizer
-                    : input);
-
-            var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
-
-            if (result == null || result.Count == 0)
+            try
             {
-                MessageBox.Show(
-                    $"No se encontró una coincidencia en {SelectedCity.CityDesc}. " +
-                    $"Verifique la ciudad y la dirección {searchAddress}.",
-                    "Validación"
-                );
-                return;
-            }
+                var props = GetDatabaseConnectionProperties();
+                
+                var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
+                var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
 
-            foreach (var addr in result)
-            {
-                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                var model = new AddressNormalizerModel { Address = input };
+                var address = addressNormalizer.Invoke(model);
+
+                // Dirección a usar en la búsqueda
+                var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                    ? address.AddressEAAB
+                    : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                        ? address.AddressNormalizer
+                        : input);
+
+                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
+
+                if (result == null || result.Count == 0)
                 {
-                    addr.CityDesc = SelectedCity.CityDesc;
-                    addr.FullAddressOld = AddressInput;
-                    _ = ResultsLayerService.AddPointAsync(addr);
+                    StatusMessage = $"Sin coincidencias en {SelectedCity.CityDesc}";
+                    return;
                 }
-            }
 
-            AddressInput = string.Empty;
-            MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
+                foreach (var addr in result)
+                {
+                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    {
+                        addr.CityDesc = SelectedCity.CityDesc;
+                        addr.FullAddressOld = AddressInput;
+                        _ = ResultsLayerService.AddPointAsync(addr);
+                    }
+                }
+
+                AddressInput = string.Empty;
+                StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error en búsqueda Oracle: {ex.Message}");
+                StatusMessage = $"Error Oracle: {ex.Message}";
+            }
         }
 
         private void HandlePostgreSqlConnection(string input, string cityCode, string cityDesc)
         {
-            var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-                host: Module1.Settings.host,
-                user: Module1.Settings.usuario,
-                password: Module1.Settings.contraseña,
-                database: Module1.Settings.baseDeDatos
-            );
-
-            var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
-            var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
-
-            var model = new AddressNormalizerModel { Address = input };
-            var address = addressNormalizer.Invoke(model);
-
-            // Dirección a usar en la búsqueda
-            var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-                ? address.AddressEAAB
-                : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                    ? address.AddressNormalizer
-                    : input);
-
-            var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
-
-            // 🔎 Doble verificación
-           //  result = result.Where(r => r.CityCode == cityCode).ToList();
-
-            if (result == null || result.Count == 0)
+            try
             {
-                MessageBox.Show(
-                    $"No se encontró una coincidencia en {SelectedCity.CityDesc}. " +
-                    $"Verifique la ciudad y la dirección {searchAddress}.",
-                    "Validación"
-                );
-                return;
-            }
+                var props = GetDatabaseConnectionProperties();
+                
+                var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
+                var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
 
-            foreach (var addr in result)
-            {
-                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                var model = new AddressNormalizerModel { Address = input };
+                var address = addressNormalizer.Invoke(model);
+
+                // Dirección a usar en la búsqueda
+                var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                    ? address.AddressEAAB
+                    : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                        ? address.AddressNormalizer
+                        : input);
+
+                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
+
+                if (result == null || result.Count == 0)
                 {
-                    addr.CityDesc = SelectedCity.CityDesc;
-                    addr.FullAddressOld = AddressInput;
-                    _ = ResultsLayerService.AddPointAsync(addr);
+                    StatusMessage = $" Sin coincidencias en {SelectedCity.CityDesc}";
+                    return;
                 }
-            }
 
-            AddressInput = string.Empty;
-            MessageBox.Show("Dirección procesada con éxito.", "Resultado de Normalización");
+                foreach (var addr in result)
+                {
+                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    {
+                        addr.CityDesc = SelectedCity.CityDesc;
+                        addr.FullAddressOld = AddressInput;
+                        _ = ResultsLayerService.AddPointAsync(addr);
+                    }
+                }
+
+                AddressInput = string.Empty;
+                StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($" Error en búsqueda PostgreSQL: {ex.Message}");
+                StatusMessage = $" Error PostgreSQL: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// Verifica si la conexión está lista para ser utilizada
+        /// </summary>
+        private bool IsConnectionReady()
+        {
+            try
+            {
+                var settings = Module1.Settings;
+                var dbService = Module1.DatabaseConnection;
+
+                // Verificar configuración básica
+                if (string.IsNullOrWhiteSpace(settings?.motor) ||
+                    string.IsNullOrWhiteSpace(settings?.host) ||
+                    string.IsNullOrWhiteSpace(settings?.usuario) ||
+                    string.IsNullOrWhiteSpace(settings?.baseDeDatos))
+                {
+                    return false;
+                }
+
+                // Verificar conexión activa
+                return dbService?.Geodatabase != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene las propiedades de conexión actuales desde la configuración
+        /// </summary>
+        private ArcGIS.Core.Data.DatabaseConnectionProperties GetDatabaseConnectionProperties()
+        {
+            var settings = Module1.Settings;
+            var engine = settings.motor.ToDBEngine();
+
+            return engine switch
+            {
+                DBEngine.Oracle => ConnectionPropertiesFactory.CreateOracleConnection(
+                    settings.host, settings.usuario, settings.contraseña, 
+                    settings.baseDeDatos, settings.puerto ?? "1521"),
+                DBEngine.PostgreSQL => ConnectionPropertiesFactory.CreatePostgresConnection(
+                    settings.host, settings.usuario, settings.contraseña, 
+                    settings.baseDeDatos, settings.puerto ?? "5432"),
+                _ => throw new NotSupportedException($"Motor {settings.motor} no soportado")
+            };
         }
     }
 }
