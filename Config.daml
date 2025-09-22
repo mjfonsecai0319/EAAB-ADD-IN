@@ -27,6 +27,7 @@
         <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1">
           <button refID="EAABAddIn_Button1" size="large" />
           <button refID="EAABAddIn_Button2" size="large" />
+          <button refID="EAABAddIn_Button3" size="large" />
         </group>
       </groups>
 
@@ -54,6 +55,18 @@
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
         </button>
+
+        <button
+          id="EAABAddIn_Button3"
+          caption="Masivo"
+          className="EAABAddIn.Src.Presentation.View.Button3"
+          loadOnClick="true"
+          smallImage="Images\Settings.png"
+          largeImage="Images\Settings.png"
+          keytip="B3"
+        >
+          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+        </button>
       </controls>
 
       <dockPanes>
@@ -72,9 +85,14 @@
 
   <propertySheets>
     <updateSheet refID="esri_core_optionsPropertySheet">
-      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB-ADD-IN" group="Application">
+      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB ADD-IN" group="Application">
         <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
       </insertPage>
     </updateSheet>
+    <insertSheet id="EAABAddIn_PropertySheet1" caption="Opciones Geocodificación" hasGroups="true">
+      <page className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage2" caption="EAAB ADD-IN">
+        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
+      </page>
+    </insertSheet>
   </propertySheets>
 </ArcGIS>
