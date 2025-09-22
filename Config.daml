@@ -58,7 +58,7 @@
 
         <button
           id="EAABAddIn_Button3"
-          caption="Masivo"
+          caption="Ajustes"
           className="EAABAddIn.Src.Presentation.View.Button3"
           loadOnClick="true"
           smallImage="Images\Settings.png"
