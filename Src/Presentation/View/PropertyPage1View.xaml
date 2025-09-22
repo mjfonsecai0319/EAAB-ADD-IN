@@ -233,9 +233,8 @@
                             Command="{Binding GuardarYReconectarCommand}"/>
                 </StackPanel>
 
-                <!-- Mensaje de estado -->
-                <Border Style="{StaticResource StatusContainerStyle}" 
-                        Visibility="{Binding MensajeConexion, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <!-- Mensaje de estado - CORREGIDO -->
+                <Border Style="{StaticResource StatusContainerStyle}">
                     <TextBlock Text="{Binding MensajeConexion}"
                                FontWeight="Medium"
                                Foreground="{DynamicResource Esri_TextPrimaryBrush}"
