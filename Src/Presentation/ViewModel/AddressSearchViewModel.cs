@@ -333,7 +333,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         }
                         else if (src.Contains("esri"))
                         {
-                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                            addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
                         }
                         else
                         {
@@ -400,7 +400,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     }
                     else if (src.Contains("esri"))
                     {
-                        addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
                     }
                     else
                     {

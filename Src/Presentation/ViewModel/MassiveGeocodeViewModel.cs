@@ -150,7 +150,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                                     else if (src.Contains("esri"))
                                     {
                                         // Si existe campo numérico Score lo convertimos, si no usamos "N/A"
-                                        entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
+                                        entidad.ScoreText = entidad.Score?.ToString() ?? "ESRI";
                                     }
                                     // Fallback: si no aplican los anteriores, usar Score si existe o "N/A"
                                     else
