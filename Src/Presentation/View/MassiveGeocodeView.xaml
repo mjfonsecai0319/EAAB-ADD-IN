@@ -15,49 +15,52 @@
                     Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Converters -->
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <conv:InverseBooleanConverter x:Key="InverseBooleanConverter" />
-
-            <!-- Estilos adaptativos para tema claro/oscuro -->
             
-            <!-- Headers -->
-            <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="Margin" Value="0,0,0,8"/>
-                <Setter Property="TextWrapping" Value="Wrap"/>
-            </Style>
-
-            <!-- Info text -->
-            <Style x:Key="InfoTextStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="12"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextSecondaryBrush}"/>
-                <Setter Property="TextWrapping" Value="Wrap"/>
-                <Setter Property="LineHeight" Value="16"/>
-            </Style>
-
-            <!-- File input container -->
-            <Style x:Key="FileInputContainerStyle" TargetType="Border">
+            <Style x:Key="ConnectionStatusBorderStyle" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="CornerRadius" Value="4"/>
-                <Setter Property="Padding" Value="15"/>
-                <Setter Property="Margin" Value="0,0,0,20"/>
+                <Setter Property="Padding" Value="10"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
             </Style>
 
-            <!-- TextBox for file path -->
-            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox">
+            <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,5"/>
+            </Style>
+
+            <Style x:Key="StatusTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextSecondaryBrush}"/>
+            </Style>
+
+            <Style x:Key="InfoTextStyle" TargetType="TextBlock" BasedOn="{StaticResource StatusTextStyle}">
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="LineHeight" Value="16"/>
+                <Setter Property="Margin" Value="0,0,0,10"/>
+            </Style>
+
+            <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ThemedTextBoxStyle}">
+                <Setter Property="IsReadOnly" Value="True"/>
                 <Setter Property="Height" Value="32"/>
                 <Setter Property="Padding" Value="10,6"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="IsReadOnly" Value="True"/>
+                <Setter Property="Margin" Value="0"/>
                 <Style.Triggers>
                     <Trigger Property="IsReadOnly" Value="True">
                         <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
@@ -66,8 +69,7 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Browse button -->
-            <Style x:Key="BrowseButtonStyle" TargetType="Button">
+            <Style x:Key="BrowseButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
@@ -84,19 +86,17 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Process button -->
-            <Style x:Key="ProcessButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{DynamicResource Esri_Green}"/>
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
                 <Setter Property="Foreground" Value="White"/>
                 <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Height" Value="36"/>
-                <Setter Property="Padding" Value="20,8"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="16,8"/>
                 <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="FontSize" Value="14"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_GreenHover}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}"/>
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
                         <Setter Property="Background" Value="{DynamicResource Esri_Gray155}"/>
@@ -105,145 +105,122 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Progress container -->
-            <Style x:Key="ProgressContainerStyle" TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="4"/>
-                <Setter Property="Padding" Value="15"/>
-                <Setter Property="Margin" Value="0,0,0,15"/>
-            </Style>
-
-            <!-- Status message -->
-            <Style x:Key="StatusMessageStyle" TargetType="TextBlock">
-                <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="TextWrapping" Value="Wrap"/>
-                <Setter Property="Margin" Value="0,0,0,8"/>
-            </Style>
-
-            <!-- Progress bar -->
-            <Style x:Key="ThemedProgressBarStyle" TargetType="ProgressBar">
+            <Style x:Key="ThemedProgressBarStyle" TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_Blue}"/>
-                <Setter Property="Height" Value="6"/>
+                <Setter Property="Height" Value="4"/>
+                <Setter Property="Margin" Value="0,8,0,0"/>
             </Style>
 
-            <!-- Instructions container -->
-            <Style x:Key="InstructionsContainerStyle" TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Orange}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="4"/>
+            <Style x:Key="FileInputContainerStyle" TargetType="Border" BasedOn="{StaticResource ConnectionStatusBorderStyle}">
+                <Setter Property="Padding" Value="15"/>
+                <Setter Property="Margin" Value="0,0,0,20"/>
+            </Style>
+
+            <Style x:Key="InstructionsContainerStyle" TargetType="Border" BasedOn="{StaticResource ConnectionStatusBorderStyle}">
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
                 <Setter Property="Padding" Value="15"/>
                 <Setter Property="Margin" Value="0,15,0,20"/>
             </Style>
 
+            <Style x:Key="ProgressContainerStyle" TargetType="Border" BasedOn="{StaticResource ConnectionStatusBorderStyle}">
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
+                <Setter Property="Padding" Value="15"/>
+                <Setter Property="Margin" Value="0,0,0,15"/>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- Header -->
-            <RowDefinition Height="Auto" />  <!-- File input -->
-            <RowDefinition Height="Auto" />  <!-- Instructions -->
-            <RowDefinition Height="*" />     <!-- Spacer -->
-            <RowDefinition Height="Auto" />  <!-- Progress -->
-            <RowDefinition Height="Auto" />  <!-- Button -->
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" 
-                   Text="Geocodificación Masiva" 
-                   Style="{StaticResource HeaderTextStyle}"
-                   FontSize="16"
-                   Margin="0,0,0,15"/>
+            <TextBlock Grid.Row="0" 
+                       Text="Geocodificación Masiva" 
+                       Style="{StaticResource HeaderTextStyle}"
+                       FontSize="16"
+                       Margin="0,0,0,15"/>
 
-        <!-- File input section -->
-        <Border Grid.Row="1" Style="{StaticResource FileInputContainerStyle}">
-            <StackPanel>
-                <TextBlock Text="Seleccionar archivo Excel:" 
-                          Style="{StaticResource HeaderTextStyle}"
-                          Margin="0,0,0,10"/>
+            <Border Grid.Row="1" Style="{StaticResource FileInputContainerStyle}">
+                <StackPanel>
+                    <TextBlock Text="Seleccionar archivo Excel:" 
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Style="{StaticResource FilePathTextBoxStyle}"
+                                 Text="{Binding FileInput, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{Binding FileInput}" />
+                        <Button Grid.Column="2"
+                                Content="Examinar..."
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding OpenFileDialogCommand}" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource InfoTextStyle}">
+                        <Run Text="El archivo debe ser un Excel (.xlsx) con las columnas:"/>
+                        <LineBreak/>
+                        <Run Text="   • "/>
+                        <Run Text="Identificador" FontWeight="Medium"/>
+                        <Run Text=" - ID único del registro"/>
+                        <LineBreak/>
+                        <Run Text="   • "/>
+                        <Run Text="Direccion" FontWeight="Medium"/>
+                        <Run Text=" - Dirección a geocodificar"/>
+                        <LineBreak/>
+                        <Run Text="   • "/>
+                        <Run Text="Poblacion" FontWeight="Medium"/>
+                        <Run Text=" - Nombre de la ciudad o población"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
 
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+            <Border Grid.Row="2" Style="{StaticResource InstructionsContainerStyle}">
+                <StackPanel>
+                    <TextBlock Text="Proceso de Geocodificación:" 
+                               Style="{StaticResource HeaderTextStyle}"
+                               Foreground="{DynamicResource Esri_Blue}"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Style="{StaticResource InfoTextStyle}">
+                        <Run Text="1. Seleccione un archivo Excel válido"/>
+                        <LineBreak/>
+                        <Run Text="2. El sistema validará el formato y las columnas"/>
+                        <LineBreak/>
+                        <Run Text="3. Se procesarán todas las direcciones automáticamente"/>
+                        <LineBreak/>
+                        <Run Text="4. Los resultados se mostrarán en el mapa"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
 
-                    <TextBox Grid.Column="0"
-                             Style="{StaticResource FilePathTextBoxStyle}"
-                             Text="{Binding FileInput, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="{Binding FileInput}" />
-
-                    <Button Grid.Column="2"
-                            Content="Examinar..."
-                            Style="{StaticResource BrowseButtonStyle}"
-                            Command="{Binding OpenFileDialogCommand}" />
-                </Grid>
-
-                <TextBlock Style="{StaticResource InfoTextStyle}">
-                    <Run Text="El archivo debe ser un Excel (.xlsx) con las columnas:"/>
-                    <LineBreak/>
-                    <Run Text="   • "/>
-                    <Run Text="Identificador" FontWeight="Medium"/>
-                    <Run Text=" - ID único del registro"/>
-                    <LineBreak/>
-                    <Run Text="   • "/>
-                    <Run Text="Direccion" FontWeight="Medium"/>
-                    <Run Text=" - Dirección a geocodificar"/>
-                    <LineBreak/>
-                    <Run Text="   • "/>
-                    <Run Text="Poblacion" FontWeight="Medium"/>
-                    <Run Text=" - Nombre de la ciudad o población"/>
-                </TextBlock>
-            </StackPanel>
-        </Border>
-
-        <!-- Instructions -->
-        <Border Grid.Row="2" Style="{StaticResource InstructionsContainerStyle}">
-            <StackPanel>
-                <TextBlock Text="Proceso de Geocodificación:" 
-                          FontWeight="Bold"
-                          FontSize="13"
-                          Foreground="{DynamicResource Esri_Orange}"
-                          Margin="0,0,0,8"/>
-                <TextBlock Style="{StaticResource InfoTextStyle}">
-                    <Run Text="1. Seleccione un archivo Excel válido"/>
-                    <LineBreak/>
-                    <Run Text="2. El sistema validará el formato y las columnas"/>
-                    <LineBreak/>
-                    <Run Text="3. Se procesarán todas las direcciones automáticamente"/>
-                    <LineBreak/>
-                    <Run Text="4. Los resultados se mostrarán en el mapa"/>
-                </TextBlock>
-            </StackPanel>
-        </Border>
-
-        <!-- Progress section -->
-        <Border Grid.Row="4" 
-                Style="{StaticResource ProgressContainerStyle}"
-                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel>
+            <StackPanel Grid.Row="4" Margin="0,10,0,15">
                 <TextBlock Text="{Binding StatusMessage}"
-                          Style="{StaticResource StatusMessageStyle}" />
+                           Style="{StaticResource StatusTextStyle}"
+                           FontWeight="Medium"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <ProgressBar Style="{StaticResource ThemedProgressBarStyle}"
-                            IsIndeterminate="True" />
+                             IsIndeterminate="True"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </StackPanel>
-        </Border>
 
-        <!-- Process button -->
-        <StackPanel Grid.Row="5" 
-                    HorizontalAlignment="Right" 
-                    Orientation="Horizontal">
-            <Button Content="Procesar Archivo"
-                    Style="{StaticResource ProcessButtonStyle}"
-                    Command="{Binding SearchCommand}"
-                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}" />
-        </StackPanel>
-    </Grid>
+            <StackPanel Grid.Row="5" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button Content="Procesar Archivo"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding SearchCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
 </UserControl>
