@@ -136,7 +136,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
-                // Verificar configuración
                 var settings = Module1.Settings;
                 if (string.IsNullOrWhiteSpace(settings?.motor) || 
                     string.IsNullOrWhiteSpace(settings?.host) ||
@@ -148,7 +147,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return;
                 }
 
-                // Verificar que la conexión esté disponible
                 var dbService = Module1.DatabaseConnection;
                 if (dbService?.Geodatabase == null)
                 {
@@ -156,7 +154,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     ConnectionStatus = "Sin conexión a BD";
                     StatusMessage = "No hay conexión a la base de datos";
                     
-                    // Intentar reconectar
                     Debug.WriteLine("Intentando reconectar...");
                     try
                     {
@@ -205,7 +202,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     }
                 });
 
-                // Actualizar UI
                 Cities.Clear();
                 if (ciudades != null && ciudades.Any())
                 {
@@ -233,7 +229,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 ConnectionStatus = "Error al cargar ciudades";
                 StatusMessage = $"Error: {ex.Message}";
-                // NO mostrar MessageBox - solo logging y UI status
             }
             finally
             {
@@ -250,7 +245,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
-                // Validaciones iniciales
                 if (string.IsNullOrWhiteSpace(AddressInput))
                 {
                     StatusMessage = "Ingrese una dirección para buscar";
@@ -262,7 +256,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return;
                 }
 
-                // Verificar conexión a base de datos
                 var dbService = Module1.DatabaseConnection;
                 if (dbService?.Geodatabase == null)
                 {
@@ -290,7 +283,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             finally
             {
                 IsBusy = false;
-                // No limpiar StatusMessage automáticamente para mostrar el resultado
             }
         }
 
@@ -327,6 +319,27 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     {
                         addr.CityDesc = SelectedCity.CityDesc;
                         addr.FullAddressOld = AddressInput;
+
+                        // --- Asignar ScoreText según origen ---
+                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
+
+                        if (src.Contains("cat") || src.Contains("catastro"))
+                        {
+                            addr.ScoreText = "Aproximada por Catastro";
+                        }
+                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
+                        {
+                            addr.ScoreText = "Exacta";
+                        }
+                        else if (src.Contains("esri"))
+                        {
+                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        }
+                        else
+                        {
+                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        }
+
                         _ = ResultsLayerService.AddPointAsync(addr);
                     }
                 }
@@ -353,7 +366,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 var model = new AddressNormalizerModel { Address = input };
                 var address = addressNormalizer.Invoke(model);
 
-                // Dirección a usar en la búsqueda
                 var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
                     ? address.AddressEAAB
                     : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
@@ -369,14 +381,35 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 }
 
                 foreach (var addr in result)
+            {
+                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
                 {
-                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    addr.CityDesc = SelectedCity.CityDesc;
+                    addr.FullAddressOld = AddressInput;
+
+                    // --- Asignar ScoreText según origen ---
+                    var src = (addr.Source ?? string.Empty).ToLowerInvariant();
+
+                    if (src.Contains("cat") || src.Contains("catastro"))
                     {
-                        addr.CityDesc = SelectedCity.CityDesc;
-                        addr.FullAddressOld = AddressInput;
-                        _ = ResultsLayerService.AddPointAsync(addr);
+                        addr.ScoreText = "Aproximada por Catastro";
                     }
+                    else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
+                    {
+                        addr.ScoreText = "Exacta";
+                    }
+                    else if (src.Contains("esri"))
+                    {
+                        addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                    }
+                    else
+                    {
+                        addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                    }
+
+                    _ = ResultsLayerService.AddPointAsync(addr);
                 }
+            }
 
                 AddressInput = string.Empty;
                 StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
@@ -388,9 +421,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        /// <summary>
-        /// Verifica si la conexión está lista para ser utilizada
-        /// </summary>
         private bool IsConnectionReady()
         {
             try
@@ -398,7 +428,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 var settings = Module1.Settings;
                 var dbService = Module1.DatabaseConnection;
 
-                // Verificar configuración básica
                 if (string.IsNullOrWhiteSpace(settings?.motor) ||
                     string.IsNullOrWhiteSpace(settings?.host) ||
                     string.IsNullOrWhiteSpace(settings?.usuario) ||
@@ -407,7 +436,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return false;
                 }
 
-                // Verificar conexión activa
                 return dbService?.Geodatabase != null;
             }
             catch
@@ -416,9 +444,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        /// <summary>
-        /// Obtiene las propiedades de conexión actuales desde la configuración
-        /// </summary>
+
         private ArcGIS.Core.Data.DatabaseConnectionProperties GetDatabaseConnectionProperties()
         {
             var settings = Module1.Settings;
