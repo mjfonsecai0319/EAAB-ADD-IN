@@ -23,17 +23,14 @@ namespace EAABAddIn
         {
             var result = base.Initialize();
             
-            // 🔹 Inicializar el servicio pero NO conectar automáticamente
             _geodatabaseService = new DatabaseConnectionService();
             
-            // 🔹 Solo intentar conectar SI hay configuración válida
             var settings = Settings;
             if (IsValidConfiguration(settings))
             {
                 var engine = settings.motor.ToDBEngine();
                 if (engine != DBEngine.Unknown)
                 {
-                    // Conectar en background sin bloquear la inicialización
                     _ = QueuedTask.Run(async () => await HandleDatabaseConnectionAsync(engine));
                 }
             }
@@ -50,10 +47,6 @@ namespace EAABAddIn
             QueuedTask.Run(() => _geodatabaseService?.DisposeConnectionAsync());
             return base.CanUnload();
         }
-
-        /// <summary>
-        /// Verifica si la configuración es válida para realizar una conexión
-        /// </summary>
         private bool IsValidConfiguration(Settings settings)
         {
             return !string.IsNullOrWhiteSpace(settings.motor) &&
@@ -63,9 +56,6 @@ namespace EAABAddIn
                    !string.IsNullOrWhiteSpace(settings.baseDeDatos);
         }
 
-        /// <summary>
-        /// Maneja la conexión a la base de datos de forma asíncrona
-        /// </summary>
         private async Task HandleDatabaseConnectionAsync(DBEngine engine)
         {
             try
@@ -94,13 +84,9 @@ namespace EAABAddIn
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ Error al establecer conexión automática: {ex.Message}");
-                // No lanzar excepción para no bloquear la aplicación
             }
         }
 
-        /// <summary>
-        /// Método público para reconectar cuando se cambie la configuración
-        /// </summary>
         public static async Task ReconnectDatabaseAsync()
         {
             try
@@ -108,11 +94,9 @@ namespace EAABAddIn
                 var instance = Current;
                 if (_geodatabaseService != null)
                 {
-                    // Cerrar conexión existente
                     await _geodatabaseService.DisposeConnectionAsync();
                 }
 
-                // Crear nueva conexión
                 var settings = Settings;
                 if (instance.IsValidConfiguration(settings))
                 {
@@ -126,7 +110,7 @@ namespace EAABAddIn
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ Error en ReconnectDatabaseAsync: {ex.Message}");
-                throw; // Aquí sí lanzamos la excepción porque es una operación explícita del usuario
+                throw; 
             }
         }
     }

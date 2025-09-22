@@ -29,7 +29,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             storage = value;
             OnPropertyChanged(propertyName);
 
-            // 🔹 Guardar automáticamente en settings cuando cambie una propiedad
             SaveSettings();
             return true;
         }
@@ -75,7 +74,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _mensajeConexion, value);
         }
 
-        // 🔹 Nueva propiedad para mostrar estado de conexión
         private bool _isConnected;
         public bool IsConnected
         {
@@ -106,7 +104,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             OraclePath = _settings.oracle_path ?? string.Empty;
             BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
 
-            // Verificar si hay una configuración válida guardada
             CheckConnectionStatus();
         }
 
@@ -166,9 +163,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        /// <summary>
-        /// Guarda la configuración y establece la conexión en el módulo principal
-        /// </summary>
         public async Task GuardarYReconectarAsync()
         {
             if (_isConnecting) return;
@@ -178,10 +172,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
-                // Primero guardar la configuración
                 SaveSettings();
 
-                // Luego reconectar el módulo principal
                 await Module1.ReconnectDatabaseAsync();
 
                 MensajeConexion = "✅ Configuración guardada y conexión establecida";
@@ -198,9 +190,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        /// <summary>
-        /// Verifica si la configuración actual es válida
-        /// </summary>
         private bool IsValidConfiguration()
         {
             return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
@@ -210,9 +199,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                    !string.IsNullOrWhiteSpace(BaseDeDatos);
         }
 
-        /// <summary>
-        /// Verifica el estado de la conexión actual
-        /// </summary>
         private void CheckConnectionStatus()
         {
             try

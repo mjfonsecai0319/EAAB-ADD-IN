@@ -16,15 +16,11 @@
             </ResourceDictionary.MergedDictionaries>
 
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-            
-            <!-- Estilos adaptativos para tema claro/oscuro -->
-            
-            <!-- Container principal -->
+
             <Style x:Key="MainContainerStyle" TargetType="Grid">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
             </Style>
 
-            <!-- Headers -->
             <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="16"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -32,7 +28,6 @@
                 <Setter Property="Margin" Value="0,0,0,15"/>
             </Style>
 
-            <!-- Labels -->
             <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
                 <Setter Property="Width" Value="120"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
@@ -41,14 +36,12 @@
                 <Setter Property="FontSize" Value="13"/>
             </Style>
 
-            <!-- Inputs generales -->
             <Style x:Key="BaseInputStyle">
                 <Setter Property="FrameworkElement.Width" Value="220"/>
                 <Setter Property="FrameworkElement.Height" Value="28"/>
                 <Setter Property="FrameworkElement.Margin" Value="0,0,0,12"/>
             </Style>
 
-            <!-- TextBox -->
             <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseInputStyle}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
@@ -64,7 +57,6 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- ComboBox -->
             <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource BaseInputStyle}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
@@ -74,7 +66,6 @@
                 <Setter Property="FontSize" Value="13"/>
             </Style>
 
-            <!-- PasswordBox -->
             <Style x:Key="ThemedPasswordBoxStyle" TargetType="PasswordBox" BasedOn="{StaticResource BaseInputStyle}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
@@ -90,7 +81,6 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Botón primario -->
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
                 <Setter Property="Foreground" Value="White"/>
@@ -110,7 +100,6 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Botón secundario -->
             <Style x:Key="SecondaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
@@ -128,7 +117,6 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Status containers -->
             <Style x:Key="StatusContainerStyle" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
@@ -158,7 +146,6 @@
             <StackPanel>
                 <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource SectionHeaderStyle}"/>
 
-                <!-- Campos de configuración -->
                 <Grid Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -174,54 +161,41 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Motor -->
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
                     <ComboBox Grid.Row="0" Grid.Column="1" 
                               Style="{StaticResource ThemedComboBoxStyle}"
                               ItemsSource="{Binding MotoresBD}"
                               SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Host -->
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Grid.Row="1" Grid.Column="1" 
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Puerto -->
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Grid.Row="2" Grid.Column="1" 
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Base de Datos -->
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Grid.Row="3" Grid.Column="1" 
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Usuario -->
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Grid.Row="4" Grid.Column="1" 
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Contraseña -->
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"/>
                     <PasswordBox Grid.Row="5" Grid.Column="1" 
                                  Style="{StaticResource ThemedPasswordBoxStyle}"
                                  x:Name="PasswordBox"
                                  PasswordChanged="PasswordBox_PasswordChanged"/>
 
-                    <!-- Oracle Path (solo visible para Oracle) -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Oracle Path:" Style="{StaticResource FieldLabelStyle}"
-                               Visibility="{Binding MotorSeleccionado, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Oracle}"/>
-                    <TextBox Grid.Row="6" Grid.Column="1" 
-                             Style="{StaticResource ThemedTextBoxStyle}"
-                             Text="{Binding OraclePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Visibility="{Binding MotorSeleccionado, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Oracle}"/>
+                    
                 </Grid>
 
-                <!-- Botones de acción -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0">
                     <Button Content="Probar Conexión"
                             Style="{StaticResource SecondaryButtonStyle}"
@@ -233,7 +207,6 @@
                             Command="{Binding GuardarYReconectarCommand}"/>
                 </StackPanel>
 
-                <!-- Mensaje de estado - CORREGIDO -->
                 <Border Style="{StaticResource StatusContainerStyle}">
                     <TextBlock Text="{Binding MensajeConexion}"
                                FontWeight="Medium"
@@ -242,7 +215,6 @@
                                HorizontalAlignment="Center"/>
                 </Border>
 
-                <!-- Instrucciones -->
                 <Border Style="{StaticResource InstructionsContainerStyle}">
                     <StackPanel>
                         <TextBlock Text="Instrucciones:" 

@@ -82,11 +82,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             SearchCommand = new AsyncRelayCommand(OnSearchAsync);
             RefreshCitiesCommand = new AsyncRelayCommand(LoadCitiesAsync);
             
-            // Verificar estado inicial
+
             CheckInitialConnectionStatus();
             
-            // NO cargar ciudades automáticamente - solo cuando el usuario haga clic en refrescar
-            // O cuando se detecte una conexión válida
+    
             if (IsConnectionReady())
             {
                 _ = LoadCitiesAsync();
@@ -298,7 +297,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 var model = new AddressNormalizerModel { Address = input };
                 var address = addressNormalizer.Invoke(model);
 
-                // Dirección a usar en la búsqueda
                 var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
                     ? address.AddressEAAB
                     : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
@@ -320,7 +318,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         addr.CityDesc = SelectedCity.CityDesc;
                         addr.FullAddressOld = AddressInput;
 
-                        // --- Asignar ScoreText según origen ---
                         var src = (addr.Source ?? string.Empty).ToLowerInvariant();
 
                         if (src.Contains("cat") || src.Contains("catastro"))

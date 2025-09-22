@@ -72,7 +72,7 @@
 
   <propertySheets>
     <updateSheet refID="esri_core_optionsPropertySheet">
-      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="Database" group="Application">
+      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB-ADD-IN" group="Application">
         <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
       </insertPage>
     </updateSheet>
