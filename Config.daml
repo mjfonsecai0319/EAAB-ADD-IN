@@ -36,8 +36,8 @@
           caption="Buscar"
           className="EAABAddIn.Src.Presentation.View.Button1"
           loadOnClick="true"
-          smallImage="GenericButtonRed16"
-          largeImage="GenericButtonRed32"
+          smallImage="Images\Geocoder_Local.png"
+          largeImage="Images\Geocoder_Local.png"
           keytip="B1"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -48,8 +48,8 @@
           caption="Masivo"
           className="EAABAddIn.Src.Presentation.View.Button2"
           loadOnClick="true"
-          smallImage="GenericButtonBlue16"
-          largeImage="GenericButtonBlue32"
+          smallImage="Images\Geocoder_Batch.png"
+          largeImage="Images\Geocoder_Batch.png"
           keytip="B2"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
