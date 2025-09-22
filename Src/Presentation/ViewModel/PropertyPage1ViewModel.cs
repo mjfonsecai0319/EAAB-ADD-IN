@@ -17,6 +17,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         private readonly Settings _settings;
         private readonly ConnectionValidatorService _validator;
         private bool _isConnecting = false;
+        private bool _isLoading = false; // ✅ Flag para evitar guardado durante carga
 
         public new event PropertyChangedEventHandler PropertyChanged;
 
@@ -29,7 +30,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             storage = value;
             OnPropertyChanged(propertyName);
 
-            SaveSettings();
+            // ✅ Solo guardar si no estamos cargando los valores iniciales
+            if (!_isLoading)
+            {
+                SaveSettings();
+            }
             return true;
         }
 
@@ -43,8 +48,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 if (SetProperty(ref _motorSeleccionado, value))
                 {
-                    if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
-                    else if (value == "Oracle" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "1521";
+                    // ✅ Solo cambiar puerto si no estamos cargando y el puerto está vacío
+                    if (!_isLoading)
+                    {
+                        if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
+                        else if (value == "Oracle" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "1521";
+                    }
                 }
             }
         }
@@ -88,6 +97,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         {
             _settings = Module1.Settings;
             _validator = new ConnectionValidatorService();
+            
+            // ✅ Cargar configuración antes de crear los comandos
             LoadSettings();
 
             ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync(), () => !_isConnecting);
@@ -96,19 +107,44 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private void LoadSettings()
         {
-            MotorSeleccionado = _settings.motor ?? "PostgreSQL";
-            Usuario = _settings.usuario ?? string.Empty;
-            Contraseña = _settings.contraseña ?? string.Empty;
-            Host = _settings.host ?? "localhost";
-            Puerto = _settings.puerto ?? (MotorSeleccionado == "Oracle" ? "1521" : "5432");
-            OraclePath = _settings.oracle_path ?? string.Empty;
-            BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+            _isLoading = true; // ✅ Marcar que estamos cargando
 
-            CheckConnectionStatus();
+            try
+            {
+                // ✅ SIEMPRE cargar los valores guardados, sin importar el estado de conexión
+                MotorSeleccionado = _settings.motor ?? "PostgreSQL";
+                Usuario = _settings.usuario ?? string.Empty;
+                Contraseña = _settings.contraseña ?? string.Empty;
+                Host = _settings.host ?? "localhost";
+                
+                // ✅ Cargar puerto guardado, o usar default según motor
+                if (!string.IsNullOrEmpty(_settings.puerto))
+                {
+                    Puerto = _settings.puerto;
+                }
+                else
+                {
+                    Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
+                }
+                
+                OraclePath = _settings.oracle_path ?? string.Empty;
+                BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+
+                Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
+
+                // ✅ Verificar estado de conexión después de cargar
+                CheckConnectionStatus();
+            }
+            finally
+            {
+                _isLoading = false; // ✅ Terminar modo de carga
+            }
         }
 
         private void SaveSettings()
         {
+            if (_isLoading) return; // ✅ No guardar durante la carga inicial
+
             _settings.motor = MotorSeleccionado;
             _settings.usuario = Usuario;
             _settings.contraseña = Contraseña;
@@ -139,7 +175,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var connectionProps = GetDatabaseConnectionProperties();
-                var result = await _validator.TestConnectionAsync(connectionProps, MotorSeleccionado);
+                // ✅ Usar método de instancia en lugar de static
+                var result = await _validator.TestConnectionInstanceAsync(connectionProps, MotorSeleccionado);
 
                 if (result.IsSuccess)
                 {
@@ -160,6 +197,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             finally
             {
                 _isConnecting = false;
+                
+                // ✅ Remover RaiseCanExecuteChanged - no es necesario con CommandManager
+                // Los comandos se actualizan automáticamente
             }
         }
 
@@ -172,8 +212,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
+                // ✅ Forzar guardado de configuración actual
                 SaveSettings();
 
+                // ✅ Usar el nombre correcto del método (ReconnectDatabaseAsync)
                 await Module1.ReconnectDatabaseAsync();
 
                 MensajeConexion = "✅ Configuración guardada y conexión establecida";
@@ -204,6 +246,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var dbService = Module1.DatabaseConnection;
+                // ✅ Verificar si el servicio existe y tiene geodatabase
                 if (dbService?.Geodatabase != null)
                 {
                     IsConnected = true;
@@ -222,11 +265,18 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 IsConnected = false;
                 MensajeConexion = "❌ Error al verificar el estado de conexión";
+                Debug.WriteLine($"Error en CheckConnectionStatus: {ex.Message}");
             }
+        }
+
+        // ✅ Método para refrescar manualmente los valores desde configuración
+        public void RefreshFromSettings()
+        {
+            LoadSettings();
         }
     }
 }

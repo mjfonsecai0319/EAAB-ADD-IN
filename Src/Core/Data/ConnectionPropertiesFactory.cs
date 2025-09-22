@@ -13,7 +13,7 @@ namespace EAABAddIn.Src.Core.Data
                 User = user,
                 Password = password,
                 Database = database,
-                Instance = $"{host},{port}" // ✅ corregido
+                Instance = $"{host},{port}" // Formato original que funcionaba
             };
         }
 
@@ -22,7 +22,6 @@ namespace EAABAddIn.Src.Core.Data
         {
             return CreatePostgresConnection(host, user, password, database, "5432");
         }
-
 
         public static DatabaseConnectionProperties CreateOracleConnection(
             string host, string user, string password, string database, string port)

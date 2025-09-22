@@ -23,11 +23,10 @@ namespace EAABAddIn.Src.Core.Data
                     Debug.WriteLine($"Instance: {connectionProperties.Instance}");
                     Debug.WriteLine($"AuthMode: {connectionProperties.AuthenticationMode}");
 
-                    using (var geodatabase = new Geodatabase(connectionProperties))
-                    {
-                        Debug.WriteLine($"✅ Conexión exitosa a {motorSeleccionado}");
-                        return (true, "Conexión exitosa.");
-                    }
+                    // ✅ Using simplificado según IDE0063
+                    using var geodatabase = new Geodatabase(connectionProperties);
+                    Debug.WriteLine($"✅ Conexión exitosa a {motorSeleccionado}");
+                    return (true, "Conexión exitosa.");
                 });
             }
             catch (Exception ex)
@@ -35,6 +34,14 @@ namespace EAABAddIn.Src.Core.Data
                 Debug.WriteLine($"❌ Error de conexión: {ex.Message}");
                 return (false, $"Error de conexión: {ex.Message}");
             }
+        }
+
+        // ✅ Agregar método que está buscando el ViewModel
+        public async Task<(bool IsSuccess, string Message)> TestConnectionInstanceAsync(
+            DatabaseConnectionProperties connectionProperties,
+            string motorSeleccionado)
+        {
+            return await TestConnectionAsync(connectionProperties, motorSeleccionado);
         }
     }
 }
