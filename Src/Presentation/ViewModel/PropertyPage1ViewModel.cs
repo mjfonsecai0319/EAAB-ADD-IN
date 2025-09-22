@@ -17,7 +17,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         private readonly Settings _settings;
         private readonly ConnectionValidatorService _validator;
         private bool _isConnecting = false;
-        private bool _isLoading = false; // ✅ Flag para evitar guardado durante carga
+        private bool _isLoading = false;
+        private string _previousMotor;
 
         public new event PropertyChangedEventHandler PropertyChanged;
 
@@ -29,8 +30,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             if (Equals(storage, value)) return false;
             storage = value;
             OnPropertyChanged(propertyName);
-
-            // ✅ Solo guardar si no estamos cargando los valores iniciales
             if (!_isLoading)
             {
                 SaveSettings();
@@ -48,12 +47,19 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 if (SetProperty(ref _motorSeleccionado, value))
                 {
-                    // ✅ Solo cambiar puerto si no estamos cargando y el puerto está vacío
+                    if (!_isLoading && _previousMotor != null && _previousMotor != value)
+                    {
+                        Debug.WriteLine($"Motor cambió de {_previousMotor} a {value} - Limpiando campos");
+                        ClearFieldsOnMotorChange();
+                    }
+
                     if (!_isLoading)
                     {
                         if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
                         else if (value == "Oracle" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "1521";
                     }
+
+                    _previousMotor = value;
                 }
             }
         }
@@ -97,54 +103,39 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         {
             _settings = Module1.Settings;
             _validator = new ConnectionValidatorService();
-            
-            // ✅ Cargar configuración antes de crear los comandos
             LoadSettings();
-
             ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync(), () => !_isConnecting);
             GuardarYReconectarCommand = new RelayCommand(async () => await GuardarYReconectarAsync(), () => !_isConnecting && IsValidConfiguration());
         }
 
         private void LoadSettings()
         {
-            _isLoading = true; // ✅ Marcar que estamos cargando
-
+            _isLoading = true;
             try
             {
-                // ✅ SIEMPRE cargar los valores guardados, sin importar el estado de conexión
                 MotorSeleccionado = _settings.motor ?? "PostgreSQL";
                 Usuario = _settings.usuario ?? string.Empty;
                 Contraseña = _settings.contraseña ?? string.Empty;
                 Host = _settings.host ?? "localhost";
-                
-                // ✅ Cargar puerto guardado, o usar default según motor
                 if (!string.IsNullOrEmpty(_settings.puerto))
-                {
                     Puerto = _settings.puerto;
-                }
                 else
-                {
                     Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
-                }
-                
                 OraclePath = _settings.oracle_path ?? string.Empty;
                 BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
-
                 Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
-
-                // ✅ Verificar estado de conexión después de cargar
+                _previousMotor = MotorSeleccionado;
                 CheckConnectionStatus();
             }
             finally
             {
-                _isLoading = false; // ✅ Terminar modo de carga
+                _isLoading = false;
             }
         }
 
         private void SaveSettings()
         {
-            if (_isLoading) return; // ✅ No guardar durante la carga inicial
-
+            if (_isLoading) return;
             _settings.motor = MotorSeleccionado;
             _settings.usuario = Usuario;
             _settings.contraseña = Contraseña;
@@ -153,8 +144,27 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.oracle_path = OraclePath;
             _settings.baseDeDatos = BaseDeDatos;
             _settings.Save();
-
             Debug.WriteLine("💾 Configuración guardada automáticamente");
+        }
+
+        private void ClearFieldsOnMotorChange()
+        {
+            _isLoading = true;
+            try
+            {
+                Usuario = string.Empty;
+                Contraseña = string.Empty;
+                Host = string.Empty;
+                Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
+                BaseDeDatos = string.Empty;
+                OraclePath = string.Empty;
+                MensajeConexion = "Motor cambiado. Configure los nuevos parámetros de conexión.";
+                IsConnected = false;
+            }
+            finally
+            {
+                _isLoading = false;
+            }
         }
 
         public DatabaseConnectionProperties GetDatabaseConnectionProperties()
@@ -168,16 +178,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public async Task ProbarConexionAsync()
         {
             if (_isConnecting) return;
-
             _isConnecting = true;
             MensajeConexion = "🔄 Probando conexión...";
-            
             try
             {
                 var connectionProps = GetDatabaseConnectionProperties();
-                // ✅ Usar método de instancia en lugar de static
                 var result = await _validator.TestConnectionInstanceAsync(connectionProps, MotorSeleccionado);
-
                 if (result.IsSuccess)
                 {
                     MensajeConexion = "✅ Conexión exitosa";
@@ -197,27 +203,18 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             finally
             {
                 _isConnecting = false;
-                
-                // ✅ Remover RaiseCanExecuteChanged - no es necesario con CommandManager
-                // Los comandos se actualizan automáticamente
             }
         }
 
         public async Task GuardarYReconectarAsync()
         {
             if (_isConnecting) return;
-
             _isConnecting = true;
             MensajeConexion = "🔄 Guardando configuración y conectando...";
-
             try
             {
-                // ✅ Forzar guardado de configuración actual
                 SaveSettings();
-
-                // ✅ Usar el nombre correcto del método (ReconnectDatabaseAsync)
                 await Module1.ReconnectDatabaseAsync();
-
                 MensajeConexion = "✅ Configuración guardada y conexión establecida";
                 IsConnected = true;
             }
@@ -246,7 +243,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var dbService = Module1.DatabaseConnection;
-                // ✅ Verificar si el servicio existe y tiene geodatabase
                 if (dbService?.Geodatabase != null)
                 {
                     IsConnected = true;
@@ -273,7 +269,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // ✅ Método para refrescar manualmente los valores desde configuración
         public void RefreshFromSettings()
         {
             LoadSettings();
