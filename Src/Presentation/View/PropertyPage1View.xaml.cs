@@ -17,5 +17,10 @@ namespace EAABAddIn.Src.Presentation.View
                 vm.Contraseña = ((PasswordBox)sender).Password;
             }
         }
+
+        private void Button_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+
+        }
     }
 }

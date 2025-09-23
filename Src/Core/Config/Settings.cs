@@ -11,8 +11,9 @@ namespace EAABAddIn
         public string contraseña { get; set; }
         public string host { get; set; }
         public string puerto { get; set; }
-        public string oracle_path { get; set; } = string.Empty;
         public string baseDeDatos { get; set; } = string.Empty;
+        public string rutaArchivoGdb { get; set; }
+
 
         // Ruta del archivo de configuración
         private static string configPath = Path.Combine(

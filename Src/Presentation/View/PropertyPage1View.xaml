@@ -17,6 +17,7 @@
 
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
+            <!-- Estilos generales (no modificados) -->
             <Style x:Key="MainContainerStyle" TargetType="Grid">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
             </Style>
@@ -117,6 +118,43 @@
                 </Style.Triggers>
             </Style>
 
+            <Style x:Key="FilePickerButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Width" Value="32"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Content" Value="..."/>
+                <Setter Property="Margin" Value="5,0,0,12"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Margin" Value="0,0,0,12"/>
+                <Setter Property="Width" Value="185"/>
+                <Setter Property="IsReadOnly" Value="True"/>
+                <Style.Triggers>
+                    <Trigger Property="IsFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <Style x:Key="StatusContainerStyle" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
@@ -149,7 +187,11 @@
                 <Grid Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
+                        <!-- Etiquetas -->
                         <ColumnDefinition Width="*"/>
+                        <!-- Inputs -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- Botón archivo -->
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -161,52 +203,73 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
+                    <!-- Motor -->
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" 
+                    <ComboBox Grid.Row="0" Grid.Column="1"
                               Style="{StaticResource ThemedComboBoxStyle}"
                               ItemsSource="{Binding MotoresBD}"
                               SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
+                    <!-- Host -->
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" 
+                    <TextBox Grid.Row="1" Grid.Column="1"
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
+                    <!-- Puerto -->
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="2" Grid.Column="1" 
+                    <TextBox Grid.Row="2" Grid.Column="1"
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
+                    <!-- Base de Datos -->
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="3" Grid.Column="1" 
+                    <TextBox Grid.Row="3" Grid.Column="1"
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
+                    <!-- Usuario -->
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="4" Grid.Column="1" 
+                    <TextBox Grid.Row="4" Grid.Column="1"
                              Style="{StaticResource ThemedTextBoxStyle}"
                              Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
+                    <!-- Contraseña -->
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"/>
-                    <PasswordBox Grid.Row="5" Grid.Column="1" 
+                    <PasswordBox Grid.Row="5" Grid.Column="1"
                                  Style="{StaticResource ThemedPasswordBoxStyle}"
                                  x:Name="PasswordBox"
                                  PasswordChanged="PasswordBox_PasswordChanged"/>
 
-                    
+                    <!-- Archivo GDB -->
+                    <TextBlock Grid.Row="6" Grid.Column="0" 
+                               Text="Archivo GDB:" 
+                               Style="{StaticResource FieldLabelStyle}"/>
+
+                    <TextBox Grid.Row="6" Grid.Column="1"
+                             Style="{StaticResource FilePathTextBoxStyle}"
+                             Text="{Binding RutaArchivoGdb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{Binding RutaArchivoGdb}" Margin="56,0,91,12"/>
+
+                    <Button Grid.Row="6" Grid.Column="1"
+                            Style="{StaticResource FilePickerButtonStyle}"
+                            Command="{Binding SeleccionarArchivoGdbCommand}"
+                            ToolTip="Seleccionar archivo GDB" Margin="266,1,34,11" RenderTransformOrigin="-0.225,0.404" Click="Button_Click"/>
                 </Grid>
 
+                <!-- Botones -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0">
                     <Button Content="Probar Conexión"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Margin="0,0,10,0"
                             Command="{Binding ProbarConexionCommand}"/>
-                    
+
                     <Button Content="Guardar y Conectar"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding GuardarYReconectarCommand}"/>
                 </StackPanel>
 
+                <!-- Mensaje de estado -->
                 <Border Style="{StaticResource StatusContainerStyle}">
                     <TextBlock Text="{Binding MensajeConexion}"
                                FontWeight="Medium"
@@ -215,6 +278,7 @@
                                HorizontalAlignment="Center"/>
                 </Border>
 
+                <!-- Instrucciones -->
                 <Border Style="{StaticResource InstructionsContainerStyle}">
                     <StackPanel>
                         <TextBlock Text="Instrucciones:" 
@@ -227,14 +291,16 @@
                                    Foreground="{DynamicResource Esri_TextPrimaryBrush}">
                             <Run Text="1. Configure todos los parámetros de conexión"/>
                             <LineBreak/>
-                            <Run Text="2. Haga clic en "/>
+                            <Run Text="2. Seleccione el archivo GDB haciendo clic en el botón '...' (Opcional)"/>
+                            <LineBreak/>
+                            <Run Text="3. Haga clic en "/>
                             <Run Text="'Probar Conexión'" FontWeight="Medium"/>
                             <Run Text=" para verificar"/>
                             <LineBreak/>
-                            <Run Text="3. Si la prueba es exitosa, haga clic en "/>
+                            <Run Text="4. Si la prueba es exitosa, haga clic en "/>
                             <Run Text="'Guardar y Conectar'" FontWeight="Medium"/>
                             <LineBreak/>
-                            <Run Text="4. La configuración se guardará automáticamente para futuras sesiones"/>
+                            <Run Text="5. La configuración se guardará automáticamente para futuras sesiones"/>
                         </TextBlock>
                     </StackPanel>
                 </Border>

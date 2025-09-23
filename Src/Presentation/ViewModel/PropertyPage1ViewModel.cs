@@ -96,8 +96,19 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _isConnected, value);
         }
 
+        // ✅ Nueva propiedad
+        private string _rutaArchivoGdb;
+        public string RutaArchivoGdb
+        {
+            get => _rutaArchivoGdb;
+            set => SetProperty(ref _rutaArchivoGdb, value);
+        }
+
         public ICommand ProbarConexionCommand { get; }
         public ICommand GuardarYReconectarCommand { get; }
+
+        // ✅ Nuevo comando
+        public ICommand SeleccionarArchivoGdbCommand { get; }
 
         public PropertyPage1ViewModel()
         {
@@ -106,6 +117,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             LoadSettings();
             ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync(), () => !_isConnecting);
             GuardarYReconectarCommand = new RelayCommand(async () => await GuardarYReconectarAsync(), () => !_isConnecting && IsValidConfiguration());
+
+            // ✅ Inicializar el nuevo comando
+            SeleccionarArchivoGdbCommand = new RelayCommand(SeleccionarArchivoGdb);
         }
 
         private void LoadSettings()
@@ -121,8 +135,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     Puerto = _settings.puerto;
                 else
                     Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
-                OraclePath = _settings.oracle_path ?? string.Empty;
                 BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
+
+                // ✅ Cargar la ruta desde settings
+                RutaArchivoGdb = _settings.rutaArchivoGdb ?? string.Empty;
+
                 Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
                 _previousMotor = MotorSeleccionado;
                 CheckConnectionStatus();
@@ -141,8 +158,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.contraseña = Contraseña;
             _settings.host = Host;
             _settings.puerto = Puerto;
-            _settings.oracle_path = OraclePath;
             _settings.baseDeDatos = BaseDeDatos;
+
+            // ✅ Guardar la ruta en settings
+            _settings.rutaArchivoGdb = RutaArchivoGdb;
+
             _settings.Save();
             Debug.WriteLine("💾 Configuración guardada automáticamente");
         }
@@ -158,6 +178,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
                 BaseDeDatos = string.Empty;
                 OraclePath = string.Empty;
+
+                // ✅ Limpiar la ruta también
+                RutaArchivoGdb = string.Empty;
+
                 MensajeConexion = "Motor cambiado. Configure los nuevos parámetros de conexión.";
                 IsConnected = false;
             }
@@ -272,6 +296,24 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public void RefreshFromSettings()
         {
             LoadSettings();
+        }
+
+        // ✅ Nuevo método
+        private void SeleccionarArchivoGdb()
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Title = "Seleccionar archivo Geodatabase",
+                Filter = "Geodatabase Files (*.gdb)|*.gdb|All Files (*.*)|*.*",
+                FilterIndex = 1,
+                Multiselect = false,
+                CheckFileExists = true
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                RutaArchivoGdb = openFileDialog.FileName;
+            }
         }
     }
 }
