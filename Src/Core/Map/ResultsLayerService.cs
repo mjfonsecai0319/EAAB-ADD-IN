@@ -35,7 +35,11 @@ namespace EAABAddIn.Src.Core.Map
         private static async Task _AddPointAsync(PtAddressGralEntity entidad)
         {
             var mapView = MapView.Active;
-            var gdbPath = Project.Current.DefaultGeodatabasePath;
+            var gdbPath = Module1.Settings.rutaArchivoGdb;
+
+            // Validar que el path de la GDB exista (la carpeta .gdb)
+            if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
+                gdbPath = Project.Current.DefaultGeodatabasePath;
 
             if (mapView?.Map == null)
             {

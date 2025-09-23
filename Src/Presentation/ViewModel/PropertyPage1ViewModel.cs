@@ -1,14 +1,20 @@
-﻿﻿using System.Collections.ObjectModel;
+﻿﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Microsoft.Win32;
-using EAABAddIn.Src.Core.Data;
+
 using ArcGIS.Core.Data;
+using ArcGIS.Desktop.Catalog;
+using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Contracts;
-using System;
+
+using EAABAddIn.Src.Core.Data;
 using EAABAddIn.Src.Presentation.Base;
-using System.Diagnostics;
+
+using Microsoft.Win32;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
@@ -301,18 +307,25 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         // ✅ Nuevo método
         private void SeleccionarArchivoGdb()
         {
-            var openFileDialog = new OpenFileDialog
+            // Usar el explorador de ArcGIS Pro: una File Geodatabase es una carpeta .gdb
+            var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
+
+            var dlg = new OpenItemDialog
             {
-                Title = "Seleccionar archivo Geodatabase",
-                Filter = "Geodatabase Files (*.gdb)|*.gdb|All Files (*.*)|*.*",
-                FilterIndex = 1,
-                Multiselect = false,
-                CheckFileExists = true
+                Title = "Seleccionar Geodatabase",
+                BrowseFilter = filter,
+                MultiSelect = false,
+                InitialLocation = !string.IsNullOrWhiteSpace(RutaArchivoGdb)
+                    ? System.IO.Path.GetDirectoryName(RutaArchivoGdb)
+                    : Project.Current?.HomeFolderPath
             };
 
-            if (openFileDialog.ShowDialog() == true)
+            var ok = dlg.ShowDialog();
+            if (ok == true && dlg.Items != null && dlg.Items.Any())
             {
-                RutaArchivoGdb = openFileDialog.FileName;
+                var item = dlg.Items.First();
+                // item.Path devolverá la ruta a la carpeta .gdb seleccionada
+                RutaArchivoGdb = item.Path;
             }
         }
     }
