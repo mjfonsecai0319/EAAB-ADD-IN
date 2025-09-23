@@ -3,10 +3,6 @@
 El Add-In para ArcGIS Pro que facilita la **búsqueda de direcciones**, la **geocodificación masiva** y la **conexión a bases de datos corporativas**.  
 Optimiza la gestión de datos espaciales, permitiendo integrar información directamente desde PostgreSQL u Oracle al entorno de ArcGIS Pro con persistencia de configuración automática.
 
-> **Nota:** Este Add-In no reemplaza la funcionalidad nativa de ArcGIS Pro, sino que la complementa con herramientas específicas para la EAAB.
-
----
-
 ## Características principales
 
 - **Conexión persistente** a bases de datos PostgreSQL y Oracle
@@ -15,8 +11,6 @@ Optimiza la gestión de datos espaciales, permitiendo integrar información dire
 - **Configuración automática** que se mantiene entre sesiones
 - **Interfaz adaptable** al tema claro/oscuro de ArcGIS Pro
 - **Validación de conexión** en tiempo real
-
----
 
 ## Requisitos del sistema
 
@@ -34,9 +28,9 @@ Optimiza la gestión de datos espaciales, permitiendo integrar información dire
   - PostgreSQL: puerto 5432 (predeterminado)
   - Oracle: puerto 1521 (predeterminado)
 
----
-
 ## Instalación
+
+![Video de Instalación](<docs/res/Grabación 2025-09-23 083552.gif>)
 
 ### Paso 1: Obtención del archivo (Add-In)
 
@@ -62,8 +56,6 @@ Guarda el archivo **EAABAddIn.esriAddInX** en una ubicación accesible como:
 6. Espera el mensaje de "Instalación completada"
 7. Inicia ArcGIS Pro
 
----
-
 ## Configuración
 
 ### Configuración inicial automática
@@ -76,7 +68,7 @@ Al utilizar el Add-In por primera vez:
 #### Configuración manual paso a paso:
 
 1. Abre ArcGIS Pro
-2. Ve a **Archivo → Opciones → Database** (en el panel lateral izquierdo)
+2. Ve a **Archivo → Opciones → EAAB Add-In** (en el panel lateral izquierdo)
 3. Completa los parámetros según tu motor de base de datos:
 
 **Para PostgreSQL:**
@@ -106,15 +98,12 @@ Cuando cambies entre PostgreSQL y Oracle:
 - **Solo se conservará el puerto por defecto** del nuevo motor seleccionado
 - **Deberás configurar nuevamente** todos los parámetros de conexión
 
-> **Advertencia:** Si la conexión falla, revisa que los parámetros de red y las credenciales sean correctas antes de continuar.
-
----
+> [!warning]
+> Si la conexión falla, revisa que los parámetros de red y las credenciales sean correctas antes de continuar.
 
 ## Cómo usar el Add-In EAAB
 
 Una vez configurado correctamente, el Add-In ofrece herramientas principales accesibles desde la pestaña **"EAAB Add-in"** en la cinta de opciones de ArcGIS Pro.
-
----
 
 ### 1. Búsqueda Individual de Direcciones
 
@@ -330,5 +319,5 @@ EAABAddIn/
 Este Add-In es de uso interno de la EAAB. Para soporte técnico, contactar al equipo de desarrollo de sistemas de información geográfica.
 
 **Versión**: 1.0  
-**Última actualización**: [Fecha actual]  
-**Compatible con**: ArcGIS Pro 3.0 - 3.4+
+**Última actualización**: 23-09-2025  
+**Compatible con**: ArcGIS Pro 3.4+
