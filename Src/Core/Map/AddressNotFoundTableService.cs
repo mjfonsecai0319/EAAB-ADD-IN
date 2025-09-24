@@ -19,16 +19,13 @@ namespace EAABAddIn.Src.Core.Map
         private const string TableName = "GeocodeNotFound";
         private static StandaloneTable _notFoundTable;
 
-        public static Task AddRecordAsync(AddressNotFoundRecord record)
+        public static Task AddRecordAsync(AddressNotFoundRecord record, string gdbPath = null)
         {
-            return QueuedTask.Run(() => _AddRecordAsync(record));
+            return QueuedTask.Run(() => _AddRecordAsync(record, gdbPath));
         }
 
-        private static async Task _AddRecordAsync(AddressNotFoundRecord record)
+        private static async Task _AddRecordAsync(AddressNotFoundRecord record, string gdbPath)
         {
-            var gdbPath = Module1.Settings.rutaArchivoGdb;
-            
-            // Validar que el path de la GDB exista (la carpeta .gdb)
             if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
                 gdbPath = Project.Current.DefaultGeodatabasePath;
 

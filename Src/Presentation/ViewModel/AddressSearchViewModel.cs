@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Diagnostics;
 
-using ArcGIS.Desktop.Framework.Dialogs;
+using ArcGIS.Desktop.Catalog;
+using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 
-using EAABAddIn.Src.Application.Errors;
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
@@ -71,21 +71,39 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
+        private string _gdbPath;
+        public string GdbPath
+        {
+            get => _gdbPath;
+            set
+            {
+                if (_gdbPath != value)
+                {
+                    _gdbPath = value;
+                    NotifyPropertyChanged(nameof(GdbPath));
+                }
+            }
+        }
+
         public ICommand SearchCommand { get; }
         public ICommand RefreshCitiesCommand { get; }
+        public ICommand BrowseGdbCommand { get; }
 
         public AddressSearchViewModel()
         {
+            var path = Project.Current.DefaultGeodatabasePath;
+
+            GdbPath = path;
             Debug.WriteLine("=== Inicializando AddressSearchViewModel ===");
             Cities = new ObservableCollection<PtAddressGralEntity>();
             SelectedCity = null;
             SearchCommand = new AsyncRelayCommand(OnSearchAsync);
             RefreshCitiesCommand = new AsyncRelayCommand(LoadCitiesAsync);
-            
+            BrowseGdbCommand = new RelayCommand(BrowseGdb);
 
             CheckInitialConnectionStatus();
-            
-    
+
+
             if (IsConnectionReady())
             {
                 _ = LoadCitiesAsync();
@@ -103,7 +121,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 var settings = Module1.Settings;
                 var dbService = Module1.DatabaseConnection;
-                
+
                 Debug.WriteLine($"Settings motor: {settings?.motor}");
                 Debug.WriteLine($"Settings host: {settings?.host}");
                 Debug.WriteLine($"Settings usuario: {settings?.usuario}");
@@ -136,7 +154,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var settings = Module1.Settings;
-                if (string.IsNullOrWhiteSpace(settings?.motor) || 
+                if (string.IsNullOrWhiteSpace(settings?.motor) ||
                     string.IsNullOrWhiteSpace(settings?.host) ||
                     string.IsNullOrWhiteSpace(settings?.usuario))
                 {
@@ -152,7 +170,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     Debug.WriteLine("No hay conexión a la base de datos");
                     ConnectionStatus = "Sin conexión a BD";
                     StatusMessage = "No hay conexión a la base de datos";
-                    
+
                     Debug.WriteLine("Intentando reconectar...");
                     try
                     {
@@ -171,10 +189,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                 var engine = settings.motor.ToDBEngine();
                 var props = GetDatabaseConnectionProperties();
-                
+
                 Debug.WriteLine($"Motor de BD: {engine}");
                 Debug.WriteLine($"Propiedades de conexión creadas");
-                
+
                 List<PtAddressGralEntity> ciudades = null;
 
                 await QueuedTask.Run(() =>
@@ -190,7 +208,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         };
 
                         Debug.WriteLine("Obteniendo ciudades del repositorio...");
-                        ciudades = repo.GetAllCities(props);
+                        ciudades = repo.GetAllCities();
                         Debug.WriteLine($"Ciudades obtenidas: {ciudades?.Count ?? 0}");
                     }
                     catch (Exception ex)
@@ -209,7 +227,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         Cities.Add(ciudad);
                         Debug.WriteLine($"Ciudad agregada: {ciudad.CityDesc} ({ciudad.CityCode})");
                     }
-                    
+
                     SelectedCity = ciudades.FirstOrDefault();
                     ConnectionStatus = $" {ciudades.Count} ciudades cargadas";
                     StatusMessage = string.Empty;
@@ -234,6 +252,29 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 IsBusy = false;
                 if (string.IsNullOrEmpty(StatusMessage))
                     StatusMessage = string.Empty;
+            }
+        }
+
+        private void BrowseGdb()
+        {
+            var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
+
+            var dlg = new OpenItemDialog
+            {
+                Title = "Seleccionar Geodatabase",
+                BrowseFilter = filter,
+                MultiSelect = false,
+                InitialLocation = !string.IsNullOrWhiteSpace(GdbPath)
+                    ? System.IO.Path.GetDirectoryName(GdbPath)
+                    : Project.Current?.HomeFolderPath
+            };
+
+            var ok = dlg.ShowDialog();
+            if (ok == true && dlg.Items != null && dlg.Items.Any())
+            {
+                var item = dlg.Items.First();
+                // item.Path devolverá la ruta a la carpeta .gdb seleccionada
+                GdbPath = item.Path;
             }
         }
 
@@ -265,7 +306,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 await QueuedTask.Run(() =>
                 {
                     var engine = Module1.Settings.motor.ToDBEngine();
-                    
+
                     if (engine == DBEngine.Oracle)
                         HandleOracleConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else if (engine == DBEngine.PostgreSQL)
@@ -290,9 +331,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var props = GetDatabaseConnectionProperties();
-                
+
                 var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
-                var addressSearch = new AddressSearchUseCase(DBEngine.Oracle, props);
+                var addressSearch = new AddressSearchUseCase(DBEngine.Oracle);
 
                 var model = new AddressNormalizerModel { Address = input };
                 var address = addressNormalizer.Invoke(model);
@@ -303,7 +344,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         ? address.AddressNormalizer
                         : input);
 
-                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
+                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
 
                 if (result == null || result.Count == 0)
                 {
@@ -337,7 +378,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                             addr.ScoreText = addr.Score?.ToString() ?? "N/A";
                         }
 
-                        _ = ResultsLayerService.AddPointAsync(addr);
+                        _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
                     }
                 }
 
@@ -356,9 +397,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var props = GetDatabaseConnectionProperties();
-                
+
                 var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
-                var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL, props);
+                var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL);
 
                 var model = new AddressNormalizerModel { Address = input };
                 var address = addressNormalizer.Invoke(model);
@@ -369,7 +410,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         ? address.AddressNormalizer
                         : input);
 
-                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc);
+                var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
 
                 if (result == null || result.Count == 0)
                 {
@@ -378,35 +419,35 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 }
 
                 foreach (var addr in result)
-            {
-                if (addr.Latitud.HasValue && addr.Longitud.HasValue)
                 {
-                    addr.CityDesc = SelectedCity.CityDesc;
-                    addr.FullAddressOld = AddressInput;
+                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    {
+                        addr.CityDesc = SelectedCity.CityDesc;
+                        addr.FullAddressOld = AddressInput;
 
-                    // --- Asignar ScoreText según origen ---
-                    var src = (addr.Source ?? string.Empty).ToLowerInvariant();
+                        // --- Asignar ScoreText según origen ---
+                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
 
-                    if (src.Contains("cat") || src.Contains("catastro"))
-                    {
-                        addr.ScoreText = "Aproximada por Catastro";
-                    }
-                    else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
-                    {
-                        addr.ScoreText = "Exacta";
-                    }
-                    else if (src.Contains("esri"))
-                    {
-                        addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
-                    }
-                    else
-                    {
-                        addr.ScoreText = addr.Score?.ToString() ?? "N/A";
-                    }
+                        if (src.Contains("cat") || src.Contains("catastro"))
+                        {
+                            addr.ScoreText = "Aproximada por Catastro";
+                        }
+                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
+                        {
+                            addr.ScoreText = "Exacta";
+                        }
+                        else if (src.Contains("esri"))
+                        {
+                            addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
+                        }
+                        else
+                        {
+                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        }
 
-                    _ = ResultsLayerService.AddPointAsync(addr);
+                        _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
+                    }
                 }
-            }
 
                 AddressInput = string.Empty;
                 StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
@@ -441,7 +482,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-
         private ArcGIS.Core.Data.DatabaseConnectionProperties GetDatabaseConnectionProperties()
         {
             var settings = Module1.Settings;
@@ -450,10 +490,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             return engine switch
             {
                 DBEngine.Oracle => ConnectionPropertiesFactory.CreateOracleConnection(
-                    settings.host, settings.usuario, settings.contraseña, 
+                    settings.host, settings.usuario, settings.contraseña,
                     settings.baseDeDatos, settings.puerto ?? "1521"),
                 DBEngine.PostgreSQL => ConnectionPropertiesFactory.CreatePostgresConnection(
-                    settings.host, settings.usuario, settings.contraseña, 
+                    settings.host, settings.usuario, settings.contraseña,
                     settings.baseDeDatos, settings.puerto ?? "5432"),
                 _ => throw new NotSupportedException($"Motor {settings.motor} no soportado")
             };

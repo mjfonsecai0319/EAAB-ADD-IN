@@ -28,14 +28,17 @@
     <Content Include="Config.daml" />
     <Content Include="Images\AddInDesktop16.png" />
     <Content Include="Images\AddInDesktop32.png" />
-	  <Content Include="Images\Geocoder_Local.png" />
-	  <Content Include="Images\Geocoder_Batch.png" />
+    <Content Include="Images\Geocoder_Local.png" />
+    <Content Include="Images\Geocoder_Batch.png" />
     <Content Include="Images\Settings.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
-	  <Content Include="DarkImages\Geocoder_Local.png" />
-	  <Content Include="DarkImages\Geocoder_Batch.png" />
+    <Content Include="DarkImages\Geocoder_Local.png" />
+    <Content Include="DarkImages\Geocoder_Batch.png" />
     <Content Include="DarkImages\Settings.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\FolderIcon16.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\launchSettings.json" />

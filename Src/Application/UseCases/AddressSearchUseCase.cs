@@ -23,18 +23,14 @@ public class AddressSearchUseCase
 {
     private readonly IPtAddressGralEntityRepository _ptAddressGralRepository;
 
-    private readonly DatabaseConnectionProperties _connectionProperties;
-
-    public AddressSearchUseCase(DBEngine engine, DatabaseConnectionProperties connectionProperties)
+    public AddressSearchUseCase(DBEngine engine)
     {
         this._ptAddressGralRepository = this.GetRepository(engine);
-        this._connectionProperties = connectionProperties;
     }
 
-    public List<PtAddressGralEntity> Invoke(string address, string cityCode = "11001", string cityDesc = "BOGOTA D.C.")
+    public List<PtAddressGralEntity> Invoke(string address, string cityCode = "11001", string cityDesc = "BOGOTA D.C.", string gdbPath = null)
     {
         var searchResults = _ptAddressGralRepository.FindByCityCodeAndAddresses(
-            _connectionProperties,
             cityCode,
             address
         ).Take(1).ToList();
@@ -65,7 +61,7 @@ public class AddressSearchUseCase
                 geocoder: null,
                 score: null
             );
-            _ = AddressNotFoundTableService.AddRecordAsync(record);
+            _ = AddressNotFoundTableService.AddRecordAsync(record, gdbPath);
         }
 
         return searchResults;

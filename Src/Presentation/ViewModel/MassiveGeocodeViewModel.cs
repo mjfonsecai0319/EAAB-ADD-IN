@@ -5,17 +5,19 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
+using ArcGIS.Desktop.Catalog;
+using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 
+using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
-using EAABAddIn.Src.Core.Entities;
 using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Src.Presentation.Base;
-using EAABAddIn.Src.Application.Models;
 
 using ExcelDataReader;
+
 using Microsoft.Win32;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
@@ -39,14 +41,33 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
+        private string _gdbPath;
+        public string GdbPath
+        {
+            get => _gdbPath;
+            set
+            {
+                if (_gdbPath != value)
+                {
+                    _gdbPath = value;
+                    NotifyPropertyChanged(nameof(GdbPath));
+                }
+            }
+        }
+
         public ICommand OpenFileDialogCommand { get; private set; }
         public ICommand SearchCommand { get; private set; }
+        public ICommand BrowseGdbCommand { get; }
 
         public MassiveGeocodeViewModel()
         {
+            var path = Project.Current.DefaultGeodatabasePath;
+
+            GdbPath = path;
             FileInput = string.Empty;
             OpenFileDialogCommand = new RelayCommand(Browse_Click);
             SearchCommand = new AsyncRelayCommand(Search_Click);
+            BrowseGdbCommand = new RelayCommand(BrowseGdb);
         }
 
         private void Browse_Click()
@@ -89,6 +110,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 }
 
                 var engine = Module1.Settings.motor.ToDBEngine();
+                var usecase = new AddressSearchUseCase(engine);
                 IPtAddressGralEntityRepository repo = engine switch
                 {
                     DBEngine.Oracle => new PtAddressGralOracleRepository(),
@@ -105,72 +127,58 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 int total = registros.Count;
                 int contador = 0;
 
-                // Limpiamos cualquier resultado pendiente de ejecuciones anteriores
                 ResultsLayerService.ClearPending();
 
                 await QueuedTask.Run(() =>
                 {
-                    var ciudades = repo.GetAllCities(null);
-                    var ciudadesDict = ciudades.ToDictionary(c => c.CityCode, c => c.CityDesc);
+                    var ciudadesDict = repo.GetAllCities().ToDictionary(c => c.CityCode, c => c.CityDesc);
 
                     foreach (var registro in registros)
                     {
-                        contador++;
-
-                        // Si StatusMessage da problemas por threads, sacalo a UI thread; dejamos así por simplicidad.
-                        StatusMessage = $"Procesando {contador}/{total}...";
+                        StatusMessage = $"Procesando {++contador}/{total}...";
 
                         try
                         {
-                            var resultados = repo.FindByCityCodeAndAddresses(null, registro.Poblacion, registro.Direccion);
+                            var resultados = usecase.Invoke(
+                                address: registro.Direccion,
+                                cityCode: registro.Poblacion,
+                                cityDesc: ciudadesDict.TryGetValue(registro.Poblacion, out var cityDesc) ? cityDesc : null,
+                                gdbPath: GdbPath
+                            );
 
-                            if (resultados.Count > 0)
+                            if (resultados.Count == 0)
                             {
-                                var entidad = resultados[0];
-                                if (entidad.Latitud.HasValue && entidad.Longitud.HasValue)
-                                {
-                                    entidad.FullAddressOld = registro.Direccion;
-                                    entidad.CityDesc = ciudadesDict.TryGetValue(registro.Poblacion, out var nombreCiudad)
-                                        ? nombreCiudad
-                                        : registro.Poblacion;
-                                    // --- Asignar ScoreText según origen ---
-                                    var src = (entidad.Source ?? string.Empty).ToLowerInvariant();
+                                noEncontrados++;
+                                continue;
+                            }
 
-                                    // Si viene de Catastro (ajusta 'catastro' según cómo lo devuelva tu repo)
-                                    if (src.Contains("cat") || src.Contains("catastro"))
-                                    {
-                                        entidad.ScoreText = "Aproximada por Catastro";
-                                    }
-                                    // Si es la BD interna (EAAB) — muchas veces Source viene vacío o con "eaab"
-                                    else if (string.IsNullOrWhiteSpace(entidad.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
-                                    {
-                                        entidad.ScoreText = "Exacta";
-                                    }
-                                    // Si la fuente es ESRI (o viene con puntaje numérico)
-                                    else if (src.Contains("esri"))
-                                    {
-                                        // Si existe campo numérico Score lo convertimos, si no usamos "N/A"
-                                        entidad.ScoreText = entidad.Score?.ToString() ?? "ESRI";
-                                    }
-                                    // Fallback: si no aplican los anteriores, usar Score si existe o "N/A"
-                                    else
-                                    {
-                                        entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
-                                    }
+                            if (!(resultados[0].Latitud.HasValue && resultados[0].Longitud.HasValue))
+                            {
+                                noEncontrados++;
+                                continue;
+                            }
 
-                                    // Guardamos en memoria (rápido)
-                                    ResultsLayerService.AddPointToMemory(entidad);
-                                    encontrados++;
-                                }
-                                else
-                                {
-                                    noEncontrados++;
-                                }
+                            var entidad = resultados[0];
+                            var src = (entidad.Source ?? string.Empty).ToLowerInvariant();
+
+                            if (src.Contains("cat") || src.Contains("catastro"))
+                            {
+                                entidad.ScoreText = "Aproximada por Catastro";
+                            }
+                            else if (string.IsNullOrWhiteSpace(entidad.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
+                            {
+                                entidad.ScoreText = "Exacta";
+                            }
+                            else if (src.Contains("esri"))
+                            {
+                                entidad.ScoreText = entidad.Score?.ToString() ?? "ESRI";
                             }
                             else
                             {
-                                noEncontrados++;
+                                entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
                             }
+
+                            ResultsLayerService.AddPointToMemory(entidad);                           
                         }
                         catch
                         {
@@ -179,8 +187,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     }
                 });
 
-                // Ahora sí: insertar todos los puntos en el mapa de una sola vez
-                await ResultsLayerService.CommitPointsAsync();
+                await ResultsLayerService.CommitPointsAsync(GdbPath);
 
                 MessageBox.Show(
                     $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
@@ -193,9 +200,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 StatusMessage = string.Empty;
             }
         }
-
-
-
 
         private List<RegistroDireccion> LeerDireccionesExcel(string filePath)
         {
@@ -214,7 +218,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     {
                         Identificador = reader.GetValue(0)?.ToString(),
                         Direccion = reader.GetValue(1)?.ToString(),
-                        Poblacion = reader.GetValue(2)?.ToString() 
+                        Poblacion = reader.GetValue(2)?.ToString()
                     };
 
                     if (!string.IsNullOrWhiteSpace(registro.Direccion) &&
@@ -228,11 +232,34 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             return lista;
         }
 
+        private void BrowseGdb()
+        {
+            var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
+
+            var dlg = new OpenItemDialog
+            {
+                Title = "Seleccionar Geodatabase",
+                BrowseFilter = filter,
+                MultiSelect = false,
+                InitialLocation = !string.IsNullOrWhiteSpace(GdbPath)
+                    ? System.IO.Path.GetDirectoryName(GdbPath)
+                    : Project.Current?.HomeFolderPath
+            };
+
+            var ok = dlg.ShowDialog();
+            if (ok == true && dlg.Items != null && dlg.Items.Any())
+            {
+                var item = dlg.Items.First();
+                // item.Path devolverá la ruta a la carpeta .gdb seleccionada
+                GdbPath = item.Path;
+            }
+        }
+
         public class RegistroDireccion
         {
             public string Identificador { get; set; }
             public string Direccion { get; set; }
-            public string Poblacion { get; set; } 
+            public string Poblacion { get; set; }
         }
     }
 }

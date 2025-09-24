@@ -27,15 +27,14 @@ namespace EAABAddIn.Src.Core.Map
         private static readonly object _pendingLock = new();
 
         // --- Compatibilidad: método original (inserta un único punto inmediatamente) ---
-        public static Task AddPointAsync(PtAddressGralEntity entidad)
+        public static Task AddPointAsync(PtAddressGralEntity entidad, string gdbPath = null)
         {
-            return QueuedTask.Run(() => _AddPointAsync(entidad));
+            return QueuedTask.Run(() => _AddPointAsync(entidad, gdbPath));
         }
 
-        private static async Task _AddPointAsync(PtAddressGralEntity entidad)
+        private static async Task _AddPointAsync(PtAddressGralEntity entidad, string gdbPath)
         {
             var mapView = MapView.Active;
-            var gdbPath = Module1.Settings.rutaArchivoGdb;
 
             // Validar que el path de la GDB exista (la carpeta .gdb)
             if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
@@ -232,12 +231,12 @@ namespace EAABAddIn.Src.Core.Map
         }
 
         /// <summary> Inserta todos los puntos acumulados en una sola operación (rápido). </summary>
-        public static Task CommitPointsAsync()
+        public static Task CommitPointsAsync(string gdbPath)
         {
-            return QueuedTask.Run(() => _CommitPointsInternal());
+            return QueuedTask.Run(() => _CommitPointsInternal(gdbPath));
         }
 
-        private static async Task _CommitPointsInternal()
+        private static async Task _CommitPointsInternal(string gdbPath)
         {
             List<PtAddressGralEntity> toInsert;
             lock (_pendingLock)
@@ -249,11 +248,6 @@ namespace EAABAddIn.Src.Core.Map
 
             var mapView = MapView.Active;
             if (mapView?.Map == null || toInsert == null || toInsert.Count == 0) return;
-
-            var gdbPath = Project.Current.DefaultGeodatabasePath;
-            // Validar que exista la ruta de la GDB (no solo la carpeta padre)
-            if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
-                return;
 
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
 
