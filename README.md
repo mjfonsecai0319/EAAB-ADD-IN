@@ -5,28 +5,27 @@ Optimiza la gestión de datos espaciales, permitiendo integrar información dire
 
 ## Características principales
 
-- **Conexión persistente** a bases de datos PostgreSQL y Oracle
-- **Búsqueda individual** de direcciones con localización en mapa
-- **Geocodificación masiva** desde archivos Excel (.xlsx)
-- **Configuración automática** que se mantiene entre sesiones
-- **Interfaz adaptable** al tema claro/oscuro de ArcGIS Pro
-- **Validación de conexión** en tiempo real
+1. **Conexión persistente** a bases de datos PostgreSQL y Oracle
+2. **Búsqueda individual** de direcciones con localización en mapa
+3. **Geocodificación masiva** desde archivos Excel (.xlsx)
+4. **Configuración automática** que se mantiene entre sesiones
+5. **Interfaz adaptable** al tema claro/oscuro de ArcGIS Pro
+6. **Validación de conexión** en tiempo real
 
 ## Requisitos del sistema
 
 ### Requisitos obligatorios
 
-* ArcGIS Pro 3.0 o superior ejecutándose correctamente
-* .NET 8 Runtime (normalmente incluido con ArcGIS Pro)
-* Conexión a la base de datos corporativa (PostgreSQL u Oracle)
+1. ArcGIS Pro 3.4 o superior ejecutándose correctamente
+2. .NET 8 Runtime (normalmente incluido con ArcGIS Pro)
+3. Conexión a la base de datos corporativa (PostgreSQL u Oracle)
+
+> [!tip]
+> Consultar requisitos adicionales en [Requisitos del sistema de ArcGIS Pro 3.5](https://pro.arcgis.com/es/pro-app/latest/get-started/arcgis-pro-system-requirements.htm)
 
 ### Requisitos de base de datos
 
-* PostgreSQL 9.6+ con PostGIS habilitado, o Oracle 12c+
-* Usuario con permisos de lectura sobre las tablas de direcciones
-* Puerto habilitado para conexiones remotas:
-  - PostgreSQL: puerto 5432 (predeterminado)
-  - Oracle: puerto 1521 (predeterminado)
+1. PostgreSQL 15+ con PostGIS habilitado, o Oracle 18+
 
 ## Instalación
 
@@ -65,38 +64,41 @@ Al utilizar el Add-In por primera vez:
 1. **Si no hay configuración previa**: Los campos aparecerán vacíos para configuración manual
 2. **Si hay configuración guardada**: Los campos se llenarán automáticamente con los valores previamente guardados
 
-#### Configuración manual paso a paso:
+#### Configuración manual paso a paso
 
 1. Abre ArcGIS Pro
 2. Ve a **Archivo → Opciones → EAAB Add-In** (en el panel lateral izquierdo)
-3. Completa los parámetros según tu motor de base de datos:
+3. Haz clic en **Probar Conexión** - debe mostrar *"Conexión exitosa"*
+4. Haz clic en **Guardar y Conectar** para establecer la conexión permanente
 
-**Para PostgreSQL:**
-- Motor: PostgreSQL
-- Host: `localhost` o dirección IP del servidor
-- Puerto: `5432` (se establece automáticamente)
-- Base de datos: Nombre de la base de datos PostgreSQL
-- Usuario: Tu nombre de usuario
-- Contraseña: Tu contraseña
+#### Completa los parámetros según tu motor de base de datos
 
-**Para Oracle:**
-- Motor: Oracle
-- Host: `localhost` o dirección IP del servidor
-- Puerto: `1521` (se establece automáticamente)
-- Base de datos: SID o nombre del servicio Oracle
-- Usuario: Tu nombre de usuario
-- Contraseña: Tu contraseña
-- Oracle Path: Ruta de instalación de Oracle (opcional)
+##### Para PostgreSQL
 
-4. Haz clic en **Probar Conexión** - debe mostrar "✅ Conexión exitosa"
-5. Haz clic en **Guardar y Conectar** para establecer la conexión permanente
+* Motor: PostgreSQL
+* Host: `localhost` o dirección IP del servidor
+* Puerto: `5432` (se establece automáticamente)
+* Base de datos: Nombre de la base de datos PostgreSQL
+* Usuario: Tu nombre de usuario
+* Contraseña: Tu contraseña
+
+##### Para Oracle
+
+* Motor: Oracle
+* Host: `localhost` o dirección IP del servidor
+* Puerto: `1521` (se establece automáticamente)
+* Base de datos: SID o nombre del servicio Oracle
+* Usuario: Tu nombre de usuario
+* Contraseña: Tu contraseña
+* Oracle Path: Ruta de instalación de Oracle (opcional)
 
 ### Cambio de motor de base de datos
 
 Cuando cambies entre PostgreSQL y Oracle:
-- **Todos los campos se limpiarán automáticamente**
-- **Solo se conservará el puerto por defecto** del nuevo motor seleccionado
-- **Deberás configurar nuevamente** todos los parámetros de conexión
+
+* **Todos los campos se limpiarán automáticamente**
+* **Solo se conservará el puerto por defecto** del nuevo motor seleccionado
+* **Deberás configurar nuevamente** todos los parámetros de conexión
 
 > [!warning]
 > Si la conexión falla, revisa que los parámetros de red y las credenciales sean correctas antes de continuar.
@@ -111,30 +113,28 @@ Una vez configurado correctamente, el Add-In ofrece herramientas principales acc
 
 **Acceso**: Botón **"Buscar"** en la pestaña EAAB Add-in
 
-#### Pasos para usar:
+#### Pasos para usar
 
 1. Haz clic en **"Buscar"** para abrir el panel de búsqueda
 2. **Selecciona la ciudad** desde el dropdown (se cargan automáticamente desde la base de datos)
 3. **Ingresa la dirección** en el campo de texto (ej: "Calle 123 #45-67")
 4. Haz clic en **"Buscar Dirección"**
 
-#### Funcionalidades del panel de búsqueda:
+#### Funcionalidades del panel de búsqueda
 
-- **Estado de conexión**: Indica si la base de datos está conectada
-- **Botón de refrescar**: Actualiza la lista de ciudades disponibles
-- **Validación en tiempo real**: Los campos se validan antes de permitir la búsqueda
-- **Barra de progreso**: Muestra el estado del proceso de búsqueda
+* **Estado de conexión**: Indica si la base de datos está conectada
+* **Botón de refrescar**: Actualiza la lista de ciudades disponibles
+* **Validación en tiempo real**: Los campos se validan antes de permitir la búsqueda
+* **Barra de progreso**: Muestra el estado del proceso de búsqueda
 
-#### Resultados esperados:
+#### Resultados esperados
 
-- **Localización en mapa**: La dirección encontrada se centra y resalta en el mapa
-- **Información detallada**: Se despliega información asociada como:
-  - Coordenadas exactas
-  - Código de dirección
-  - Información catastral (si está disponible)
-  - Barrio o localidad
-
----
+* **Localización en mapa**: La dirección encontrada se centra y resalta en el mapa
+* **Información detallada**: Se despliega información asociada como:
+  * Coordenadas exactas
+  * Código de dirección
+  * Información catastral (si está disponible)
+  * Barrio o localidad
 
 ### 2. Geocodificación Masiva
 
@@ -142,7 +142,7 @@ Una vez configurado correctamente, el Add-In ofrece herramientas principales acc
 
 **Acceso**: Botón **"Masivo"** en la pestaña EAAB Add-in
 
-#### Formato requerido del archivo Excel:
+#### Formato requerido del archivo Excel
 
 El archivo debe contener **obligatoriamente** estas columnas:
 
@@ -150,12 +150,11 @@ El archivo debe contener **obligatoriamente** estas columnas:
 |--------------|-----------|-----------|
 | 001 | Calle 123 #45-67 | Bogotá |
 
+* **Identificador**: ID único de cada registro (texto o número)
+* **Direccion**: Dirección completa a geocodificar
+* **Poblacion**: Ciudad o población donde se encuentra la dirección
 
-- **Identificador**: ID único de cada registro (texto o número)
-- **Direccion**: Dirección completa a geocodificar
-- **Poblacion**: Ciudad o población donde se encuentra la dirección
-
-#### Pasos para usar:
+#### Pasos para usar
 
 1. Haz clic en **"Masivo"** para abrir el panel de geocodificación masiva
 2. Haz clic en **"Examinar..."** para seleccionar tu archivo Excel (.xlsx)
