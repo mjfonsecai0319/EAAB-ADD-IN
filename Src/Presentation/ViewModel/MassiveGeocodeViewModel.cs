@@ -143,7 +143,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                                 address: registro.Direccion,
                                 cityCode: registro.Poblacion,
                                 cityDesc: ciudadesDict.TryGetValue(registro.Poblacion, out var cityDesc) ? cityDesc : null,
-                                gdbPath: GdbPath
+                                gdbPath: GdbPath,
+                                showNoResultsMessage: false
                             );
 
                             if (resultados.Count == 0)

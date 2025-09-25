@@ -36,24 +36,35 @@ namespace EAABAddIn.Src.Core.Map
         {
             var mapView = MapView.Active;
 
-            // Validar que el path de la GDB exista (la carpeta .gdb)
             if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
+            {
                 gdbPath = Project.Current.DefaultGeodatabasePath;
+            }
+
+            if (!Directory.Exists(gdbPath))
+            {
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "La geodatabase predeterminada no está configurada, no existe o la ruta especificada no es válida. Por favor, verifique la configuración del proyecto y asegúrese de que la geodatabase esté accesible.",
+                    caption: "Error - Geodatabase no válida"
+                );
+                return;
+            }
 
             if (mapView?.Map == null)
             {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("No hay un mapa activo.");
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "No hay un mapa activo en ArcGIS Pro. Por favor, asegúrese de tener un proyecto abierto y un mapa visible antes de intentar agregar puntos de resultados.",
+                    caption: "Error - Mapa no activo"
+                );
                 return;
             }
-            // Validar que el path de la GDB exista (la carpeta .gdb)
-            if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
-            {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("La geodatabase predeterminada no está configurada o es inválida.");
-                return;
-            }
+
             if (!await _CreateFeatureClassIfNotExist(gdbPath))
             {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("No se pudo crear la clase de entidad para los resultados.");
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "No se pudo crear la clase de entidad 'GeocodedAddresses' en la geodatabase especificada. Esto puede deberse a un problema de permisos, un bloqueo de esquema, o a que la geodatabase está dañada o inaccesible. Verifique que la ruta sea válida, que tenga permisos de escritura y que ningún otro proceso esté bloqueando la geodatabase.",
+                    caption: "Error - Clase de entidad no creada"
+                );
                 return;
             }
 
@@ -64,10 +75,13 @@ namespace EAABAddIn.Src.Core.Map
             {
                 if (!entidad.Latitud.HasValue || !entidad.Longitud.HasValue)
                 {
-                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("La entidad no tiene coordenadas válidas.");
+                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                        messageText: "La entidad no tiene coordenadas válidas o no existen valores de latitud y/o longitud. No se puede agregar el punto al mapa.",
+                        caption: "Error - Coordenadas inválidas o inexistentes"
+                    );
                     return;
                 }
-                // Crear geometría
+
                 var mapPoint = MapPointBuilderEx.CreateMapPoint(
                     (double)entidad.Longitud.Value,
                     (double)entidad.Latitud.Value,
@@ -75,11 +89,16 @@ namespace EAABAddIn.Src.Core.Map
                 );
 
                 var featureClass = _addressPointLayer.GetTable() as FeatureClass;
+
                 if (featureClass == null)
                 {
-                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("No se pudo acceder a la FeatureClass de la capa.");
+                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                        messageText: "No se pudo acceder a la FeatureClass de resultados. Esto puede deberse a un bloqueo de esquema, a que la conexión a la geodatabase quedó en un estado inestable o a un problema interno de ArcGIS Pro. Guarde su trabajo y reinicie ArcGIS Pro para liberar los bloqueos e intente nuevamente.",
+                        caption: "Error - Reinicie ArcGIS Pro"
+                    );
                     return;
                 }
+
                 try
                 {
                     using (var rowBuffer = featureClass.CreateRowBuffer())
@@ -89,7 +108,6 @@ namespace EAABAddIn.Src.Core.Map
                         rowBuffer["Identificador"] = entidad.ID.ToString();
                         rowBuffer["Direccion"] = entidad.FullAddressOld ?? entidad.MainStreet ?? string.Empty;
                         rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
-                        // Alinear con los nombres de campo creados por EnsureFieldsExist
                         rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
                         rowBuffer["FullAdressUACD"] = entidad.FullAddressCadastre ?? string.Empty;
                         rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
@@ -101,7 +119,10 @@ namespace EAABAddIn.Src.Core.Map
                 }
                 catch (Exception ex)
                 {
-                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Error insertando fila: {ex.Message}");
+                    ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                        messageText: $"Error al agregar el punto al mapa: {ex.Message}",
+                        caption: "Error - Inserción de punto"
+                    );
                     return;
                 }
 
@@ -109,7 +130,10 @@ namespace EAABAddIn.Src.Core.Map
             }
             else
             {
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("La capa de resultados no está disponible o no es editable.");
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "La capa de resultados no está disponible o no es editable.",
+                    caption: "Error - Capa no disponible o editable"
+                );
             }
         }
 
@@ -126,8 +150,7 @@ namespace EAABAddIn.Src.Core.Map
                     .Any(d => string.Equals(d.GetName(), FeatureClassName, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (exists)
-                return true;
+            if (exists) return true;
 
             var parameters = Geoprocessing.MakeValueArray(
                 path,
@@ -143,8 +166,8 @@ namespace EAABAddIn.Src.Core.Map
                 parameters,
                 null,
                 CancelableProgressor.None,
-                GPExecuteToolFlags.AddToHistory);
-
+                GPExecuteToolFlags.AddToHistory
+            );
             return !gpResult.IsFailed;
         }
 

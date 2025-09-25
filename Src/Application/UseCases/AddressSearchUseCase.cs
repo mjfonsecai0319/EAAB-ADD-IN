@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
-// Para parsing ligero opcional
-using ArcGIS.Core.Data;
-using ArcGIS.Core.Data.UtilityNetwork.Trace;
 using EAABAddIn.Src.Application.Mappers.EsriMappingExtensions;
 using EAABAddIn.Src.Application.Mappers.IdecaMappingExtensions;
 using EAABAddIn.Src.Application.Models;
@@ -14,8 +11,6 @@ using EAABAddIn.Src.Core.Entities;
 using EAABAddIn.Src.Core.Http;
 using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
-
-// HttpService
 
 namespace EAABAddIn.Src.Application.UseCases;
 
@@ -28,7 +23,13 @@ public class AddressSearchUseCase
         this._ptAddressGralRepository = this.GetRepository(engine);
     }
 
-    public List<PtAddressGralEntity> Invoke(string address, string cityCode = "11001", string cityDesc = "BOGOTA D.C.", string gdbPath = null)
+    public List<PtAddressGralEntity> Invoke(
+        string address,
+        string cityCode = "11001",
+        string cityDesc = "BOGOTA D.C.",
+        string gdbPath = null,
+        bool showNoResultsMessage = true
+    )
     {
         var searchResults = _ptAddressGralRepository.FindByCityCodeAndAddresses(
             cityCode,
@@ -61,7 +62,16 @@ public class AddressSearchUseCase
                 geocoder: null,
                 score: null
             );
+
             _ = AddressNotFoundTableService.AddRecordAsync(record, gdbPath);
+            
+            if (showNoResultsMessage)
+            {
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: $"No se encontraron resultados para la dirección '{address}' en la base de datos local, IDECA o el servicio de geocodificación de ESRI.",
+                    caption: "Búsqueda sin resultados"
+                );
+            }
         }
 
         return searchResults;
