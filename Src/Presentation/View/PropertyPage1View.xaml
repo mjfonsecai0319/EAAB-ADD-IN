@@ -201,7 +201,6 @@
                     <RowDefinition Height="Auto"/> <!-- Base de Datos -->
                     <RowDefinition Height="Auto"/> <!-- Usuario -->
                     <RowDefinition Height="Auto"/> <!-- Contraseña -->
-                    <RowDefinition Height="Auto"/> <!-- Archivo SDE -->
                     <RowDefinition Height="Auto"/> <!-- Archivo GDB -->
                 </Grid.RowDefinitions>
 
@@ -268,20 +267,7 @@
                 </StackPanel>
 
                 <!-- Archivo GDB (visible para PostgreSQL y Oracle tradicional) -->
-                <TextBlock Grid.Row="7" Grid.Column="0" 
-                        Text="Archivo GDB:" 
-                        Style="{StaticResource FieldLabelStyle}"
-                        Visibility="{Binding MostrarArchivoGdb, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal"
-                            Visibility="{Binding MostrarArchivoGdb, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBox Style="{StaticResource FilePathTextBoxStyle}"
-                            Text="{Binding RutaArchivoGdb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            ToolTip="{Binding RutaArchivoGdb}"
-                            Width="185"/>
-                    <Button Style="{StaticResource FilePickerButtonStyle}"
-                            Command="{Binding SeleccionarArchivoGdbCommand}"
-                            ToolTip="Seleccionar archivo GDB"/>
-                </StackPanel>
+                
             </Grid>
 
                 <!-- Botones -->
