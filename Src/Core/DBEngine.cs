@@ -4,7 +4,7 @@ namespace EAABAddIn.Src.Core;
 
 public enum DBEngine
 {
-    Oracle, PostgreSQL, Unknown
+    Oracle, PostgreSQL, OracleSDE, Unknown
 }
 
 public static class DBEngineExtensions
@@ -18,6 +18,10 @@ public static class DBEngineExtensions
         {
             "ORACLE" => DBEngine.Oracle,
             "POSTGRESQL" => DBEngine.PostgreSQL,
+            // Compatibilidad: aceptar varios formatos para Oracle SDE
+            "ORACLESDE" => DBEngine.OracleSDE,
+            "ORACLE SDE" => DBEngine.OracleSDE,
+            "ORACLE (ARCHIVO DE CREDENCIALES)" => DBEngine.OracleSDE,
             _ => DBEngine.Unknown
         };
     }
@@ -26,6 +30,7 @@ public static class DBEngineExtensions
     {
         DBEngine.Oracle => "Oracle",
         DBEngine.PostgreSQL => "PostgreSQL",
+        DBEngine.OracleSDE => "Oracle SDE",  
         _ => "Unknown"
     };
 }

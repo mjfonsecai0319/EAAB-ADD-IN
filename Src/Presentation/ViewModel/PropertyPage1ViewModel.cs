@@ -43,7 +43,13 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             return true;
         }
 
-        public ObservableCollection<string> MotoresBD { get; set; } = new ObservableCollection<string> { "Oracle", "PostgreSQL" };
+        // Actualizado para incluir la nueva opción
+        public ObservableCollection<string> MotoresBD { get; set; } = new ObservableCollection<string> 
+        { 
+            "Oracle", 
+            "PostgreSQL", 
+            "Oracle SDE" 
+        };
 
         private string _motorSeleccionado;
         public string MotorSeleccionado
@@ -61,14 +67,28 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (!_isLoading)
                     {
-                        if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "5432";
-                        else if (value == "Oracle" && string.IsNullOrWhiteSpace(Puerto)) Puerto = "1521";
+                        if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) 
+                            Puerto = "5432";
+                        else if ((value == "Oracle" || value == "Oracle SDE") && string.IsNullOrWhiteSpace(Puerto)) 
+                            Puerto = "1521";
                     }
 
                     _previousMotor = value;
+                    
+                    // Notificar cambios en las propiedades de visibilidad
+                    OnPropertyChanged(nameof(MostrarCamposConexion));
+                    OnPropertyChanged(nameof(MostrarArchivoCredenciales));
+                    OnPropertyChanged(nameof(MostrarArchivoGdb));
                 }
             }
         }
+
+        // Propiedades para controlar la visibilidad de los campos
+    public bool MostrarCamposConexion => MotorSeleccionado != "Oracle SDE";
+        
+    public bool MostrarArchivoCredenciales => MotorSeleccionado == "Oracle SDE";
+        
+    public bool MostrarArchivoGdb => MotorSeleccionado != "Oracle SDE";
 
         private string _usuario;
         public string Usuario { get => _usuario; set => SetProperty(ref _usuario, value); }
@@ -102,7 +122,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _isConnected, value);
         }
 
-        // ✅ Nueva propiedad
         private string _rutaArchivoGdb;
         public string RutaArchivoGdb
         {
@@ -110,11 +129,20 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _rutaArchivoGdb, value);
         }
 
+        // Nueva propiedad para el archivo de credenciales de Oracle
+        private string _rutaArchivoCredenciales;
+        public string RutaArchivoCredenciales
+        {
+            get => _rutaArchivoCredenciales;
+            set => SetProperty(ref _rutaArchivoCredenciales, value);
+        }
+
         public ICommand ProbarConexionCommand { get; }
         public ICommand GuardarYReconectarCommand { get; }
-
-        // ✅ Nuevo comando
         public ICommand SeleccionarArchivoGdbCommand { get; }
+        
+        // Nuevo comando para seleccionar archivo de credenciales
+        public ICommand SeleccionarArchivoCredencialesCommand { get; }
 
         public PropertyPage1ViewModel()
         {
@@ -123,9 +151,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             LoadSettings();
             ProbarConexionCommand = new RelayCommand(async () => await ProbarConexionAsync(), () => !_isConnecting);
             GuardarYReconectarCommand = new RelayCommand(async () => await GuardarYReconectarAsync(), () => !_isConnecting && IsValidConfiguration());
-
-            // ✅ Inicializar el nuevo comando
             SeleccionarArchivoGdbCommand = new RelayCommand(SeleccionarArchivoGdb);
+            
+            // Inicializar el nuevo comando
+            SeleccionarArchivoCredencialesCommand = new RelayCommand(SeleccionarArchivoCredenciales);
         }
 
         private void LoadSettings()
@@ -140,11 +169,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 if (!string.IsNullOrEmpty(_settings.puerto))
                     Puerto = _settings.puerto;
                 else
-                    Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
+                    Puerto = MotorSeleccionado == "Oracle" || MotorSeleccionado == "Oracle SDE" ? "1521" : "5432";
                 BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
-
-                // ✅ Cargar la ruta desde settings
                 RutaArchivoGdb = _settings.rutaArchivoGdb ?? string.Empty;
+                
+                // Cargar la ruta del archivo de credenciales
+                RutaArchivoCredenciales = _settings.rutaArchivoCredenciales ?? string.Empty;
 
                 Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
                 _previousMotor = MotorSeleccionado;
@@ -165,9 +195,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.host = Host;
             _settings.puerto = Puerto;
             _settings.baseDeDatos = BaseDeDatos;
-
-            // ✅ Guardar la ruta en settings
             _settings.rutaArchivoGdb = RutaArchivoGdb;
+            
+            // Guardar la ruta del archivo de credenciales
+            _settings.rutaArchivoCredenciales = RutaArchivoCredenciales;
 
             _settings.Save();
             Debug.WriteLine("💾 Configuración guardada automáticamente");
@@ -181,12 +212,13 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 Usuario = string.Empty;
                 Contraseña = string.Empty;
                 Host = string.Empty;
-                Puerto = MotorSeleccionado == "Oracle" ? "1521" : "5432";
+                Puerto = (MotorSeleccionado == "Oracle" || MotorSeleccionado == "Oracle SDE") ? "1521" : "5432";
                 BaseDeDatos = string.Empty;
                 OraclePath = string.Empty;
-
-                // ✅ Limpiar la ruta también
                 RutaArchivoGdb = string.Empty;
+                
+                // Limpiar también el archivo de credenciales
+                RutaArchivoCredenciales = string.Empty;
 
                 MensajeConexion = "Motor cambiado. Configure los nuevos parámetros de conexión.";
                 IsConnected = false;
@@ -201,8 +233,28 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         {
             if (MotorSeleccionado == "Oracle")
                 return ConnectionPropertiesFactory.CreateOracleConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
+            else if (MotorSeleccionado == "Oracle SDE")
+            {
+                // Para archivos SDE, no necesitamos DatabaseConnectionProperties
+                // El archivo se usa directamente con el constructor de Geodatabase
+                throw new NotSupportedException("Para archivos SDE, use GetSdeFilePath() en lugar de GetDatabaseConnectionProperties()");
+            }
             else
                 return ConnectionPropertiesFactory.CreatePostgresConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
+        }
+
+        // Nuevo método para obtener la ruta del archivo SDE
+        public string GetSdeFilePath()
+        {
+            if (MotorSeleccionado == "Oracle SDE")
+            {
+                if (string.IsNullOrWhiteSpace(RutaArchivoCredenciales))
+                {
+                    throw new InvalidOperationException("No se ha seleccionado un archivo SDE.");
+                }
+                return ConnectionPropertiesFactory.CreateOracleConnectionFromFile(RutaArchivoCredenciales);
+            }
+            throw new InvalidOperationException("GetSdeFilePath solo es válido para Oracle con archivo de credenciales");
         }
 
         public async Task ProbarConexionAsync()
@@ -212,17 +264,37 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             MensajeConexion = "🔄 Probando conexión...";
             try
             {
-                var connectionProps = GetDatabaseConnectionProperties();
-                var result = await _validator.TestConnectionInstanceAsync(connectionProps, MotorSeleccionado);
-                if (result.IsSuccess)
+                if (MotorSeleccionado == "Oracle SDE")
                 {
-                    MensajeConexion = "✅ Conexión exitosa";
-                    IsConnected = true;
+                    // Para archivos SDE, probamos la conexión directamente con Geodatabase
+                    var sdeFilePath = GetSdeFilePath();
+                    var result = await _validator.TestSdeConnectionAsync(sdeFilePath);
+                    if (result.IsSuccess)
+                    {
+                        MensajeConexion = "✅ Conexión exitosa al archivo SDE";
+                        IsConnected = true;
+                    }
+                    else
+                    {
+                        MensajeConexion = $"❌ Error: {result.Message}";
+                        IsConnected = false;
+                    }
                 }
                 else
                 {
-                    MensajeConexion = $"❌ Error: {result.Message}";
-                    IsConnected = false;
+                    // Conexiones tradicionales
+                    var connectionProps = GetDatabaseConnectionProperties();
+                    var result = await _validator.TestConnectionInstanceAsync(connectionProps, MotorSeleccionado);
+                    if (result.IsSuccess)
+                    {
+                        MensajeConexion = "✅ Conexión exitosa";
+                        IsConnected = true;
+                    }
+                    else
+                    {
+                        MensajeConexion = $"❌ Error: {result.Message}";
+                        IsConnected = false;
+                    }
                 }
             }
             catch (Exception ex)
@@ -261,11 +333,19 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private bool IsValidConfiguration()
         {
-            return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
-                   !string.IsNullOrWhiteSpace(Host) &&
-                   !string.IsNullOrWhiteSpace(Usuario) &&
-                   !string.IsNullOrWhiteSpace(Contraseña) &&
-                   !string.IsNullOrWhiteSpace(BaseDeDatos);
+            if (MotorSeleccionado == "Oracle SDE")
+            {
+                return !string.IsNullOrWhiteSpace(RutaArchivoCredenciales) && 
+                       System.IO.File.Exists(RutaArchivoCredenciales);
+            }
+            else
+            {
+                return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
+                       !string.IsNullOrWhiteSpace(Host) &&
+                       !string.IsNullOrWhiteSpace(Usuario) &&
+                       !string.IsNullOrWhiteSpace(Contraseña) &&
+                       !string.IsNullOrWhiteSpace(BaseDeDatos);
+            }
         }
 
         private void CheckConnectionStatus()
@@ -304,10 +384,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             LoadSettings();
         }
 
-        // ✅ Nuevo método
         private void SeleccionarArchivoGdb()
         {
-            // Usar el explorador de ArcGIS Pro: una File Geodatabase es una carpeta .gdb
             var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
 
             var dlg = new OpenItemDialog
@@ -324,8 +402,27 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             if (ok == true && dlg.Items != null && dlg.Items.Any())
             {
                 var item = dlg.Items.First();
-                // item.Path devolverá la ruta a la carpeta .gdb seleccionada
                 RutaArchivoGdb = item.Path;
+            }
+        }
+
+        // Nuevo método para seleccionar archivo de conexión SDE
+        private void SeleccionarArchivoCredenciales()
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Title = "Seleccionar archivo de conexión SDE",
+                Filter = "Archivos de conexión SDE (*.sde)|*.sde|Todos los archivos (*.*)|*.*",
+                CheckFileExists = true,
+                CheckPathExists = true,
+                InitialDirectory = !string.IsNullOrWhiteSpace(RutaArchivoCredenciales)
+                    ? System.IO.Path.GetDirectoryName(RutaArchivoCredenciales)
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                RutaArchivoCredenciales = openFileDialog.FileName;
             }
         }
     }

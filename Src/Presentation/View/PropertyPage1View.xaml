@@ -184,78 +184,105 @@
             <StackPanel>
                 <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource SectionHeaderStyle}"/>
 
-                <Grid Margin="0,20,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <!-- Etiquetas -->
-                        <ColumnDefinition Width="*"/>
-                        <!-- Inputs -->
-                        <ColumnDefinition Width="Auto"/>
-                        <!-- Botón archivo -->
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                <!-- Reemplaza la sección del Grid dentro del ScrollViewer con esto: -->
+            <Grid Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Etiquetas -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Inputs -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Botón archivo -->
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Motor -->
+                    <RowDefinition Height="Auto"/> <!-- Host -->
+                    <RowDefinition Height="Auto"/> <!-- Puerto -->
+                    <RowDefinition Height="Auto"/> <!-- Base de Datos -->
+                    <RowDefinition Height="Auto"/> <!-- Usuario -->
+                    <RowDefinition Height="Auto"/> <!-- Contraseña -->
+                    <RowDefinition Height="Auto"/> <!-- Archivo SDE -->
+                    <RowDefinition Height="Auto"/> <!-- Archivo GDB -->
+                </Grid.RowDefinitions>
 
-                    <!-- Motor -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1"
-                              Style="{StaticResource ThemedComboBoxStyle}"
-                              ItemsSource="{Binding MotoresBD}"
-                              SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Motor -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
+                <ComboBox Grid.Row="0" Grid.Column="1"
+                        Style="{StaticResource ThemedComboBoxStyle}"
+                        ItemsSource="{Binding MotoresBD}"
+                        SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <!-- Host -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="1" Grid.Column="1"
-                             Style="{StaticResource ThemedTextBoxStyle}"
-                             Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Host (oculto para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <TextBox Grid.Row="1" Grid.Column="1"
+                        Style="{StaticResource ThemedTextBoxStyle}"
+                        Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- Puerto -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="2" Grid.Column="1"
-                             Style="{StaticResource ThemedTextBoxStyle}"
-                             Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Puerto (oculto para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <TextBox Grid.Row="2" Grid.Column="1"
+                        Style="{StaticResource ThemedTextBoxStyle}"
+                        Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- Base de Datos -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="3" Grid.Column="1"
-                             Style="{StaticResource ThemedTextBoxStyle}"
-                             Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Base de Datos (oculto para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <TextBox Grid.Row="3" Grid.Column="1"
+                        Style="{StaticResource ThemedTextBoxStyle}"
+                        Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- Usuario -->
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"/>
-                    <TextBox Grid.Row="4" Grid.Column="1"
-                             Style="{StaticResource ThemedTextBoxStyle}"
-                             Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Usuario (oculto para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <TextBox Grid.Row="4" Grid.Column="1"
+                        Style="{StaticResource ThemedTextBoxStyle}"
+                        Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- Contraseña -->
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"/>
-                    <PasswordBox Grid.Row="5" Grid.Column="1"
-                                 Style="{StaticResource ThemedPasswordBoxStyle}"
-                                 x:Name="PasswordBox"
-                                 PasswordChanged="PasswordBox_PasswordChanged"/>
+                <!-- Contraseña (oculto para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <PasswordBox Grid.Row="5" Grid.Column="1"
+                            Style="{StaticResource ThemedPasswordBoxStyle}"
+                            x:Name="PasswordBox"
+                            PasswordChanged="PasswordBox_PasswordChanged"
+                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- Archivo GDB -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" 
-                               Text="Archivo GDB:" 
-                               Style="{StaticResource FieldLabelStyle}"/>
+                <!-- Archivo SDE (solo visible para Oracle con archivo de credenciales) -->
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="Archivo SDE:" Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal"
+                            Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBox Style="{StaticResource FilePathTextBoxStyle}"
+                            Text="{Binding RutaArchivoCredenciales, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="{Binding RutaArchivoCredenciales}"
+                            Width="185"/>
+                    <Button Style="{StaticResource FilePickerButtonStyle}"
+                            Command="{Binding SeleccionarArchivoCredencialesCommand}"
+                            ToolTip="Seleccionar archivo de conexión SDE"/>
+                </StackPanel>
 
-                    <TextBox Grid.Row="6" Grid.Column="1"
-                             Style="{StaticResource FilePathTextBoxStyle}"
-                             Text="{Binding RutaArchivoGdb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="{Binding RutaArchivoGdb}" Margin="56,0,91,12"/>
-
-                    <Button Grid.Row="6" Grid.Column="1"
-                            Style="{StaticResource FilePickerButtonStyle}"
+                <!-- Archivo GDB (visible para PostgreSQL y Oracle tradicional) -->
+                <TextBlock Grid.Row="7" Grid.Column="0" 
+                        Text="Archivo GDB:" 
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarArchivoGdb, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal"
+                            Visibility="{Binding MostrarArchivoGdb, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBox Style="{StaticResource FilePathTextBoxStyle}"
+                            Text="{Binding RutaArchivoGdb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="{Binding RutaArchivoGdb}"
+                            Width="185"/>
+                    <Button Style="{StaticResource FilePickerButtonStyle}"
                             Command="{Binding SeleccionarArchivoGdbCommand}"
-                            ToolTip="Seleccionar archivo GDB" Margin="266,1,34,11" RenderTransformOrigin="-0.225,0.404" Click="Button_Click"/>
-                </Grid>
+                            ToolTip="Seleccionar archivo GDB"/>
+                </StackPanel>
+            </Grid>
 
                 <!-- Botones -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0">
@@ -279,31 +306,42 @@
                 </Border>
 
                 <!-- Instrucciones -->
-                <Border Style="{StaticResource InstructionsContainerStyle}">
-                    <StackPanel>
-                        <TextBlock Text="Instrucciones:" 
-                                   FontWeight="Bold" 
-                                   FontSize="14"
-                                   Foreground="{DynamicResource Esri_Blue}"
-                                   Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" 
-                                   LineHeight="20"
-                                   Foreground="{DynamicResource Esri_TextPrimaryBrush}">
-                            <Run Text="1. Configure todos los parámetros de conexión"/>
-                            <LineBreak/>
-                            <Run Text="2. Seleccione el archivo GDB haciendo clic en el botón '...' (Opcional)"/>
-                            <LineBreak/>
-                            <Run Text="3. Haga clic en "/>
-                            <Run Text="'Probar Conexión'" FontWeight="Medium"/>
-                            <Run Text=" para verificar"/>
-                            <LineBreak/>
-                            <Run Text="4. Si la prueba es exitosa, haga clic en "/>
-                            <Run Text="'Guardar y Conectar'" FontWeight="Medium"/>
-                            <LineBreak/>
-                            <Run Text="5. La configuración se guardará automáticamente para futuras sesiones"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
+<!-- Reemplaza la sección de instrucciones con esto: -->
+        <Border Style="{StaticResource InstructionsContainerStyle}">
+            <StackPanel>
+                <TextBlock Text="Instrucciones:" 
+                        FontWeight="Bold" 
+                        FontSize="14"
+                        Foreground="{DynamicResource Esri_Blue}"
+                        Margin="0,0,0,8"/>
+                <TextBlock TextWrapping="Wrap" 
+                        LineHeight="20"
+                        Foreground="{DynamicResource Esri_TextPrimaryBrush}">
+                    <Run Text="1. Seleccione el motor de base de datos:"/>
+                    <LineBreak/>
+                    <Run Text="   • PostgreSQL: Conexión tradicional con credenciales"/>
+                    <LineBreak/>
+                    <Run Text="   • Oracle: Conexión tradicional con credenciales"/>
+                    <LineBreak/>
+                    <Run Text="   • Oracle (Archivo de credenciales): Usa archivo .SDE"/>
+                    <LineBreak/>
+                    <Run Text="2. Para conexiones tradicionales: Configure host, puerto, usuario, contraseña y base de datos"/>
+                    <LineBreak/>
+                    <Run Text="3. Para Oracle con archivo: Seleccione únicamente el archivo .SDE"/>
+                    <LineBreak/>
+                    <Run Text="4. Seleccione archivo GDB si es necesario (opcional para conexiones tradicionales)"/>
+                    <LineBreak/>
+                    <Run Text="5. Haga clic en "/>
+                    <Run Text="'Probar Conexión'" FontWeight="Medium"/>
+                    <Run Text=" para verificar"/>
+                    <LineBreak/>
+                    <Run Text="6. Si la prueba es exitosa, haga clic en "/>
+                    <Run Text="'Guardar y Conectar'" FontWeight="Medium"/>
+                    <LineBreak/>
+                    <Run Text="7. La configuración se guardará automáticamente para futuras sesiones"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

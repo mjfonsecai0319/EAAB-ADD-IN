@@ -49,11 +49,19 @@ namespace EAABAddIn
         }
         private bool IsValidConfiguration(Settings settings)
         {
-            return !string.IsNullOrWhiteSpace(settings.motor) &&
-                   !string.IsNullOrWhiteSpace(settings.host) &&
-                   !string.IsNullOrWhiteSpace(settings.usuario) &&
-                   !string.IsNullOrWhiteSpace(settings.contraseña) &&
-                   !string.IsNullOrWhiteSpace(settings.baseDeDatos);
+         if (string.IsNullOrWhiteSpace(settings.motor)) return false;
+
+         var engine = settings.motor.ToDBEngine();
+         if (engine == DBEngine.OracleSDE)
+         {
+          return !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
+              System.IO.File.Exists(settings.rutaArchivoCredenciales);
+         }
+
+         return !string.IsNullOrWhiteSpace(settings.host) &&
+             !string.IsNullOrWhiteSpace(settings.usuario) &&
+             !string.IsNullOrWhiteSpace(settings.contraseña) &&
+             !string.IsNullOrWhiteSpace(settings.baseDeDatos);
         }
 
         private async Task HandleDatabaseConnectionAsync(DBEngine engine)
@@ -79,6 +87,12 @@ namespace EAABAddIn
                     );
                     await _geodatabaseService.CreateConnectionAsync(props);
                     Debug.WriteLine("✅ Conexión PostgreSQL establecida exitosamente");
+                }
+                else if (engine == DBEngine.OracleSDE)
+                {
+                    var sdePath = settings.rutaArchivoCredenciales;
+                    await _geodatabaseService.CreateConnectionAsync(sdePath);
+                    Debug.WriteLine("✅ Conexión Oracle SDE (archivo .sde) establecida exitosamente");
                 }
             }
             catch (Exception ex)
