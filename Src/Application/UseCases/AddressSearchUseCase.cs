@@ -80,6 +80,7 @@ public class AddressSearchUseCase
     private IPtAddressGralEntityRepository GetRepository(DBEngine engine) => engine switch
     {
         DBEngine.Oracle => new PtAddressGralOracleRepository(),
+        DBEngine.OracleSDE => new PtAddressGralOracleRepository(),
         DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
         _ => throw new NotSupportedException($"El motor de base de datos '{engine}' no es compatible.")
     };

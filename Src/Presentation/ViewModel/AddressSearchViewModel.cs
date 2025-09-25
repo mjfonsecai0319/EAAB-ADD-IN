@@ -203,6 +203,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         IPtAddressGralEntityRepository repo = engine switch
                         {
                             DBEngine.Oracle => new PtAddressGralOracleRepository(),
+                            DBEngine.OracleSDE => new PtAddressGralOracleRepository(),
                             DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
                             _ => throw new NotSupportedException($"Motor {engine} no soportado")
                         };
