@@ -33,11 +33,9 @@ public abstract class PtAddressGralEntityRepositoryBase
     {
         var result = new List<PtAddressGralEntity>();
         var geodatabase = Module1.DatabaseConnection.Geodatabase;
-        // Sanitizar entrada básica para evitar inyección simple (reemplazar comillas)
         string safeAddress = (address ?? string.Empty).Replace("'", "''").Trim();
         bool hasCity = !string.IsNullOrWhiteSpace(cityCode);
 
-        // WHERE exacto con ORs (reemplaza patrón incorrecto 'literal IN (cols)')
         string cityPart = hasCity ? $"CITY_CODE = '{cityCode.Replace("'", "''")}' AND " : string.Empty;
         string exactWhereCore =
             $"({fieldFullEAAB} = '{safeAddress}' OR {fieldFullCad} = '{safeAddress}' OR {fieldFullOld} = '{safeAddress}')";
@@ -68,15 +66,12 @@ public abstract class PtAddressGralEntityRepositoryBase
             }
         }
 
-        // 1) Intento exacto
         var qfExact = BuildFilter(whereClauseExact);
         Execute(qfExact);
 
-        // 2) Fallback LIKE si no hay resultados y address tiene más de 3 caracteres
         if (result.Count == 0 && safeAddress.Length > 3)
         {
             string like = safeAddress.ToUpper();
-            // Usar UPPER para evitar problemas de colación (asumiendo campos sin funciones de índice especiales)
             string likeWhereCore =
                 $"(UPPER({fieldFullEAAB}) LIKE '%{like}%' OR UPPER({fieldFullCad}) LIKE '%{like}%' OR UPPER({fieldFullOld}) LIKE '%{like}%')";
             string whereClauseLike = cityPart + likeWhereCore;
@@ -263,7 +258,7 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
     {
         return Find(
             "public.sgo_pt_address_gral",
-            null, // sin filtro de ciudad
+            null, 
             address,
             "id",
             "full_address_eaab",

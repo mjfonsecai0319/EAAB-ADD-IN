@@ -18,7 +18,6 @@ public static class DBEngineExtensions
         {
             "ORACLE" => DBEngine.Oracle,
             "POSTGRESQL" => DBEngine.PostgreSQL,
-            // Compatibilidad: aceptar varios formatos para Oracle SDE
             "ORACLESDE" => DBEngine.OracleSDE,
             "ORACLE SDE" => DBEngine.OracleSDE,
             "ORACLE (ARCHIVO DE CREDENCIALES)" => DBEngine.OracleSDE,

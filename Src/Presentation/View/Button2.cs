@@ -9,10 +9,8 @@ internal class Button2 : Button
 {
     protected override void OnClick()
     {
-        // Mostrar el dockpane
         GeocoderDockpaneViewModel.Show();
 
-        // Seleccionar el tab de búsqueda de dirección (índice 0)
         var pane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane") as GeocoderDockpaneViewModel;
         if (pane != null)
         {

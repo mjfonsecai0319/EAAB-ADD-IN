@@ -43,7 +43,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             return true;
         }
 
-        // Actualizado para incluir la nueva opción
         public ObservableCollection<string> MotoresBD { get; set; } = new ObservableCollection<string> 
         { 
             "Oracle", 
@@ -75,7 +74,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     _previousMotor = value;
                     
-                    // Notificar cambios en las propiedades de visibilidad
                     OnPropertyChanged(nameof(MostrarCamposConexion));
                     OnPropertyChanged(nameof(MostrarArchivoCredenciales));
                     OnPropertyChanged(nameof(MostrarArchivoGdb));
@@ -83,7 +81,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // Propiedades para controlar la visibilidad de los campos
     public bool MostrarCamposConexion => MotorSeleccionado != "Oracle SDE";
         
     public bool MostrarArchivoCredenciales => MotorSeleccionado == "Oracle SDE";
@@ -129,7 +126,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _rutaArchivoGdb, value);
         }
 
-        // Nueva propiedad para el archivo de credenciales de Oracle
         private string _rutaArchivoCredenciales;
         public string RutaArchivoCredenciales
         {
@@ -141,7 +137,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public ICommand GuardarYReconectarCommand { get; }
         public ICommand SeleccionarArchivoGdbCommand { get; }
         
-        // Nuevo comando para seleccionar archivo de credenciales
         public ICommand SeleccionarArchivoCredencialesCommand { get; }
 
         public PropertyPage1ViewModel()
@@ -153,7 +148,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             GuardarYReconectarCommand = new RelayCommand(async () => await GuardarYReconectarAsync(), () => !_isConnecting && IsValidConfiguration());
             SeleccionarArchivoGdbCommand = new RelayCommand(SeleccionarArchivoGdb);
             
-            // Inicializar el nuevo comando
             SeleccionarArchivoCredencialesCommand = new RelayCommand(SeleccionarArchivoCredenciales);
         }
 
@@ -173,7 +167,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 BaseDeDatos = _settings.baseDeDatos ?? string.Empty;
                 RutaArchivoGdb = _settings.rutaArchivoGdb ?? string.Empty;
                 
-                // Cargar la ruta del archivo de credenciales
                 RutaArchivoCredenciales = _settings.rutaArchivoCredenciales ?? string.Empty;
 
                 Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
@@ -197,7 +190,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.baseDeDatos = BaseDeDatos;
             _settings.rutaArchivoGdb = RutaArchivoGdb;
             
-            // Guardar la ruta del archivo de credenciales
             _settings.rutaArchivoCredenciales = RutaArchivoCredenciales;
 
             _settings.Save();
@@ -217,7 +209,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 OraclePath = string.Empty;
                 RutaArchivoGdb = string.Empty;
                 
-                // Limpiar también el archivo de credenciales
                 RutaArchivoCredenciales = string.Empty;
 
                 MensajeConexion = "Motor cambiado. Configure los nuevos parámetros de conexión.";
@@ -235,15 +226,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 return ConnectionPropertiesFactory.CreateOracleConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
             else if (MotorSeleccionado == "Oracle SDE")
             {
-                // Para archivos SDE, no necesitamos DatabaseConnectionProperties
-                // El archivo se usa directamente con el constructor de Geodatabase
                 throw new NotSupportedException("Para archivos SDE, use GetSdeFilePath() en lugar de GetDatabaseConnectionProperties()");
             }
             else
                 return ConnectionPropertiesFactory.CreatePostgresConnection(Host, Usuario, Contraseña, BaseDeDatos, Puerto);
         }
 
-        // Nuevo método para obtener la ruta del archivo SDE
         public string GetSdeFilePath()
         {
             if (MotorSeleccionado == "Oracle SDE")
@@ -266,7 +254,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 if (MotorSeleccionado == "Oracle SDE")
                 {
-                    // Para archivos SDE, probamos la conexión directamente con Geodatabase
                     var sdeFilePath = GetSdeFilePath();
                     var result = await _validator.TestSdeConnectionAsync(sdeFilePath);
                     if (result.IsSuccess)
