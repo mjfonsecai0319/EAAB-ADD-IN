@@ -33,39 +33,56 @@ public abstract class PtAddressGralEntityRepositoryBase
     {
         var result = new List<PtAddressGralEntity>();
         var geodatabase = Module1.DatabaseConnection.Geodatabase;
+        // Sanitizar entrada básica para evitar inyección simple (reemplazar comillas)
+        string safeAddress = (address ?? string.Empty).Replace("'", "''").Trim();
+        bool hasCity = !string.IsNullOrWhiteSpace(cityCode);
 
-        string whereClause = $"CITY_CODE = '{cityCode}' AND '{address}' IN ({fieldFullEAAB}, {fieldFullCad}, {fieldFullOld})";
+        // WHERE exacto con ORs (reemplaza patrón incorrecto 'literal IN (cols)')
+        string cityPart = hasCity ? $"CITY_CODE = '{cityCode.Replace("'", "''")}' AND " : string.Empty;
+        string exactWhereCore =
+            $"({fieldFullEAAB} = '{safeAddress}' OR {fieldFullCad} = '{safeAddress}' OR {fieldFullOld} = '{safeAddress}')";
+        string whereClauseExact = cityPart + exactWhereCore;
 
         string postfixClause =
-            $"ORDER BY CASE " +
-            $"WHEN {fieldFullEAAB} = '{address}' THEN 1 " +
-            $"WHEN {fieldFullCad} = '{address}' THEN 2 " +
-            $"WHEN {fieldFullOld} = '{address}' THEN 3 " +
-            $"END";
+            "ORDER BY CASE " +
+            $"WHEN {fieldFullEAAB} = '{safeAddress}' THEN 1 " +
+            $"WHEN {fieldFullCad} = '{safeAddress}' THEN 2 " +
+            $"WHEN {fieldFullOld} = '{safeAddress}' THEN 3 " +
+            "END";
 
-        var queryFilter = new QueryFilter
+        QueryFilter BuildFilter(string wc) => new QueryFilter
         {
-            SubFields = $"{fieldId}, {fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}, " +
-                        $"{fieldLat}, {fieldLon}, CITY_CODE, CITY_DESC",
-            WhereClause = whereClause,
+            SubFields = $"{fieldId}, {fieldFullEAAB}, {fieldFullCad}, {fieldFullOld}, {fieldLat}, {fieldLon}, CITY_CODE, CITY_DESC, SOURCE",
+            WhereClause = wc,
             PostfixClause = postfixClause
         };
 
-        using (var table = geodatabase.OpenDataset<Table>(tableName))
-        using (var cursor = table.Search(queryFilter, false))
+        void Execute(QueryFilter qf)
         {
+            using var table = geodatabase.OpenDataset<Table>(tableName);
+            using var cursor = table.Search(qf, false);
             while (cursor.MoveNext())
             {
-                using (var row = cursor.Current)
-                {
-                    result.Add(MapRowToEntity(row));
-                }
+                using var row = cursor.Current;
+                result.Add(MapRowToEntity(row));
             }
         }
 
-        var builder = new StringBuilder();
+        // 1) Intento exacto
+        var qfExact = BuildFilter(whereClauseExact);
+        Execute(qfExact);
 
-        result.ForEach(r => builder.AppendLine(r.ToString()));
+        // 2) Fallback LIKE si no hay resultados y address tiene más de 3 caracteres
+        if (result.Count == 0 && safeAddress.Length > 3)
+        {
+            string like = safeAddress.ToUpper();
+            // Usar UPPER para evitar problemas de colación (asumiendo campos sin funciones de índice especiales)
+            string likeWhereCore =
+                $"(UPPER({fieldFullEAAB}) LIKE '%{like}%' OR UPPER({fieldFullCad}) LIKE '%{like}%' OR UPPER({fieldFullOld}) LIKE '%{like}%')";
+            string whereClauseLike = cityPart + likeWhereCore;
+            var qfLike = BuildFilter(whereClauseLike);
+            Execute(qfLike);
+        }
 
         return result;
     }

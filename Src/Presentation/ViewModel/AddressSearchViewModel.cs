@@ -9,6 +9,7 @@ using System.Windows.Input;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Core.Data;
 
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Application.UseCases;
@@ -154,14 +155,26 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             try
             {
                 var settings = Module1.Settings;
-                if (string.IsNullOrWhiteSpace(settings?.motor) ||
-                    string.IsNullOrWhiteSpace(settings?.host) ||
-                    string.IsNullOrWhiteSpace(settings?.usuario))
+                var engine = settings?.motor.ToDBEngine();
+
+                if (engine == DBEngine.Unknown)
                 {
-                    Debug.WriteLine("Configuración incompleta");
-                    ConnectionStatus = "Configuración incompleta";
-                    StatusMessage = "Configure la conexión en las opciones";
+                    Debug.WriteLine("Motor desconocido");
+                    ConnectionStatus = "Motor desconocido";
+                    StatusMessage = "Seleccione un motor válido en las opciones";
                     return;
+                }
+
+                // Sólo exigir host/usuario cuando NO es Oracle SDE
+                if (engine != DBEngine.OracleSDE)
+                {
+                    if (string.IsNullOrWhiteSpace(settings?.host) || string.IsNullOrWhiteSpace(settings?.usuario))
+                    {
+                        Debug.WriteLine("Configuración incompleta (host/usuario)");
+                        ConnectionStatus = "Configuración incompleta";
+                        StatusMessage = "Configure la conexión en las opciones";
+                        return;
+                    }
                 }
 
                 var dbService = Module1.DatabaseConnection;
@@ -187,11 +200,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     }
                 }
 
-                var engine = settings.motor.ToDBEngine();
-                var props = GetDatabaseConnectionProperties();
-
                 Debug.WriteLine($"Motor de BD: {engine}");
-                Debug.WriteLine($"Propiedades de conexión creadas");
+                if (engine != DBEngine.OracleSDE)
+                {
+                    try { var _ = GetDatabaseConnectionProperties(); Debug.WriteLine("Propiedades de conexión creadas"); } catch (Exception ex) { Debug.WriteLine($"No se pudieron crear props: {ex.Message}"); }
+                }
 
                 List<PtAddressGralEntity> ciudades = null;
 
@@ -203,7 +216,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         IPtAddressGralEntityRepository repo = engine switch
                         {
                             DBEngine.Oracle => new PtAddressGralOracleRepository(),
-                            DBEngine.OracleSDE => new PtAddressGralOracleRepository(),
+                            DBEngine.OracleSDE => new PtAddressGralOracleRepository(), // reutiliza implementación Oracle
                             DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
                             _ => throw new NotSupportedException($"Motor {engine} no soportado")
                         };
@@ -307,9 +320,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 await QueuedTask.Run(() =>
                 {
                     var engine = Module1.Settings.motor.ToDBEngine();
-
+                    Debug.WriteLine($"[OnSearchAsync] Engine: {engine}");
                     if (engine == DBEngine.Oracle)
                         HandleOracleConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
+                    else if (engine == DBEngine.OracleSDE)
+                        HandleOracleSdeConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else if (engine == DBEngine.PostgreSQL)
                         HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else
@@ -327,6 +342,68 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
+        private void HandleOracleSdeConnection(string input, string cityCode, string cityDesc)
+        {
+            try
+            {
+                Debug.WriteLine("[HandleOracleSdeConnection] inicio");
+                DatabaseConnectionProperties props = null; // no requerido realmente
+                var normalizer = new AddressNormalizer(DBEngine.Oracle, props);
+                var search = new AddressSearchUseCase(DBEngine.Oracle);
+
+                string searchAddress;
+                try
+                {
+                    var model = new AddressNormalizerModel { Address = input };
+                    var normalized = normalizer.Invoke(model);
+                    searchAddress = !string.IsNullOrWhiteSpace(normalized.AddressEAAB)
+                        ? normalized.AddressEAAB
+                        : (!string.IsNullOrWhiteSpace(normalized.AddressNormalizer) ? normalized.AddressNormalizer : input);
+                }
+                catch (EAABAddIn.Src.Application.Errors.BusinessException bex)
+                {
+                    // Si falla el léxico (CODE_145 ó CODE_146) seguimos con la dirección original sin abortar.
+                    if (bex.Message.StartsWith("CODE_145") || bex.Message.StartsWith("CODE_146"))
+                    {
+                        Debug.WriteLine($"[HandleOracleSdeConnection] Normalizador fallback por {bex.Message}. Uso dirección original.");
+                        searchAddress = input;
+                    }
+                    else throw; // otros códigos se dejan propagar
+                }
+
+                var result = search.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
+                if (result == null || result.Count == 0)
+                {
+                    StatusMessage = $"Sin coincidencias en {SelectedCity.CityDesc}";
+                    Debug.WriteLine("[HandleOracleSdeConnection] 0 resultados");
+                    return;
+                }
+
+                foreach (var addr in result)
+                {
+                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    {
+                        addr.CityDesc = SelectedCity.CityDesc;
+                        addr.FullAddressOld = AddressInput;
+                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
+                        if (src.Contains("cat") || src.Contains("catastro")) addr.ScoreText = "Aproximada por Catastro";
+                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base")) addr.ScoreText = "Exacta";
+                        else if (src.Contains("esri")) addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
+                        else addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
+                    }
+                }
+                AddressInput = string.Empty;
+                StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
+                Debug.WriteLine($"[HandleOracleSdeConnection] {result.Count} resultados");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error en búsqueda Oracle SDE: {ex.Message}");
+                StatusMessage = $"Error Oracle SDE: {ex.Message}";
+            }
+        }
+
         private void HandleOracleConnection(string input, string cityCode, string cityDesc)
         {
             try
@@ -336,14 +413,26 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 var addressNormalizer = new AddressNormalizer(DBEngine.Oracle, props);
                 var addressSearch = new AddressSearchUseCase(DBEngine.Oracle);
 
-                var model = new AddressNormalizerModel { Address = input };
-                var address = addressNormalizer.Invoke(model);
-
-                var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-                    ? address.AddressEAAB
-                    : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                        ? address.AddressNormalizer
-                        : input);
+                string searchAddress;
+                try
+                {
+                    var model = new AddressNormalizerModel { Address = input };
+                    var address = addressNormalizer.Invoke(model);
+                    searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                        ? address.AddressEAAB
+                        : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                            ? address.AddressNormalizer
+                            : input);
+                }
+                catch (EAABAddIn.Src.Application.Errors.BusinessException bex)
+                {
+                    if (bex.Message.StartsWith("CODE_145") || bex.Message.StartsWith("CODE_146"))
+                    {
+                        Debug.WriteLine($"[HandleOracleConnection] Normalizador fallback por {bex.Message}. Uso dirección original.");
+                        searchAddress = input;
+                    }
+                    else throw;
+                }
 
                 var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
 
@@ -402,14 +491,26 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 var addressNormalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
                 var addressSearch = new AddressSearchUseCase(DBEngine.PostgreSQL);
 
-                var model = new AddressNormalizerModel { Address = input };
-                var address = addressNormalizer.Invoke(model);
-
-                var searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
-                    ? address.AddressEAAB
-                    : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
-                        ? address.AddressNormalizer
-                        : input);
+                string searchAddress;
+                try
+                {
+                    var model = new AddressNormalizerModel { Address = input };
+                    var address = addressNormalizer.Invoke(model);
+                    searchAddress = !string.IsNullOrWhiteSpace(address.AddressEAAB)
+                        ? address.AddressEAAB
+                        : (!string.IsNullOrWhiteSpace(address.AddressNormalizer)
+                            ? address.AddressNormalizer
+                            : input);
+                }
+                catch (EAABAddIn.Src.Application.Errors.BusinessException bex)
+                {
+                    if (bex.Message.StartsWith("CODE_145") || bex.Message.StartsWith("CODE_146"))
+                    {
+                        Debug.WriteLine($"[HandlePostgreSqlConnection] Normalizador fallback por {bex.Message}. Uso dirección original.");
+                        searchAddress = input;
+                    }
+                    else throw;
+                }
 
                 var result = addressSearch.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
 
@@ -466,15 +567,16 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 var settings = Module1.Settings;
                 var dbService = Module1.DatabaseConnection;
-
+                var engine = settings?.motor.ToDBEngine();
+                if (engine == DBEngine.OracleSDE)
+                {
+                    if (string.IsNullOrWhiteSpace(settings?.rutaArchivoCredenciales)) return false;
+                    return dbService?.Geodatabase != null;
+                }
                 if (string.IsNullOrWhiteSpace(settings?.motor) ||
                     string.IsNullOrWhiteSpace(settings?.host) ||
                     string.IsNullOrWhiteSpace(settings?.usuario) ||
-                    string.IsNullOrWhiteSpace(settings?.baseDeDatos))
-                {
-                    return false;
-                }
-
+                    string.IsNullOrWhiteSpace(settings?.baseDeDatos)) return false;
                 return dbService?.Geodatabase != null;
             }
             catch
