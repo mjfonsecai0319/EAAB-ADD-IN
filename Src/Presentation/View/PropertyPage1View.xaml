@@ -43,10 +43,10 @@
                 <Setter Property="FrameworkElement.Margin" Value="0,0,0,12"/>
             </Style>
 
-            <!-- TextBox con fondo negro como MassiveGeocode -->
+            <!-- TextBox con recursos dinámicos (igual que AddressSearchView) -->
             <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="Black"/>
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="8,4"/>
@@ -59,126 +59,20 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- ComboBox con fondo negro y texto visible -->
+            <!-- ComboBox con recursos dinámicos (igual que AddressSearchView) -->
             <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="Black"/>
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="8,4"/>
                 <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ComboBox">
-                            <Grid>
-                                <ToggleButton x:Name="ToggleButton"
-                                            Background="Black"
-                                            BorderBrush="{DynamicResource Esri_BorderBrush}"
-                                            BorderThickness="1"
-                                            Focusable="False"
-                                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                            ClickMode="Press">
-                                    <ToggleButton.Template>
-                                        <ControlTemplate TargetType="ToggleButton">
-                                            <Border Background="{TemplateBinding Background}"
-                                                  BorderBrush="{TemplateBinding BorderBrush}"
-                                                  BorderThickness="{TemplateBinding BorderThickness}">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition />
-                                                        <ColumnDefinition Width="20" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <Path x:Name="Arrow" Grid.Column="1"
-                                                        Fill="White"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        Data="M 0 0 L 4 4 L 8 0 Z"/>
-                                                </Grid>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </ToggleButton.Template>
-                                </ToggleButton>
-                                <ContentPresenter x:Name="ContentSite"
-                                                IsHitTestVisible="False"
-                                                Content="{TemplateBinding SelectionBoxItem}"
-                                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                                Margin="8,4,25,4"
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Left">
-                                    <ContentPresenter.Resources>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="White"/>
-                                        </Style>
-                                    </ContentPresenter.Resources>
-                                </ContentPresenter>
-                                <TextBox x:Name="PART_EditableTextBox"
-                                       Style="{x:Null}"
-                                       Background="Black"
-                                       Foreground="White"
-                                       HorizontalAlignment="Left"
-                                       VerticalAlignment="Center"
-                                       Margin="8,4,25,4"
-                                       Focusable="True"
-                                       Visibility="Hidden"
-                                       IsReadOnly="{TemplateBinding IsReadOnly}"/>
-                                <Popup x:Name="Popup"
-                                     Placement="Bottom"
-                                     IsOpen="{TemplateBinding IsDropDownOpen}"
-                                     AllowsTransparency="True"
-                                     Focusable="False"
-                                     PopupAnimation="Slide">
-                                    <Grid x:Name="DropDown"
-                                        SnapsToDevicePixels="True"
-                                        MinWidth="{TemplateBinding ActualWidth}"
-                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                        <Border x:Name="DropDownBorder"
-                                              Background="Black"
-                                              BorderThickness="1"
-                                              BorderBrush="{DynamicResource Esri_BorderBrush}"/>
-                                        <ScrollViewer Margin="2"
-                                                    SnapsToDevicePixels="True">
-                                            <StackPanel IsItemsHost="True"
-                                                      KeyboardNavigation.DirectionalNavigation="Contained">
-                                                <StackPanel.Resources>
-                                                    <Style TargetType="ComboBoxItem">
-                                                        <Setter Property="Background" Value="Black"/>
-                                                        <Setter Property="Foreground" Value="White"/>
-                                                        <Setter Property="Padding" Value="8,4"/>
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsHighlighted" Value="True">
-                                                                <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
-                                                                <Setter Property="Foreground" Value="White"/>
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </StackPanel.Resources>
-                                            </StackPanel>
-                                        </ScrollViewer>
-                                    </Grid>
-                                </Popup>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="HasItems" Value="false">
-                                    <Setter TargetName="DropDownBorder" Property="MinHeight" Value="95"/>
-                                </Trigger>
-                                <Trigger Property="IsGrouping" Value="true">
-                                    <Setter Property="ScrollViewer.CanContentScroll" Value="false"/>
-                                </Trigger>
-                                <Trigger Property="IsEditable" Value="true">
-                                    <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
             </Style>
 
-            <!-- PasswordBox con fondo negro como MassiveGeocode -->
+            <!-- PasswordBox con recursos dinámicos -->
             <Style x:Key="ThemedPasswordBoxStyle" TargetType="PasswordBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="Black"/>
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="8,4"/>
@@ -191,75 +85,71 @@
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{DynamicResource Esri_Blue}"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Height" Value="32"/>
-                <Setter Property="Padding" Value="16,8"/>
-                <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Cursor" Value="Hand"/>
+            <!-- Botones exactamente igual que MassiveGeocode -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}" />
                     </Trigger>
-                    <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BluePressed}"/>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray155}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Height" Value="32"/>
-                <Setter Property="Padding" Value="16,8"/>
-                <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Cursor" Value="Hand"/>
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="FilePickerButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Height" Value="28"/>
-                <Setter Property="Width" Value="32"/>
-                <Setter Property="FontSize" Value="12"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Content" Value="..."/>
+            <Style x:Key="FilePickerButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Content" Value="..." />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}"/>
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <!-- FilePathTextBox con fondo negro -->
-            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox">
-                <Setter Property="Background" Value="Black"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Height" Value="28"/>
-                <Setter Property="Padding" Value="8,4"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Margin" Value="0,0,0,12"/>
-                <Setter Property="Width" Value="185"/>
-                <Setter Property="IsReadOnly" Value="True"/>
+            <!-- FilePathTextBox exactamente igual que MassiveGeocode -->
+            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ThemedTextBoxStyle}">
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Margin" Value="0,0,0,12" />
+                <Setter Property="Width" Value="185" />
                 <Style.Triggers>
-                    <Trigger Property="IsFocused" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
-                        <Setter Property="BorderThickness" Value="2"/>
+                    <Trigger Property="IsReadOnly" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_TextSecondaryBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -310,7 +200,7 @@
                         <RowDefinition Height="Auto"/> <!-- Base de Datos -->
                         <RowDefinition Height="Auto"/> <!-- Usuario -->
                         <RowDefinition Height="Auto"/> <!-- Contraseña -->
-                        <RowDefinition Height="Auto"/> <!-- Archivo GDB -->
+                        <RowDefinition Height="Auto"/> <!-- Archivo SDE -->
                     </Grid.RowDefinitions>
 
                     <!-- Motor -->
