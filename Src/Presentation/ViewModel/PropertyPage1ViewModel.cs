@@ -47,7 +47,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         { 
             "Oracle", 
             "PostgreSQL", 
-            "Oracle SDE" 
+            "Oracle SDE",
+            "PostgreSQL SDE"
         };
 
         private string _motorSeleccionado;
@@ -66,9 +67,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (!_isLoading)
                     {
-                        if (value == "PostgreSQL" && string.IsNullOrWhiteSpace(Puerto)) 
+                        if ((value == "PostgreSQL" || value == "PostgreSQL SDE") && string.IsNullOrWhiteSpace(Puerto))
                             Puerto = "5432";
-                        else if ((value == "Oracle" || value == "Oracle SDE") && string.IsNullOrWhiteSpace(Puerto)) 
+                        else if ((value == "Oracle" || value == "Oracle SDE") && string.IsNullOrWhiteSpace(Puerto))
                             Puerto = "1521";
                     }
 
@@ -81,11 +82,11 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-    public bool MostrarCamposConexion => MotorSeleccionado != "Oracle SDE";
+    public bool MostrarCamposConexion => MotorSeleccionado != "Oracle SDE" && MotorSeleccionado != "PostgreSQL SDE";
         
-    public bool MostrarArchivoCredenciales => MotorSeleccionado == "Oracle SDE";
+    public bool MostrarArchivoCredenciales => MotorSeleccionado == "Oracle SDE" || MotorSeleccionado == "PostgreSQL SDE";
         
-    public bool MostrarArchivoGdb => MotorSeleccionado != "Oracle SDE";
+    public bool MostrarArchivoGdb => MotorSeleccionado != "Oracle SDE" && MotorSeleccionado != "PostgreSQL SDE";
 
         private string _usuario;
         public string Usuario { get => _usuario; set => SetProperty(ref _usuario, value); }
@@ -320,19 +321,16 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private bool IsValidConfiguration()
         {
-            if (MotorSeleccionado == "Oracle SDE")
+            if (MotorSeleccionado == "Oracle SDE" || MotorSeleccionado == "PostgreSQL SDE")
             {
-                return !string.IsNullOrWhiteSpace(RutaArchivoCredenciales) && 
+                return !string.IsNullOrWhiteSpace(RutaArchivoCredenciales) &&
                        System.IO.File.Exists(RutaArchivoCredenciales);
             }
-            else
-            {
-                return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
-                       !string.IsNullOrWhiteSpace(Host) &&
-                       !string.IsNullOrWhiteSpace(Usuario) &&
-                       !string.IsNullOrWhiteSpace(Contraseña) &&
-                       !string.IsNullOrWhiteSpace(BaseDeDatos);
-            }
+            return !string.IsNullOrWhiteSpace(MotorSeleccionado) &&
+                   !string.IsNullOrWhiteSpace(Host) &&
+                   !string.IsNullOrWhiteSpace(Usuario) &&
+                   !string.IsNullOrWhiteSpace(Contraseña) &&
+                   !string.IsNullOrWhiteSpace(BaseDeDatos);
         }
 
         private void CheckConnectionStatus()

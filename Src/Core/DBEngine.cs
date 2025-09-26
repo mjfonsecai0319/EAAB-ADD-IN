@@ -4,7 +4,11 @@ namespace EAABAddIn.Src.Core;
 
 public enum DBEngine
 {
-    Oracle, PostgreSQL, OracleSDE, Unknown
+    Oracle,
+    PostgreSQL,
+    OracleSDE,
+    PostgreSQLSDE,
+    Unknown
 }
 
 public static class DBEngineExtensions
@@ -14,13 +18,16 @@ public static class DBEngineExtensions
         if (string.IsNullOrWhiteSpace(value))
             return DBEngine.Unknown;
             
-        return value.Trim().ToUpper() switch
+        var v = value.Trim().ToUpper();
+        return v switch
         {
             "ORACLE" => DBEngine.Oracle,
             "POSTGRESQL" => DBEngine.PostgreSQL,
             "ORACLESDE" => DBEngine.OracleSDE,
             "ORACLE SDE" => DBEngine.OracleSDE,
             "ORACLE (ARCHIVO DE CREDENCIALES)" => DBEngine.OracleSDE,
+            "POSTGRESQLSDE" => DBEngine.PostgreSQLSDE,
+            "POSTGRESQL SDE" => DBEngine.PostgreSQLSDE,
             _ => DBEngine.Unknown
         };
     }
@@ -29,7 +36,8 @@ public static class DBEngineExtensions
     {
         DBEngine.Oracle => "Oracle",
         DBEngine.PostgreSQL => "PostgreSQL",
-        DBEngine.OracleSDE => "Oracle SDE",  
+        DBEngine.OracleSDE => "Oracle SDE",
+        DBEngine.PostgreSQLSDE => "PostgreSQL SDE",
         _ => "Unknown"
     };
 }

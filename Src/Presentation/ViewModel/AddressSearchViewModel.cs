@@ -327,6 +327,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         HandleOracleSdeConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else if (engine == DBEngine.PostgreSQL)
                         HandlePostgreSqlConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
+                    else if (engine == DBEngine.PostgreSQLSDE)
+                        HandlePostgreSqlSdeConnection(AddressInput, SelectedCity.CityCode, SelectedCity.CityDesc);
                     else
                         StatusMessage = "Motor de BD no configurado";
                 });
@@ -397,6 +399,65 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 Debug.WriteLine($"Error en búsqueda Oracle SDE: {ex.Message}");
                 StatusMessage = $"Error Oracle SDE: {ex.Message}";
+            }
+        }
+
+        private void HandlePostgreSqlSdeConnection(string input, string cityCode, string cityDesc)
+        {
+            try
+            {
+                Debug.WriteLine("[HandlePostgreSqlSdeConnection] inicio");
+                DatabaseConnectionProperties props = null; // no requerido para .sde
+                var normalizer = new AddressNormalizer(DBEngine.PostgreSQL, props);
+                var search = new AddressSearchUseCase(DBEngine.PostgreSQL);
+
+                string searchAddress;
+                try
+                {
+                    var model = new AddressNormalizerModel { Address = input };
+                    var normalized = normalizer.Invoke(model);
+                    searchAddress = !string.IsNullOrWhiteSpace(normalized.AddressEAAB)
+                        ? normalized.AddressEAAB
+                        : (!string.IsNullOrWhiteSpace(normalized.AddressNormalizer)
+                            ? normalized.AddressNormalizer
+                            : input);
+                }
+                catch (EAABAddIn.Src.Application.Errors.BusinessException bex)
+                {
+                    if (bex.Message.StartsWith("CODE_145") || bex.Message.StartsWith("CODE_146"))
+                    {
+                        Debug.WriteLine($"[HandlePostgreSqlSdeConnection] Normalizador fallback por {bex.Message}. Uso dirección original.");
+                        searchAddress = input;
+                    }
+                    else throw;
+                }
+
+                var result = search.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
+                if (result == null || result.Count == 0)
+                {
+                    StatusMessage = $"Sin coincidencias en {SelectedCity.CityDesc}";
+                    Debug.WriteLine("[HandlePostgreSqlSdeConnection] 0 resultados");
+                    return;
+                }
+
+                foreach (var addr in result)
+                {
+                    if (addr.Latitud.HasValue && addr.Longitud.HasValue)
+                    {
+                        addr.CityDesc = SelectedCity.CityDesc;
+                        addr.FullAddressOld = AddressInput; // dirección original exacta
+                        ClasificarYNormalizar(addr);
+                        _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
+                    }
+                }
+                AddressInput = string.Empty;
+                StatusMessage = $" {result.Count} resultado(s) encontrado(s)";
+                Debug.WriteLine($"[HandlePostgreSqlSdeConnection] {result.Count} resultados");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error en búsqueda PostgreSQL SDE: {ex.Message}");
+                StatusMessage = $"Error PostgreSQL SDE: {ex.Message}";
             }
         }
 

@@ -52,7 +52,7 @@ namespace EAABAddIn
          if (string.IsNullOrWhiteSpace(settings.motor)) return false;
 
          var engine = settings.motor.ToDBEngine();
-         if (engine == DBEngine.OracleSDE)
+         if (engine == DBEngine.OracleSDE || engine == DBEngine.PostgreSQLSDE)
          {
           return !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
               System.IO.File.Exists(settings.rutaArchivoCredenciales);
@@ -93,6 +93,12 @@ namespace EAABAddIn
                     var sdePath = settings.rutaArchivoCredenciales;
                     await _geodatabaseService.CreateConnectionAsync(sdePath);
                     Debug.WriteLine("✅ Conexión Oracle SDE (archivo .sde) establecida exitosamente");
+                }
+                else if (engine == DBEngine.PostgreSQLSDE)
+                {
+                    var sdePath = settings.rutaArchivoCredenciales;
+                    await _geodatabaseService.CreateConnectionAsync(sdePath);
+                    Debug.WriteLine("✅ Conexión PostgreSQL SDE (archivo .sde) establecida exitosamente");
                 }
             }
             catch (Exception ex)

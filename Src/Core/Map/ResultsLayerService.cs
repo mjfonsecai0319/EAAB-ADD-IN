@@ -22,11 +22,9 @@ namespace EAABAddIn.Src.Core.Map
         private static FeatureLayer _addressPointLayer;
         private const string FeatureClassName = "GeocodedAddresses";
 
-        // Lista temporal para acumular resultados en memoria
         private static readonly List<PtAddressGralEntity> _pendingEntities = new();
         private static readonly object _pendingLock = new();
 
-        // --- Compatibilidad: método original (inserta un único punto inmediatamente) ---
         public static Task AddPointAsync(PtAddressGralEntity entidad, string gdbPath = null)
         {
             return QueuedTask.Run(() => _AddPointAsync(entidad, gdbPath));
@@ -105,10 +103,7 @@ namespace EAABAddIn.Src.Core.Map
                     {
                         var def = featureClass.GetDefinition();
                         rowBuffer[def.GetShapeField()] = mapPoint;
-                        rowBuffer["Identificador"] = entidad.ID.ToString();
-                        // Para inserción individual se solicita conservar EXACTAMENTE la dirección ingresada por el usuario.
-                        // Esa dirección la estamos almacenando en FullAddressOld al preparar la entidad en el ViewModel.
-                        // Si por alguna razón viniera vacía, último fallback a MainStreet.
+                     
                         var direccionOriginal = !string.IsNullOrWhiteSpace(entidad.FullAddressOld)
                             ? entidad.FullAddressOld
                             : (entidad.MainStreet ?? string.Empty);
@@ -119,7 +114,6 @@ namespace EAABAddIn.Src.Core.Map
                         rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                         rowBuffer["Score"] = entidad.Score.HasValue ? entidad.Score.Value : null;
                         rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
-                        // Timestamp de auditoría (UTC). Cambiar a DateTime.Now si se requiere hora local.
                         if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
                             rowBuffer["FechaHora"] = DateTime.Now;
 
@@ -151,7 +145,6 @@ namespace EAABAddIn.Src.Core.Map
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(path));
             var exists = false;
 
-            // Verificar existencia y liberar la conexión antes de crear para evitar schema locks
             using (var geodatabase = new Geodatabase(gdbConnectionPath))
             {
                 exists = geodatabase
@@ -184,7 +177,6 @@ namespace EAABAddIn.Src.Core.Map
         {
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(path));
 
-            // Validación extra: intentar encontrar la capa ya cargada en el mapa
             if (_addressPointLayer is null && mapView?.Map is not null)
             {
                 var existing = mapView.Map
@@ -192,11 +184,9 @@ namespace EAABAddIn.Src.Core.Map
                     .OfType<FeatureLayer>()
                     .FirstOrDefault(fl =>
                     {
-                        // Coincidencia por nombre
                         if (string.Equals(fl.Name, FeatureClassName, StringComparison.OrdinalIgnoreCase))
                             return true;
 
-                        // Coincidencia por dataset (FeatureClass) subyacente
                         try
                         {
                             using var fc = fl.GetFeatureClass();
@@ -231,9 +221,7 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
-        // ------------------- Batching en memoria -------------------
 
-        /// <summary> Borra la lista pendiente (usar antes de un nuevo proceso masivo). </summary>
         public static void ClearPending()
         {
             lock (_pendingLock)
@@ -242,7 +230,6 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
-        /// <summary> Agrega una entidad a la lista en memoria (thread-safe). </summary>
         public static void AddPointToMemory(PtAddressGralEntity entidad)
         {
             if (entidad == null) return;
@@ -252,7 +239,6 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
-        /// <summary> Agrega múltiples entidades a la lista en memoria (thread-safe). </summary>
         public static void AddPointsToMemory(IEnumerable<PtAddressGralEntity> entidades)
         {
             if (entidades == null) return;
@@ -262,7 +248,6 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
-        /// <summary> Inserta todos los puntos acumulados en una sola operación (rápido). </summary>
         public static Task CommitPointsAsync(string gdbPath)
         {
             return QueuedTask.Run(() => _CommitPointsInternal(gdbPath));
@@ -283,7 +268,6 @@ namespace EAABAddIn.Src.Core.Map
 
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
 
-            // Crear FeatureClass si no existe (evitar schema locks)
             bool exists;
             using (var geodatabase = new Geodatabase(gdbConnectionPath))
             {
@@ -311,10 +295,8 @@ namespace EAABAddIn.Src.Core.Map
                 if (result.IsFailed) return;
             }
 
-            // Validar campos
             await EnsureFieldsExist(gdbPath);
 
-            // Crear capa si no existe
             if (_addressPointLayer == null)
             {
                 using (var geodatabase = new Geodatabase(gdbConnectionPath))
@@ -330,7 +312,6 @@ namespace EAABAddIn.Src.Core.Map
 
             if (_addressPointLayer == null) return;
 
-            // Inserción por Core Data en lote (sin EditOperation)
             var batchFc = _addressPointLayer.GetTable() as FeatureClass;
             if (batchFc != null)
             {
@@ -363,7 +344,6 @@ namespace EAABAddIn.Src.Core.Map
                             rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                             if (entidad.Score.HasValue) rowBuffer["Score"] = entidad.Score.Value; else rowBuffer["Score"] = null;
                             rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
-                            // Timestamp de auditoría (UTC)
                             if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
                                 rowBuffer["FechaHora"] = DateTime.Now;
                             using (var row = batchFc.CreateRow(rowBuffer)) { }
@@ -379,10 +359,6 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
-        /// <summary>
-        /// Asegura que los campos requeridos existan en la FeatureClass.
-        /// Nota: Score ahora es TEXT para aceptar texto o números.
-        /// </summary>
         private static async Task EnsureFieldsExist(string gdbPath)
         {
             var required = new (string Name, string Type, string Length)[]
@@ -399,7 +375,6 @@ namespace EAABAddIn.Src.Core.Map
             };
 
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            // Revisar campos existentes evitando GP si no es necesario
             HashSet<string> existingFieldNames;
             using (var gdb = new Geodatabase(gdbConnectionPath))
             using (var fc = gdb.OpenDataset<FeatureClass>(FeatureClassName))
@@ -431,7 +406,6 @@ namespace EAABAddIn.Src.Core.Map
                     null,
                     CancelableProgressor.None,
                     GPExecuteToolFlags.AddToHistory);
-                // Si falla, continuar con los demás para intentar crear el resto
             }
         }
 

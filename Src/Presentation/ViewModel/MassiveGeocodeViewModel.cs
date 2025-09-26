@@ -116,6 +116,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     DBEngine.Oracle => new PtAddressGralOracleRepository(),
                     DBEngine.OracleSDE => new PtAddressGralOracleRepository(),
                     DBEngine.PostgreSQL => new PtAddressGralPostgresRepository(),
+                    DBEngine.PostgreSQLSDE => new PtAddressGralPostgresRepository(),
                     _ => null
                 };
                 if (repo == null)
