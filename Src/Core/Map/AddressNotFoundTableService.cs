@@ -77,6 +77,9 @@ namespace EAABAddIn.Src.Core.Map
                         rowBuffer["full_address_uacd"] = record.FullAddressUacd ?? string.Empty;
                         rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(record.Geocoder) ? "EAAB" : record.Geocoder;
                         if (record.Score.HasValue) rowBuffer["Score"] = record.Score.Value; else rowBuffer["Score"] = null;
+                        // Timestamp
+                        if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
+                            rowBuffer["FechaHora"] = DateTime.Now;
 
                         using (var row = table.CreateRow(rowBuffer)) { }
                     }
@@ -139,7 +142,8 @@ namespace EAABAddIn.Src.Core.Map
                 ("full_address_eaab", "TEXT", "255"),
                 ("full_address_uacd", "TEXT", "255"),
                 ("Geocoder", "TEXT", "100"),
-                ("Score", "DOUBLE", "")
+                ("Score", "DOUBLE", ""),
+                ("FechaHora", "DATE", "")
             };
 
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));

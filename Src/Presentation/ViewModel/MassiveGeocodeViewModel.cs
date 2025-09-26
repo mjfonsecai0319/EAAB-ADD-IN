@@ -162,25 +162,37 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                             var entidad = resultados[0];
                             var src = (entidad.Source ?? string.Empty).ToLowerInvariant();
-
+                            // Clasificación unificada ScoreText / Geocoder
                             if (src.Contains("cat") || src.Contains("catastro"))
                             {
                                 entidad.ScoreText = "Aproximada por Catastro";
-                            }
-                            else if (string.IsNullOrWhiteSpace(entidad.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
-                            {
-                                entidad.ScoreText = "Exacta";
+                                entidad.Source = "CATASTRO";
                             }
                             else if (src.Contains("esri"))
                             {
-                                entidad.ScoreText = entidad.Score?.ToString() ?? "ESRI";
+                                // Score numérico con prefijo ESRI
+                                if (entidad.Score.HasValue)
+                                    entidad.ScoreText = $"ESRI {Math.Round(entidad.Score.Value, 2)}";
+                                else
+                                    entidad.ScoreText = "ESRI";
+                                entidad.Source = "ESRI";
                             }
-                            else
+                            else // EAAB u otro => Exacta si no tiene marca previa
                             {
-                                entidad.ScoreText = entidad.Score?.ToString() ?? "N/A";
+                                entidad.ScoreText = string.IsNullOrWhiteSpace(entidad.ScoreText) ? "Exacta" : entidad.ScoreText;
+                                entidad.Source = "EAAB";
                             }
 
-                            ResultsLayerService.AddPointToMemory(entidad);                           
+                            // Ajustar campo Direccion para almacenar la dirección encontrada (prioridad EAAB > Catastro > Original > MainStreet)
+                            if (!string.IsNullOrWhiteSpace(entidad.FullAddressEAAB))
+                                entidad.FullAddressOld = entidad.FullAddressEAAB; // reutilizamos FullAddressOld para visualización original previa si existiera
+                            else if (!string.IsNullOrWhiteSpace(entidad.FullAddressCadastre))
+                                entidad.FullAddressOld = entidad.FullAddressCadastre;
+                            else if (string.IsNullOrWhiteSpace(entidad.FullAddressOld))
+                                entidad.FullAddressOld = entidad.MainStreet ?? string.Empty;
+
+                            ResultsLayerService.AddPointToMemory(entidad);
+                            encontrados++;                          
                         }
                         catch
                         {
@@ -192,7 +204,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 await ResultsLayerService.CommitPointsAsync(GdbPath);
 
                 MessageBox.Show(
-                    $"Se marcaron {encontrados} direcciones.\nNo se encontraron {noEncontrados}.",
+                    $"Encontradas: {encontrados}\nNo encontradas: {noEncontrados}\nTotal procesadas: {encontrados + noEncontrados}",
                     "Resultado geocodificación"
                 );
             }

@@ -106,13 +106,22 @@ namespace EAABAddIn.Src.Core.Map
                         var def = featureClass.GetDefinition();
                         rowBuffer[def.GetShapeField()] = mapPoint;
                         rowBuffer["Identificador"] = entidad.ID.ToString();
-                        rowBuffer["Direccion"] = entidad.FullAddressOld ?? entidad.MainStreet ?? string.Empty;
+                        // Para inserción individual se solicita conservar EXACTAMENTE la dirección ingresada por el usuario.
+                        // Esa dirección la estamos almacenando en FullAddressOld al preparar la entidad en el ViewModel.
+                        // Si por alguna razón viniera vacía, último fallback a MainStreet.
+                        var direccionOriginal = !string.IsNullOrWhiteSpace(entidad.FullAddressOld)
+                            ? entidad.FullAddressOld
+                            : (entidad.MainStreet ?? string.Empty);
+                        rowBuffer["Direccion"] = direccionOriginal;
                         rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
                         rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
                         rowBuffer["FullAdressUACD"] = entidad.FullAddressCadastre ?? string.Empty;
                         rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                         rowBuffer["Score"] = entidad.Score.HasValue ? entidad.Score.Value : null;
                         rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
+                        // Timestamp de auditoría (UTC). Cambiar a DateTime.Now si se requiere hora local.
+                        if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
+                            rowBuffer["FechaHora"] = DateTime.Now;
 
                         using (var row = featureClass.CreateRow(rowBuffer)) { }
                     }
@@ -340,13 +349,23 @@ namespace EAABAddIn.Src.Core.Map
                             var def = batchFc.GetDefinition();
                             rowBuffer[def.GetShapeField()] = mapPoint;
                             rowBuffer["Identificador"] = entidad.ID.ToString();
-                            rowBuffer["Direccion"] = entidad.FullAddressOld ?? entidad.MainStreet ?? string.Empty;
+                            var direccionFinal = !string.IsNullOrWhiteSpace(entidad.FullAddressEAAB)
+                                ? entidad.FullAddressEAAB
+                                : (!string.IsNullOrWhiteSpace(entidad.FullAddressCadastre)
+                                    ? entidad.FullAddressCadastre
+                                    : (!string.IsNullOrWhiteSpace(entidad.FullAddressOld)
+                                        ? entidad.FullAddressOld
+                                        : (entidad.MainStreet ?? string.Empty)));
+                            rowBuffer["Direccion"] = direccionFinal;
                             rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
                             rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
                             rowBuffer["FullAdressUACD"] = entidad.FullAddressCadastre ?? string.Empty;
                             rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                             if (entidad.Score.HasValue) rowBuffer["Score"] = entidad.Score.Value; else rowBuffer["Score"] = null;
                             rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
+                            // Timestamp de auditoría (UTC)
+                            if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
+                                rowBuffer["FechaHora"] = DateTime.Now;
                             using (var row = batchFc.CreateRow(rowBuffer)) { }
                         }
                     }
@@ -375,7 +394,8 @@ namespace EAABAddIn.Src.Core.Map
                 ("FullAdressUACD", "TEXT", "255"),
                 ("Geocoder", "TEXT", "100"),
                 ("Score", "DOUBLE", ""),
-                ("ScoreText", "TEXT", "100")
+                ("ScoreText", "TEXT", "100"),
+                ("FechaHora", "DATE", "")
             };
 
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));

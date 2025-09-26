@@ -385,11 +385,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     {
                         addr.CityDesc = SelectedCity.CityDesc;
                         addr.FullAddressOld = AddressInput;
-                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
-                        if (src.Contains("cat") || src.Contains("catastro")) addr.ScoreText = "Aproximada por Catastro";
-                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base")) addr.ScoreText = "Exacta";
-                        else if (src.Contains("esri")) addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
-                        else addr.ScoreText = addr.Score?.ToString() ?? "N/A";
+                        ClasificarYNormalizar(addr);
                         _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
                     }
                 }
@@ -449,24 +445,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         addr.CityDesc = SelectedCity.CityDesc;
                         addr.FullAddressOld = AddressInput;
 
-                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
-
-                        if (src.Contains("cat") || src.Contains("catastro"))
-                        {
-                            addr.ScoreText = "Aproximada por Catastro";
-                        }
-                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
-                        {
-                            addr.ScoreText = "Exacta";
-                        }
-                        else if (src.Contains("esri"))
-                        {
-                            addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
-                        }
-                        else
-                        {
-                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
-                        }
+                        ClasificarYNormalizar(addr);
 
                         _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
                     }
@@ -528,24 +507,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         addr.FullAddressOld = AddressInput;
 
                         // --- Asignar ScoreText según origen ---
-                        var src = (addr.Source ?? string.Empty).ToLowerInvariant();
-
-                        if (src.Contains("cat") || src.Contains("catastro"))
-                        {
-                            addr.ScoreText = "Aproximada por Catastro";
-                        }
-                        else if (string.IsNullOrWhiteSpace(addr.Source) || src.Contains("eaab") || src.Contains("bd") || src.Contains("base"))
-                        {
-                            addr.ScoreText = "Exacta";
-                        }
-                        else if (src.Contains("esri"))
-                        {
-                            addr.ScoreText = addr.Score?.ToString() ?? "ESRI";
-                        }
-                        else
-                        {
-                            addr.ScoreText = addr.Score?.ToString() ?? "N/A";
-                        }
+                        ClasificarYNormalizar(addr);
 
                         _ = ResultsLayerService.AddPointAsync(addr, GdbPath);
                     }
@@ -600,6 +562,36 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     settings.baseDeDatos, settings.puerto ?? "5432"),
                 _ => throw new NotSupportedException($"Motor {settings.motor} no soportado")
             };
+        }
+
+        // Lógica unificada de clasificación de origen / ScoreText y normalización de direccion mostrada
+        private void ClasificarYNormalizar(EAABAddIn.Src.Core.Entities.PtAddressGralEntity addr)
+        {
+            if (addr == null) return;
+            var srcLower = (addr.Source ?? string.Empty).ToLowerInvariant();
+            if (srcLower.Contains("cat") || srcLower.Contains("catastro"))
+            {
+                addr.ScoreText = "Aproximada por Catastro";
+                addr.Source = "CATASTRO";
+            }
+            else if (srcLower.Contains("esri"))
+            {
+                if (addr.Score.HasValue)
+                    addr.ScoreText = $"ESRI {Math.Round(addr.Score.Value, 2)}";
+                else
+                    addr.ScoreText = "ESRI";
+                addr.Source = "ESRI";
+            }
+            else // EAAB u otro
+            {
+                if (string.IsNullOrWhiteSpace(addr.ScoreText))
+                    addr.ScoreText = "Exacta";
+                addr.Source = "EAAB";
+            }
+
+            // Ajuste Direccion (campo mostrado en feature class) se hace en ResultsLayerService, pero aquí guardamos FullAddressOld como respaldo original input
+            if (string.IsNullOrWhiteSpace(addr.FullAddressOld))
+                addr.FullAddressOld = addr.MainStreet ?? addr.FullAddressEAAB ?? addr.FullAddressCadastre;
         }
     }
 }
