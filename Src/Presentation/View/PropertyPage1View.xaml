@@ -41,7 +41,8 @@
 
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextInverseBrush}" />
+                <!-- Texto enfatizado usando el brush de énfasis -->
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="FontWeight" Value="Medium" />
@@ -64,7 +65,7 @@
 
             <Style x:Key="SecondaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="FontWeight" Value="Medium" />
@@ -86,7 +87,7 @@
 
             <Style x:Key="FilePickerButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="FontSize" Value="12" />
@@ -124,10 +125,15 @@
     <Grid Margin="25">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
+            <RowDefinition Height="20" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer
+            Grid.Row="0"
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
+        >
             <StackPanel>
                 <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource HeaderStyle}" />
 
@@ -334,7 +340,6 @@
                         <TextBlock
                             TextWrapping="Wrap"
                             LineHeight="20"
-                            Foreground="{DynamicResource Esri_TextPrimaryBrush}"
                             Style="{DynamicResource Esri_TextBlockRegular}"
                         >
                             <Run Text="1. Seleccione el motor de base de datos:" />
@@ -365,12 +370,12 @@
             </StackPanel>
         </ScrollViewer>
 
-        <StackPanel Grid.Row="1" Margin="10">
+        <StackPanel Grid.Row="2">
             <Border Style="{StaticResource StatusContainerStyle}">
                 <TextBlock
                     Text="{Binding MensajeConexion}"
                     FontWeight="Medium"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                    Style="{DynamicResource Esri_TextBlockRegular}"
                     TextWrapping="Wrap"
                     HorizontalAlignment="Center"
                 />
