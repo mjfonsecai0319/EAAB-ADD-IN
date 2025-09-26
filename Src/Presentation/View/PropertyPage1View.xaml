@@ -1,117 +1,72 @@
-﻿<UserControl x:Class="EAABAddIn.Src.Presentation.View.PropertyPage1View"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
-             xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
-             xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
-             mc:Ignorable="d">
-
+﻿<UserControl
+    x:Class="EAABAddIn.Src.Presentation.View.PropertyPage1View"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
+    xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
+    xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    mc:Ignorable="d"
+    d:DesignHeight="800"
+    d:DesignWidth="450"
+>
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <extensions:DesignOnlyResourceDictionary 
-                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
+                <extensions:DesignOnlyResourceDictionary
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml"
+                />
             </ResourceDictionary.MergedDictionaries>
 
-            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
-            <!-- Estilos generales -->
-            <Style x:Key="MainContainerStyle" TargetType="Grid">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
-            </Style>
-
-            <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="16"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="Margin" Value="0,0,0,15"/>
+            <Style x:Key="HeaderStyle" TargetType="TextBlock">
+                <Style.BasedOn>
+                    <StaticResource ResourceKey="Esri_TextBlockH3" />
+                </Style.BasedOn>
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="Margin" Value="0,0,0,15" />
+                <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
 
             <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-                <Setter Property="Width" Value="120"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="FontWeight" Value="Medium"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="FontSize" Value="13"/>
-            </Style>
-
-            <Style x:Key="BaseInputStyle">
-                <Setter Property="FrameworkElement.Width" Value="220"/>
-                <Setter Property="FrameworkElement.Height" Value="28"/>
-                <Setter Property="FrameworkElement.Margin" Value="0,0,0,12"/>
-            </Style>
-
-            <!-- TextBox con recursos dinámicos (igual que AddressSearchView) -->
-            <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="8,4"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Style.Triggers>
-                    <Trigger Property="IsFocused" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
-                        <Setter Property="BorderThickness" Value="2"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
-            <!-- ComboBox con recursos dinámicos (igual que AddressSearchView) -->
-            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="8,4"/>
-                <Setter Property="FontSize" Value="13"/>
-            </Style>
-
-            <!-- PasswordBox con recursos dinámicos -->
-            <Style x:Key="ThemedPasswordBoxStyle" TargetType="PasswordBox" BasedOn="{StaticResource BaseInputStyle}">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="8,4"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Style.Triggers>
-                    <Trigger Property="IsFocused" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
-                        <Setter Property="BorderThickness" Value="2"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
-            <!-- Botones exactamente igual que MassiveGeocode -->
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
-                <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
-                <Setter Property="Foreground" Value="White" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Height" Value="32" />
-                <Setter Property="Padding" Value="16,8" />
+                <Style.BasedOn>
+                    <StaticResource ResourceKey="Esri_TextBlockRegular" />
+                </Style.BasedOn>
+                <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextInverseBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_BlueHover}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BluePressed}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_BluePressed}" />
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Background" Value="{DynamicResource Esri_Gray155}" />
-                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}" />
+                        <Setter Property="Opacity" Value="0.55" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Height" Value="32" />
-                <Setter Property="Padding" Value="16,8" />
                 <Setter Property="FontWeight" Value="Medium" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="Cursor" Value="Hand" />
@@ -119,19 +74,23 @@
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
                     </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
+                        <Setter Property="Opacity" Value="0.90" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="FilePickerButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style x:Key="FilePickerButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Height" Value="28" />
-                <Setter Property="Width" Value="32" />
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Content" Value="..." />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
@@ -139,199 +98,283 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- FilePathTextBox exactamente igual que MassiveGeocode -->
-            <Style x:Key="FilePathTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ThemedTextBoxStyle}">
-                <Setter Property="IsReadOnly" Value="True" />
-                <Setter Property="Height" Value="28" />
-                <Setter Property="Padding" Value="8,4" />
-                <Setter Property="Margin" Value="0,0,0,12" />
-                <Setter Property="Width" Value="185" />
-                <Style.Triggers>
-                    <Trigger Property="IsReadOnly" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
-                        <Setter Property="Foreground" Value="{DynamicResource Esri_TextSecondaryBrush}" />
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
             <Style x:Key="StatusContainerStyle" TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="4"/>
-                <Setter Property="Padding" Value="12"/>
-                <Setter Property="Margin" Value="0,15,0,0"/>
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="12" />
             </Style>
 
             <Style x:Key="InstructionsContainerStyle" TargetType="Border">
-                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="4"/>
-                <Setter Property="Padding" Value="15"/>
-                <Setter Property="Margin" Value="0,20,0,0"/>
+                <Setter Property="Background" Value="{DynamicResource Esri_DialogFrameBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="15" />
+                <Setter Property="Margin" Value="0,20,0,0" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <UserControl.DataContext>
-        <vm:PropertyPage1ViewModel/>
+        <vm:PropertyPage1ViewModel />
     </UserControl.DataContext>
 
-    <Grid Style="{StaticResource MainContainerStyle}" Margin="25">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel>
-                <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource SectionHeaderStyle}"/>
+    <Grid Margin="25">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-                <!-- Grid de campos -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="Configuración de Base de Datos" Style="{StaticResource HeaderStyle}" />
+
                 <Grid Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <!-- Etiquetas -->
-                        <ColumnDefinition Width="*"/>
-                        <!-- Inputs -->
-                        <ColumnDefinition Width="Auto"/>
-                        <!-- Botón archivo -->
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="7*" />
                     </Grid.ColumnDefinitions>
+
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/> <!-- Motor -->
-                        <RowDefinition Height="Auto"/> <!-- Host -->
-                        <RowDefinition Height="Auto"/> <!-- Puerto -->
-                        <RowDefinition Height="Auto"/> <!-- Base de Datos -->
-                        <RowDefinition Height="Auto"/> <!-- Usuario -->
-                        <RowDefinition Height="Auto"/> <!-- Contraseña -->
-                        <RowDefinition Height="Auto"/> <!-- Archivo SDE -->
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Motor -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Motor:" Style="{StaticResource FieldLabelStyle}"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1"
-                            Style="{StaticResource ThemedComboBoxStyle}"
-                            ItemsSource="{Binding MotoresBD}"
-                            SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Grid.Resources>
+                        <Style TargetType="FrameworkElement" x:Key="RowSpacingChild">
+                            <Setter Property="Margin" Value="0,0,0,8" />
+                        </Style>
+                    </Grid.Resources>
 
-                    <!-- Host (oculto para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBox Grid.Row="1" Grid.Column="1"
-                            Style="{StaticResource ThemedTextBoxStyle}"
-                            Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Text="Motor:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Margin="0,0,0,8"
+                    />
+                    <ComboBox
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        ItemsSource="{Binding MotoresBD}"
+                        SelectedItem="{Binding MotorSeleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="16,0,0,8" Grid.ColumnSpan="2"
+                    />
 
-                    <!-- Puerto (oculto para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Puerto:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBox Grid.Row="2" Grid.Column="1"
-                            Style="{StaticResource ThemedTextBoxStyle}"
-                            Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Text="Host:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+                    <TextBox
+                        Grid.Row="1"
+                        Grid.Column="2"
+                        Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        Text="Puerto:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+                    <TextBox
+                        Grid.Row="2"
+                        Grid.Column="2"
+                        Text="{Binding Puerto, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
 
                     <!-- Base de Datos (oculto para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Base de Datos:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBox Grid.Row="3" Grid.Column="1"
-                            Style="{StaticResource ThemedTextBoxStyle}"
-                            Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock
+                        Grid.Row="3"
+                        Grid.Column="0"
+                        Text="Base de Datos:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+                    <TextBox
+                        Grid.Row="3"
+                        Grid.Column="2"
+                        Text="{Binding BaseDeDatos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
 
                     <!-- Usuario (oculto para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Usuario:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBox Grid.Row="4" Grid.Column="1"
-                            Style="{StaticResource ThemedTextBoxStyle}"
-                            Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock
+                        Grid.Row="4"
+                        Grid.Column="0"
+                        Text="Usuario:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+                    <TextBox
+                        Grid.Row="4"
+                        Grid.Column="2"
+                        Text="{Binding Usuario, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
 
                     <!-- Contraseña (oculto para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Contraseña:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <PasswordBox Grid.Row="5" Grid.Column="1"
-                                Style="{StaticResource ThemedPasswordBoxStyle}"
-                                x:Name="PasswordBox"
-                                PasswordChanged="PasswordBox_PasswordChanged"
-                                Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock
+                        Grid.Row="5"
+                        Grid.Column="0"
+                        Text="Contraseña:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+                    <PasswordBox
+                        Grid.Row="5"
+                        Grid.Column="2"
+                        x:Name="PasswordBox"
+                        PasswordChanged="PasswordBox_PasswordChanged"
+                        Visibility="{Binding MostrarCamposConexion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
 
                     <!-- Archivo SDE (solo visible para Oracle con archivo de credenciales) -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Archivo SDE:" Style="{StaticResource FieldLabelStyle}"
-                            Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <Grid Grid.Row="6" Grid.Column="1" 
-                          Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock
+                        Grid.Row="6"
+                        Grid.Column="0"
+                        Text="Archivo SDE:"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    />
+
+                    <Grid
+                        Grid.Row="6"
+                        Grid.Column="2"
+                        Visibility="{Binding MostrarArchivoCredenciales, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Margin="0,0,0,8"
+                    >
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="185"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="32"/>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                Style="{StaticResource FilePathTextBoxStyle}"
-                                Text="{Binding RutaArchivoCredenciales, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                ToolTip="{Binding RutaArchivoCredenciales}"
-                                Margin="0,0,0,12"/>
-                        <Button Grid.Column="2"
-                                Style="{StaticResource FilePickerButtonStyle}"
-                                Command="{Binding SeleccionarArchivoCredencialesCommand}"
-                                ToolTip="Seleccionar archivo de conexión SDE"
-                                Margin="0,0,0,12"/>
+
+                        <TextBox
+                            Grid.Column="0"
+                            Text="{Binding RutaArchivoCredenciales, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="{Binding RutaArchivoCredenciales}"
+                            IsReadOnly="True"
+                        />
+
+                        <Button
+                            Grid.Column="2"
+                            Command="{Binding SeleccionarArchivoCredencialesCommand}"
+                            ToolTip="Seleccionar archivo de conexión SDE"
+                            Height="28"
+                            Width="28"
+                            Style="{StaticResource FilePickerButtonStyle}"
+                        >
+                            <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                        </Button>
+                    </Grid>
+
+                    <Grid
+                        Grid.Row="7"
+                        Grid.Column="2"
+                        Margin="0,0,0,8"
+                    >
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            Grid.Column="0"
+                            Content="Probar Conexión"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding ProbarConexionCommand}"
+                        />
+
+                        <Button
+                            Grid.Column="2"
+                            Content="Guardar y Conectar"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding GuardarYReconectarCommand}"
+                        />
                     </Grid>
                 </Grid>
 
-                <!-- Botones -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0">
-                    <Button Content="Probar Conexión"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Margin="0,0,10,0"
-                            Command="{Binding ProbarConexionCommand}"/>
-
-                    <Button Content="Guardar y Conectar"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Command="{Binding GuardarYReconectarCommand}"/>
-                </StackPanel>
-
-                <!-- Mensaje de estado -->
-                <Border Style="{StaticResource StatusContainerStyle}">
-                    <TextBlock Text="{Binding MensajeConexion}"
-                               FontWeight="Medium"
-                               Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               HorizontalAlignment="Center"/>
-                </Border>
-
-                <!-- Instrucciones -->
                 <Border Style="{StaticResource InstructionsContainerStyle}">
                     <StackPanel>
-                        <TextBlock Text="Instrucciones:" 
-                                FontWeight="Bold" 
-                                FontSize="14"
-                                Foreground="{DynamicResource Esri_Blue}"
-                                Margin="0,0,0,8"/>
-                        <TextBlock TextWrapping="Wrap" 
-                                LineHeight="20"
-                                Foreground="{DynamicResource Esri_TextPrimaryBrush}">
-                            <Run Text="1. Seleccione el motor de base de datos:"/>
-                            <LineBreak/>
-                            <Run Text="   • PostgreSQL: Conexión tradicional con credenciales"/>
-                            <LineBreak/>
-                            <Run Text="   • Oracle: Conexión tradicional con credenciales"/>
-                            <LineBreak/>
-                            <Run Text="   • Oracle (Archivo de credenciales): Usa archivo .SDE"/>
-                            <LineBreak/>
-                            <Run Text="2. Para conexiones tradicionales: Configure host, puerto, usuario, contraseña y base de datos"/>
-                            <LineBreak/>
-                            <Run Text="3. Para Oracle con archivo: Seleccione únicamente el archivo .SDE"/>
-                            <LineBreak/>
-                            <Run Text="4. Seleccione archivo GDB si es necesario (opcional para conexiones tradicionales)"/>
-                            <LineBreak/>
-                            <Run Text="5. Haga clic en "/>
-                            <Run Text="'Probar Conexión'" FontWeight="Medium"/>
-                            <Run Text=" para verificar"/>
-                            <LineBreak/>
-                            <Run Text="6. Si la prueba es exitosa, haga clic en "/>
-                            <Run Text="'Guardar y Conectar'" FontWeight="Medium"/>
-                            <LineBreak/>
-                            <Run Text="7. La configuración se guardará automáticamente para futuras sesiones"/>
+                        <TextBlock
+                            Text="Instrucciones:"
+                            FontWeight="Bold"
+                            FontSize="14"
+                            Foreground="{DynamicResource Esri_Blue}"
+                            Margin="0,0,0,8"
+                        />
+                        <TextBlock
+                            TextWrapping="Wrap"
+                            LineHeight="20"
+                            Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                        >
+                            <Run Text="1. Seleccione el motor de base de datos:" />
+                            <LineBreak />
+                            <Run Text="   • PostgreSQL: Conexión tradicional con credenciales" />
+                            <LineBreak />
+                            <Run Text="   • Oracle: Conexión tradicional con credenciales" />
+                            <LineBreak />
+                            <Run Text="   • Oracle (Archivo de credenciales): Usa archivo .SDE" />
+                            <LineBreak />
+                            <Run Text="2. Para conexiones tradicionales: Configure host, puerto, usuario, contraseña y base de datos" />
+                            <LineBreak />
+                            <Run Text="3. Para Oracle con archivo: Seleccione únicamente el archivo .SDE" />
+                            <LineBreak />
+                            <Run Text="4. Seleccione archivo GDB si es necesario (opcional para conexiones tradicionales)" />
+                            <LineBreak />
+                            <Run Text="5. Haga clic en " />
+                            <Run Text="'Probar Conexión'" FontWeight="Medium" />
+                            <Run Text=" para verificar" />
+                            <LineBreak />
+                            <Run Text="6. Si la prueba es exitosa, haga clic en " />
+                            <Run Text="'Guardar y Conectar'" FontWeight="Medium" />
+                            <LineBreak />
+                            <Run Text="7. La configuración se guardará automáticamente para futuras sesiones" />
                         </TextBlock>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Margin="10">
+            <Border Style="{StaticResource StatusContainerStyle}">
+                <TextBlock
+                    Text="{Binding MensajeConexion}"
+                    FontWeight="Medium"
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                    TextWrapping="Wrap"
+                    HorizontalAlignment="Center"
+                />
+            </Border>
+        </StackPanel>
     </Grid>
 </UserControl>
