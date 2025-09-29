@@ -136,6 +136,9 @@ Una vez configurado correctamente, el Add-In ofrece herramientas principales acc
 3. **Ingresa la dirección** en el campo de texto (ej: "Calle 123 #45-67")
 4. Haz clic en **"Buscar Dirección"**
 
+> [!tip]
+> Si la lista de ciudades aparece vacía o incompleta (por ejemplo tras cambiar de motor o reconectar), usa el botón **"Recargar" / ícono de refresco** del panel para volver a consultar el catálogo directamente desde la base de datos.
+
 #### Funcionalidades del panel de búsqueda
 
 * **Estado de conexión**: Indica si la base de datos está conectada
