@@ -5,7 +5,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
 >
-  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.8.1" desktopVersion="3.4.55405">
+  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.8.2" desktopVersion="3.4.55405">
     <Name>EAAB Add-In</Name>
     <Description>EAABAddIn description</Description>
     <Image>Images\AddinDesktop32.png</Image>
@@ -14,6 +14,29 @@
     <Date>24-09-2025 4:15:00</Date>
     <Subject>Framework</Subject>
   </AddInInfo>
+
+  <conditions>
+    <insertCondition id="EAABAddIn_DomainCheck">
+      <and>
+        <state id="esri_mapping_mapPane" />
+        <state id="EAABAddIn_InCompanyDomain" />
+      </and>
+    </insertCondition>
+  </conditions>
+
+  <propertySheets>
+    <updateSheet refID="esri_core_optionsPropertySheet">
+      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB ADD-IN" group="Application">
+        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
+      </insertPage>
+    </updateSheet>
+
+    <insertSheet id="EAABAddIn_PropertySheet1" caption="Opciones Geocodificación" hasGroups="true">
+      <page className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage2" caption="EAAB ADD-IN">
+        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
+      </page>
+    </insertSheet>
+  </propertySheets>
 
   <modules>
     <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="false" caption="Module1">
@@ -39,6 +62,7 @@
           loadOnClick="true"
           smallImage="Images\Geocoder_Local.png"
           largeImage="Images\Geocoder_Local.png"
+          condition="EAABAddIn_DomainCheck"
           keytip="B1"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -51,6 +75,7 @@
           loadOnClick="true"
           smallImage="Images\Geocoder_Batch.png"
           largeImage="Images\Geocoder_Batch.png"
+          condition="EAABAddIn_DomainCheck"
           keytip="B2"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -63,6 +88,7 @@
           loadOnClick="true"
           smallImage="Images\Settings.png"
           largeImage="Images\Settings.png"
+          condition="EAABAddIn_DomainCheck"
           keytip="B3"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -76,23 +102,11 @@
           className="EAABAddIn.Src.Presentation.ViewModel.GeocoderDockpaneViewModel"
           dock="group"
           dockWith="esri_core_projectDockPane"
+          condition="EAABAddIn_DomainCheck"
         >
           <content className="EAABAddIn.Src.Presentation.View.GeocoderDockpaneView" />
         </dockPane>
       </dockPanes>
     </insertModule>
   </modules>
-
-  <propertySheets>
-    <updateSheet refID="esri_core_optionsPropertySheet">
-      <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB ADD-IN" group="Application">
-        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
-      </insertPage>
-    </updateSheet>
-    <insertSheet id="EAABAddIn_PropertySheet1" caption="Opciones Geocodificación" hasGroups="true">
-      <page className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage2" caption="EAAB ADD-IN">
-        <content className="EAABAddIn.Src.Presentation.View.PropertyPage1View" />
-      </page>
-    </insertSheet>
-  </propertySheets>
 </ArcGIS>

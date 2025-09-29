@@ -1,11 +1,14 @@
-﻿using ArcGIS.Desktop.Framework;
+﻿using System;
+using System.Threading.Tasks;
+
+using ArcGIS.Desktop.Core.Events;
+using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using EAABAddIn.Src.Core.Data;
+
+using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
-using System.Diagnostics;
-using System;
-using System.Threading.Tasks;
+using EAABAddIn.Src.Core.Data;
 
 namespace EAABAddIn
 {
@@ -22,10 +25,13 @@ namespace EAABAddIn
         protected override bool Initialize()
         {
             var result = base.Initialize();
-            
+
             _geodatabaseService = new DatabaseConnectionService();
-            
+
             var settings = Settings;
+
+            ProjectOpenedEvent.Subscribe(this.OnProjectOpened);
+
             if (IsValidConfiguration(settings))
             {
                 var engine = settings.motor.ToDBEngine();
@@ -36,9 +42,9 @@ namespace EAABAddIn
             }
             else
             {
-                Debug.WriteLine("⚠️ No hay configuración válida. El usuario debe configurar la conexión primero.");
+                // Configuración no válida; la conexión se intentará una vez el usuario provea datos.
             }
-            
+
             return result;
         }
 
@@ -47,21 +53,22 @@ namespace EAABAddIn
             QueuedTask.Run(() => _geodatabaseService?.DisposeConnectionAsync());
             return base.CanUnload();
         }
+
         private bool IsValidConfiguration(Settings settings)
         {
-         if (string.IsNullOrWhiteSpace(settings.motor)) return false;
+            if (string.IsNullOrWhiteSpace(settings.motor)) return false;
 
-         var engine = settings.motor.ToDBEngine();
-         if (engine == DBEngine.OracleSDE || engine == DBEngine.PostgreSQLSDE)
-         {
-          return !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
-              System.IO.File.Exists(settings.rutaArchivoCredenciales);
-         }
+            var engine = settings.motor.ToDBEngine();
+            if (engine == DBEngine.OracleSDE || engine == DBEngine.PostgreSQLSDE)
+            {
+                return !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
+                    System.IO.File.Exists(settings.rutaArchivoCredenciales);
+            }
 
-         return !string.IsNullOrWhiteSpace(settings.host) &&
-             !string.IsNullOrWhiteSpace(settings.usuario) &&
-             !string.IsNullOrWhiteSpace(settings.contraseña) &&
-             !string.IsNullOrWhiteSpace(settings.baseDeDatos);
+            return !string.IsNullOrWhiteSpace(settings.host) &&
+                !string.IsNullOrWhiteSpace(settings.usuario) &&
+                !string.IsNullOrWhiteSpace(settings.contraseña) &&
+                !string.IsNullOrWhiteSpace(settings.baseDeDatos);
         }
 
         private async Task HandleDatabaseConnectionAsync(DBEngine engine)
@@ -69,41 +76,37 @@ namespace EAABAddIn
             try
             {
                 var settings = Settings;
-                
+
                 if (engine == DBEngine.Oracle)
                 {
                     var props = ConnectionPropertiesFactory.CreateOracleConnection(
-                        settings.host, settings.usuario, settings.contraseña, 
+                        settings.host, settings.usuario, settings.contraseña,
                         settings.baseDeDatos, settings.puerto ?? "1521"
                     );
                     await _geodatabaseService.CreateConnectionAsync(props);
-                    Debug.WriteLine("✅ Conexión Oracle establecida exitosamente");
                 }
                 else if (engine == DBEngine.PostgreSQL)
                 {
                     var props = ConnectionPropertiesFactory.CreatePostgresConnection(
-                        settings.host, settings.usuario, settings.contraseña, 
+                        settings.host, settings.usuario, settings.contraseña,
                         settings.baseDeDatos, settings.puerto ?? "5432"
                     );
                     await _geodatabaseService.CreateConnectionAsync(props);
-                    Debug.WriteLine("✅ Conexión PostgreSQL establecida exitosamente");
                 }
                 else if (engine == DBEngine.OracleSDE)
                 {
                     var sdePath = settings.rutaArchivoCredenciales;
                     await _geodatabaseService.CreateConnectionAsync(sdePath);
-                    Debug.WriteLine("✅ Conexión Oracle SDE (archivo .sde) establecida exitosamente");
                 }
                 else if (engine == DBEngine.PostgreSQLSDE)
                 {
                     var sdePath = settings.rutaArchivoCredenciales;
                     await _geodatabaseService.CreateConnectionAsync(sdePath);
-                    Debug.WriteLine("✅ Conexión PostgreSQL SDE (archivo .sde) establecida exitosamente");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"❌ Error al establecer conexión automática: {ex.Message}");
+                // Error al intentar conexión automática silenciado intencionalmente
             }
         }
 
@@ -127,10 +130,39 @@ namespace EAABAddIn
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"❌ Error en ReconnectDatabaseAsync: {ex.Message}");
-                throw; 
+                throw;
+            }
+        }
+
+        public void OnProjectOpened(ProjectEventArgs args)
+        {
+            if (ValidateDomain.Invoke())
+            {
+                FrameworkApplication.State.Activate("EAABAddIn_InCompanyDomain");
+                return;
+            }
+            DisableAddIn();
+        }
+
+        private void DisableAddIn()
+        {
+            FrameworkApplication.State.Deactivate("EAABAddIn_InCompanyDomain");
+
+            try
+            {
+                var dockPane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane");
+                dockPane?.Hide();
+            }
+            catch
+            {
+                // Ignorar errores al ocultar el DockPane
+            }
+
+            if (_geodatabaseService != null)
+            {
+                _ = QueuedTask.Run(_geodatabaseService.DisposeConnectionAsync);
             }
         }
     }
