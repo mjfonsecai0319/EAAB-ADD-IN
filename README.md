@@ -5,12 +5,18 @@ Optimiza la gestión de datos espaciales, permitiendo integrar información dire
 
 ## Características principales
 
-1. **Conexión persistente** a bases de datos PostgreSQL y Oracle
-2. **Búsqueda individual** de direcciones con localización en mapa
-3. **Geocodificación masiva** desde archivos Excel (.xlsx)
-4. **Configuración automática** que se mantiene entre sesiones
-5. **Interfaz adaptable** al tema claro/oscuro de ArcGIS Pro
-6. **Validación de conexión** en tiempo real
+1. **Conexión persistente** a bases de datos PostgreSQL y Oracle (modo credenciales) 
+2. **Conexión mediante archivo .sde** para Oracle SDE y PostgreSQL SDE (sin exponer usuario/host)  
+3. **Búsqueda individual** de direcciones con localización inmediata en el mapa  
+4. **Geocodificación masiva** optimizada (batch insert en memoria) desde archivos Excel (.xlsx)  
+5. **Registro automático de auditoría** con sello de fecha y hora local (campo `FechaHora`) tanto para encontrados como no encontrados  
+6. **Clasificación unificada de origen** (EAAB / CATASTRO / ESRI) y calidad (Exacta / Aproximada / Score numérico)  
+7. **Dirección ingresada vs dirección encontrada**: En geocodificación manual se preserva exactamente la dirección escrita por el usuario; en masivo se guarda la mejor dirección normalizada encontrada  
+8. **Persistencia y recarga de configuración automática** entre sesiones  
+9. **Interfaz adaptable** a tema claro/oscuro de ArcGIS Pro usando DynamicResource  
+10. **Validación de conexión en tiempo real** y mensajes de estado descriptivos  
+11. **Fallback inteligente de normalización**: Si el normalizador falla por léxico (CODE_145 / CODE_146) se usa la dirección original sin abortar  
+12. **Soporte de búsqueda ampliada**: Coincidencia exacta + segundo intento LIKE si no hay resultados
 
 ## Requisitos del sistema
 
@@ -25,7 +31,8 @@ Optimiza la gestión de datos espaciales, permitiendo integrar información dire
 
 ### Requisitos de base de datos
 
-1. PostgreSQL 15+ con PostGIS habilitado, o Oracle 18+
+1. PostgreSQL 15+ con PostGIS habilitado, o Oracle 18+  
+2. Opcional: Archivos `.sde` válidos generados desde ArcGIS Pro / ArcCatalog para conexión SDE (Oracle o PostgreSQL)
 
 ## Instalación
 
@@ -73,7 +80,7 @@ Al utilizar el Add-In por primera vez:
 
 #### Completa los parámetros según tu motor de base de datos
 
-##### Para PostgreSQL
+##### Para PostgreSQL (credenciales)
 
 * Motor: PostgreSQL
 * Host: `localhost` o dirección IP del servidor
@@ -82,7 +89,7 @@ Al utilizar el Add-In por primera vez:
 * Usuario: Tu nombre de usuario
 * Contraseña: Tu contraseña
 
-##### Para Oracle
+##### Para Oracle (credenciales)
 
 * Motor: Oracle
 * Host: `localhost` o dirección IP del servidor
@@ -90,15 +97,24 @@ Al utilizar el Add-In por primera vez:
 * Base de datos: SID o nombre del servicio Oracle
 * Usuario: Tu nombre de usuario
 * Contraseña: Tu contraseña
-* Oracle Path: Ruta de instalación de Oracle (opcional)
+
+##### Para PostgreSQL SDE / Oracle SDE (archivo .sde)
+
+* Selecciona el motor: "PostgreSQL SDE" u "Oracle SDE"  
+* El formulario ocultará campos de Host/Usuario/Contraseña/Base y mostrará el selector de archivo  
+* Navega y selecciona el archivo `.sde`  
+* Haz clic en "Probar Conexión" y luego "Guardar y Conectar"  
+
+> [!note]
+> El archivo .sde encapsula los parámetros de conexión, por lo que no se almacenan credenciales explícitas en la configuración del Add-In.
 
 ### Cambio de motor de base de datos
 
-Cuando cambies entre PostgreSQL y Oracle:
+Al cambiar de motor (credenciales ↔ SDE o entre motores):
 
-* **Todos los campos se limpiarán automáticamente**
-* **Solo se conservará el puerto por defecto** del nuevo motor seleccionado
-* **Deberás configurar nuevamente** todos los parámetros de conexión
+* Se limpian campos no aplicables automáticamente  
+* Se asigna el puerto por defecto cuando aplica (5432 / 1521)  
+* Para modos SDE solo se persiste la ruta del archivo  
 
 > [!warning]
 > Si la conexión falla, revisa que los parámetros de red y las credenciales sean correctas antes de continuar.
@@ -129,12 +145,16 @@ Una vez configurado correctamente, el Add-In ofrece herramientas principales acc
 
 #### Resultados esperados
 
-* **Localización en mapa**: La dirección encontrada se centra y resalta en el mapa
-* **Información detallada**: Se despliega información asociada como:
-  * Coordenadas exactas
-  * Código de dirección
-  * Información catastral (si está disponible)
-  * Barrio o localidad
+* **Localización en mapa** y zoom automático a los resultados
+* **Auditoría en capa** `GeocodedAddresses`: Campos principales:
+  * Identificador
+  * Direccion (exactamente lo que escribió el usuario en búsqueda individual)
+  * FullAdressEAAB / FullAdressUACD (cuando existan)
+  * Geocoder (EAAB / CATASTRO / ESRI)
+  * Score (numérico, solo ESRI)
+  * ScoreText (Exacta / Aproximada por Catastro / ESRI n.n)
+  * FechaHora (hora local)
+* **Tabla de no encontrados** (cuando se implementa): registro de direcciones sin resultado con timestamp
 
 ### 2. Geocodificación Masiva
 
@@ -169,13 +189,11 @@ El archivo debe contener **obligatoriamente** estas columnas:
 
 #### Resultados del procesamiento:
 
-- **Capa de puntos**: Se crea automáticamente una nueva capa en el mapa con todos los puntos geocodificados
-- **Tabla de atributos**: Cada punto incluye:
-  - Información original del Excel
-  - Coordenadas calculadas por catastro/Esri
-  - Estado de geocodificación (exitosa/fallida)
-  - Precisión de la localización
-- **Feature Class**: Los resultados se almacenan permanentemente en la geodatabase del proyecto
+* Inserción optimizada en lote (menor tiempo y menos locks)
+* La columna `Direccion` almacena la mejor dirección encontrada (prioridad: EAAB > Catastro > Original > Calle básica)
+* Campos de clasificación y timestamp idénticos a la búsqueda individual
+* **Contador final:** Encontradas / No encontradas / Total
+* Posibilidad de reintentos ampliando coincidencias por LIKE en la segunda pasada
 
 ---
 
@@ -187,11 +205,11 @@ El archivo debe contener **obligatoriamente** estas columnas:
 
 #### Estado de la conexión:
 
-El sistema muestra tres estados posibles:
+Estados posibles (credenciales y SDE):
 
-- **✅ "Conexión activa"**: La base de datos está conectada y funcionando
-- **⚠️ "Configuración válida pero no conectado"**: Los parámetros son correctos pero la conexión se perdió
-- **❌ "Configure los parámetros de conexión"**: No hay configuración o es inválida
+* ✅ Conexión activa
+* ⚠️ Configuración válida pero no conectado
+* ❌ Configure los parámetros de conexión
 
 #### Funciones disponibles:
 
@@ -209,27 +227,34 @@ El sistema muestra tres estados posibles:
 
 ## Arquitectura técnica
 
-### Componentes principales:
+### Componentes principales
 
-1. **Module1.cs**: Gestor principal, inicialización y conexión automática
-2. **DatabaseConnectionService**: Servicio de conexión persistente con pooling
-3. **ConnectionPropertiesFactory**: Factory para crear propiedades de conexión específicas por motor
-4. **Settings**: Sistema de configuración persistente en JSON
-5. **ViewModels**: Lógica de presentación con binding bidireccional
+1. `Module1.cs`: Inicialización, reconexión diferida y soporte multi-motor (incluye SDE)
+2. `DatabaseConnectionService`: Abstracción de conexión (credenciales o archivo .sde) con liberación controlada
+3. `ConnectionPropertiesFactory`: Factory para propiedades Oracle / PostgreSQL
+4. `ResultsLayerService`: Gestión de Feature Class `GeocodedAddresses` (creación, campos, batch insert)
+5. `AddressNotFoundTableService`: Registro de intentos fallidos con timestamp
+6. `PtAddressGralEntityRepository` (Oracle / Postgres): Búsqueda de direcciones y catálogo de ciudades
+7. `AddressNormalizer` y fallback de errores de léxico
+8. ViewModels (AddressSearch / Massive / PropertyPage): Orquestación MVVM
 
-### Patrones implementados:
+### Patrones implementados
 
-- **MVVM (Model-View-ViewModel)**: Separación clara entre lógica y presentación
-- **Factory Pattern**: Para crear conexiones específicas por tipo de BD
-- **Singleton**: Para el servicio de conexión global
-- **Command Pattern**: Para acciones de UI con validación
+* MVVM (WPF + ArcGIS Pro SDK)
+* Factory (conexiones)
+* Singleton controlado (`Module1` + settings cache)
+* Command (RelayCommand / AsyncRelayCommand)
+* Fallback Strategy (normalización / búsqueda LIKE)
+* Lazy initialization (carga diferida de capa y campos)
 
-### Almacenamiento de configuración:
+### Almacenamiento de configuración
 
-La configuración se guarda en dos ubicaciones para redundancia:
+Ubicaciones:
 
-1. **JSON**: `%AppData%\EAABAddIn\settings.json`
-2. **ApplicationSettings**: Configuración nativa de .NET
+1. JSON: `%AppData%\EAABAddIn\settings.json`
+2. ApplicationSettings: respaldo
+
+Campos guardados por motor (independientes): host, puerto, base, usuario, archivo .sde, etc.
 
 ---
 
@@ -250,6 +275,7 @@ La configuración se guarda en dos ubicaciones para redundancia:
 |-------|----------------|----------|
 | ❌ "El archivo no contiene la columna requerida" | Encabezados incorrectos en Excel | Verificar que las columnas sean: `Identificador`, `Direccion`, `Poblacion` |
 | ❌ "No se pudo leer el archivo" | Archivo corrupto o formato incorrecto | Usar Excel (.xlsx) y verificar que no esté protegido |
+| ⚠️ "Sin coincidencias" | Primera pasada exacta falló | Se ejecuta fallback LIKE automáticamente |
 | ❌ "No hay ciudades disponibles" | Sin conexión a base de datos | Verificar conexión antes de usar herramientas |
 
 ### Problemas de instalación
@@ -268,12 +294,15 @@ La configuración se guarda en dos ubicaciones para redundancia:
 
 Los logs de diagnóstico se escriben en la ventana de **Output** de Visual Studio cuando se ejecuta en modo desarrollo, o en el **Event Viewer** de Windows en producción.
 
-### Información de diagnóstico útil:
+### Información de diagnóstico útil
 
-- Estado de conexión a base de datos
-- Parámetros de conexión utilizados (sin contraseñas)
-- Errores específicos de geocodificación
-- Tiempo de respuesta de consultas
+Se registran (Output VS / Debug):
+
+* Intento de conexión y motor seleccionado
+* Ruta de archivo .sde (cuando aplica)
+* Código de error de normalización (cuando se produce fallback)
+* Número de resultados por búsqueda
+* Errores de inserción en Feature Class / tabla auxiliar
 
 ---
 
@@ -317,6 +346,7 @@ EAABAddIn/
 
 Este Add-In es de uso interno de la EAAB. Para soporte técnico, contactar al equipo de desarrollo de sistemas de información geográfica.
 
-**Versión**: 1.0  
-**Última actualización**: 23-09-2025  
-**Compatible con**: ArcGIS Pro 3.4+
+**Versión**: 1.1  
+**Última actualización**: 29-09-2025  
+**Compatible con**: ArcGIS Pro 3.4+  
+**Novedades 1.1**: Soporte PostgreSQL SDE, timestamps locales, clasificación origen/score, fallback LIKE, auditoría no encontrados.
