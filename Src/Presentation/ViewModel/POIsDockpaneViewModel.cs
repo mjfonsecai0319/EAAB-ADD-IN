@@ -9,6 +9,7 @@ using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
+using ArcGIS.Desktop.Core; // Project para gdb por defecto
 using EAABAddIn.Src.Core.Entities;
 using EAABAddIn.Src.Core.Map; // ResultsLayerService
 using EAABAddIn.Src.Domain.Repositories;
@@ -101,7 +102,8 @@ public class POIsDockpaneViewModel : DockPane
             foreach (var item in list) Results.Add(item);
             Selected = Results.FirstOrDefault(r => r.Latitude.HasValue && r.Longitude.HasValue) ?? Results.First();
             Status = $"{Results.Count} resultados";
-            await ZoomToSelectedAsync();
+            // Marcado masivo SIN zoom punto a punto: se hará un único zoom al extent final (ResultsLayerService.CommitPointsAsync)
+            await MarkAllAsync();
         }
         catch (Exception ex)
         {
@@ -145,25 +147,34 @@ public class POIsDockpaneViewModel : DockPane
         if (!Results.Any()) return;
         try
         {
-            // Para reutilizar ResultsLayerService necesitamos PtAddressGralEntity.
-            // Creamos instancias mínimas (solo lat/long y campos que se muestran) y las insertamos una a una.
-            foreach (var poi in Results.Where(r => r.Latitude.HasValue && r.Longitude.HasValue))
+            var valid = Results.Where(r => r.Latitude.HasValue && r.Longitude.HasValue).ToList();
+            if (!valid.Any())
             {
-                var entidad = new PtAddressGralEntity
+                Status = "Sin POIs con coordenadas";
+                return;
+            }
+
+            // Cargar en memoria y luego un solo commit batch
+            ResultsLayerService.ClearPending();
+            foreach (var poi in valid)
+            {
+                ResultsLayerService.AddPointToMemory(new PtAddressGralEntity
                 {
                     Latitud = poi.Latitude.HasValue ? (decimal?)Convert.ToDecimal(poi.Latitude.Value) : null,
                     Longitud = poi.Longitude.HasValue ? (decimal?)Convert.ToDecimal(poi.Longitude.Value) : null,
-                    FullAddressEAAB = poi.NamePoi, // Usamos el nombre del POI como dirección principal
+                    FullAddressEAAB = poi.NamePoi,
                     FullAddressCadastre = poi.Address,
                     CityDesc = poi.CityDesc,
                     CityCode = poi.CityCode,
                     Source = "POI",
-                    Score = poi.TotalScore, // double?
+                    Score = poi.TotalScore,
                     ScoreText = poi.TotalScore.ToString("0.000")
-                };
-                await ResultsLayerService.AddPointAsync(entidad); // Usa gdb por defecto del proyecto
+                });
             }
-            Status = $"Marcados {Results.Count(r => r.Latitude.HasValue && r.Longitude.HasValue)} POIs";
+
+            var gdbPath = Project.Current.DefaultGeodatabasePath;
+            await ResultsLayerService.CommitPointsAsync(gdbPath);
+            Status = $"Marcados {valid.Count} POIs";
         }
         catch (Exception ex)
         {

@@ -280,10 +280,18 @@ namespace EAABAddIn.Src.Core.Map
 
         public static Task CommitPointsAsync(string gdbPath)
         {
-            return QueuedTask.Run(() => _CommitPointsInternal(gdbPath));
+            return QueuedTask.Run(() => _CommitPointsInternal(gdbPath, true));
         }
 
-        private static async Task _CommitPointsInternal(string gdbPath)
+        /// <summary>
+        /// Commit batch de puntos. Permite suprimir el zoom automático al extent de la capa.
+        /// </summary>
+        public static Task CommitPointsAsync(string gdbPath, bool zoomExtent)
+        {
+            return QueuedTask.Run(() => _CommitPointsInternal(gdbPath, zoomExtent));
+        }
+
+        private static async Task _CommitPointsInternal(string gdbPath, bool zoomExtent)
         {
             List<PtAddressGralEntity> toInsert;
             lock (_pendingLock)
@@ -347,6 +355,8 @@ namespace EAABAddIn.Src.Core.Map
             {
                 try
                 {
+                    // Variables para envelope de puntos nuevos
+                    double? minX = null, minY = null, maxX = null, maxY = null;
                     foreach (var entidad in toInsert)
                     {
                         if (!entidad.Latitud.HasValue || !entidad.Longitud.HasValue) continue;
@@ -355,6 +365,11 @@ namespace EAABAddIn.Src.Core.Map
                             (double)entidad.Latitud.Value,
                             SpatialReferences.WGS84
                         );
+                        // Expandir bounds
+                        if (minX == null || mapPoint.X < minX) minX = mapPoint.X;
+                        if (maxX == null || mapPoint.X > maxX) maxX = mapPoint.X;
+                        if (minY == null || mapPoint.Y < minY) minY = mapPoint.Y;
+                        if (maxY == null || mapPoint.Y > maxY) maxY = mapPoint.Y;
                         using (var rowBuffer = batchFc.CreateRowBuffer())
                         {
                             var def = batchFc.GetDefinition();
@@ -385,7 +400,50 @@ namespace EAABAddIn.Src.Core.Map
                     ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Error en inserción en lote: {ex.Message}");
                     return;
                 }
-                await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+                if (zoomExtent)
+                {
+                    try
+                    {
+                        // NOTA: las variables de bounds se declararon dentro del try anterior; necesitamos capturarlas aquí.
+                        // Recalculamos rápidamente si fuera necesario (en caso de excepción previa). Si no hubo inserciones, zoomExtent caerá al extent capa.
+                        double? locMinX = null, locMinY = null, locMaxX = null, locMaxY = null;
+                        if (!_pendingEntities.Any()) // usamos 'toInsert' local para recomputar
+                        {
+                            foreach (var entidad in toInsert)
+                            {
+                                if (!entidad.Latitud.HasValue || !entidad.Longitud.HasValue) continue;
+                                var x = (double)entidad.Longitud.Value;
+                                var y = (double)entidad.Latitud.Value;
+                                if (locMinX == null || x < locMinX) locMinX = x;
+                                if (locMaxX == null || x > locMaxX) locMaxX = x;
+                                if (locMinY == null || y < locMinY) locMinY = y;
+                                if (locMaxY == null || y > locMaxY) locMaxY = y;
+                            }
+                        }
+                        if (locMinX.HasValue && locMinY.HasValue && locMaxX.HasValue && locMaxY.HasValue)
+                        {
+                            var sr = mapView.Map?.SpatialReference ?? SpatialReferences.WGS84;
+                            var dx = (locMaxX.Value - locMinX.Value) * 0.05;
+                            var dy = (locMaxY.Value - locMinY.Value) * 0.05;
+                            var env = EnvelopeBuilderEx.CreateEnvelope(locMinX.Value - dx, locMinY.Value - dy, locMaxX.Value + dx, locMaxY.Value + dy, SpatialReferences.WGS84);
+                            // Reproyectar si el mapa está en otro SR
+                            if (sr != null && !sr.Equals(SpatialReferences.WGS84))
+                            {
+                                var proj = GeometryEngine.Instance.Project(env, sr) as Envelope;
+                                if (proj != null) env = proj;
+                            }
+                            await mapView.ZoomToAsync(env, TimeSpan.FromSeconds(0.8));
+                        }
+                        else
+                        {
+                            await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+                        }
+                    }
+                    catch
+                    {
+                        await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+                    }
+                }
             }
         }
 
