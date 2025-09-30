@@ -15,15 +15,6 @@
     <Subject>Framework</Subject>
   </AddInInfo>
 
-  <conditions>
-    <insertCondition id="EAABAddIn_DomainCheck">
-      <and>
-        <state id="esri_mapping_mapPane" />
-        <state id="EAABAddIn_InCompanyDomain" />
-      </and>
-    </insertCondition>
-  </conditions>
-
   <propertySheets>
     <updateSheet refID="esri_core_optionsPropertySheet">
       <insertPage className="EAABAddIn.Src.Presentation.ViewModel.PropertyPage1ViewModel" id="EAABAddIn_PropertyPage1" caption="EAAB ADD-IN" group="Application">
@@ -38,8 +29,21 @@
     </insertSheet>
   </propertySheets>
 
+  <conditions>
+    <insertCondition id="EAABAddIn_DomainCheckWithMapPane">
+      <and>
+        <state id="esri_mapping_mapPane" />
+        <state id="EAABAddIn_InCompanyDomain" />
+      </and>
+    </insertCondition>
+
+    <insertCondition id="EAABAddIn_DomainCheck">
+      <state id="EAABAddIn_InCompanyDomain" />
+    </insertCondition>
+  </conditions>
+
   <modules>
-    <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="false" caption="Module1">
+    <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="true" caption="EAAB Add-in">
       <tabs>
         <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
           <group refID="EAABAddIn_Group1" />
@@ -50,7 +54,8 @@
         <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1">
           <button refID="EAABAddIn_Button1" size="large" />
           <button refID="EAABAddIn_Button2" size="large" />
-          <button refID="EAABAddIn_Button3" size="large" />
+          <button refID="EAABAddIn_POIsButton" size="large" />
+          <button refID="EAABAddIn_Button3" size="middle" />
         </group>
       </groups>
 
@@ -62,7 +67,7 @@
           loadOnClick="true"
           smallImage="Images\Geocoder_Local.png"
           largeImage="Images\Geocoder_Local.png"
-          condition="EAABAddIn_DomainCheck"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B1"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -75,7 +80,7 @@
           loadOnClick="true"
           smallImage="Images\Geocoder_Batch.png"
           largeImage="Images\Geocoder_Batch.png"
-          condition="EAABAddIn_DomainCheck"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B2"
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
@@ -93,6 +98,19 @@
         >
           <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
         </button>
+
+        <button
+          id="EAABAddIn_POIsButton"
+          caption="POIs"
+          className="EAABAddIn.Src.Presentation.View.Buttons.POIsButton"
+          loadOnClick="true"
+          smallImage="GenericButtonPurple16"
+          largeImage="GenericButtonPurple16"
+          condition="EAABAddIn_DomainCheck"
+          keytip="B4"
+        >
+          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+        </button>
       </controls>
 
       <dockPanes>
@@ -105,6 +123,17 @@
           condition="EAABAddIn_DomainCheck"
         >
           <content className="EAABAddIn.Src.Presentation.View.GeocoderDockpaneView" />
+        </dockPane>
+
+        <dockPane
+          id="EAABAddIn_Src_Presentation_View_POIsDockpane"
+          caption="POIs EAAB"
+          className="EAABAddIn.Src.Presentation.ViewModel.POIsDockpaneViewModel"
+          dock="group"
+          dockWith="esri_core_projectDockPane"
+          condition="EAABAddIn_DomainCheck"
+        >
+          <content className="EAABAddIn.Src.Presentation.View.POIsDockpaneView" />
         </dockPane>
       </dockPanes>
     </insertModule>

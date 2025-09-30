@@ -12,6 +12,7 @@ public class ValidateDomain
     {
 
         string? domain = Environment.UserDomainName;
+        System.Diagnostics.Debug.WriteLine($"User domain: {domain}");
         return string.Equals(domain, "ACUEDUCTO", StringComparison.OrdinalIgnoreCase);
     }
 }

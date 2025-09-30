@@ -24,12 +24,9 @@ namespace EAABAddIn
 
         protected override bool Initialize()
         {
-            var result = base.Initialize();
-
-            _geodatabaseService = new DatabaseConnectionService();
-
             var settings = Settings;
 
+            _geodatabaseService = new DatabaseConnectionService();
             ProjectOpenedEvent.Subscribe(this.OnProjectOpened);
 
             if (IsValidConfiguration(settings))
@@ -45,7 +42,7 @@ namespace EAABAddIn
                 // Configuración no válida; la conexión se intentará una vez el usuario provea datos.
             }
 
-            return result;
+            return base.Initialize();
         }
 
         protected override bool CanUnload()
@@ -59,16 +56,21 @@ namespace EAABAddIn
             if (string.IsNullOrWhiteSpace(settings.motor)) return false;
 
             var engine = settings.motor.ToDBEngine();
+
             if (engine == DBEngine.OracleSDE || engine == DBEngine.PostgreSQLSDE)
             {
-                return !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
-                    System.IO.File.Exists(settings.rutaArchivoCredenciales);
-            }
+                return (
+                    !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
+                    System.IO.File.Exists(settings.rutaArchivoCredenciales)
+                );
+            } 
 
-            return !string.IsNullOrWhiteSpace(settings.host) &&
-                !string.IsNullOrWhiteSpace(settings.usuario) &&
-                !string.IsNullOrWhiteSpace(settings.contraseña) &&
-                !string.IsNullOrWhiteSpace(settings.baseDeDatos);
+            var hasHost = !string.IsNullOrWhiteSpace(settings.host);
+            var hasUser = !string.IsNullOrWhiteSpace(settings.usuario);
+            var hasPassword = !string.IsNullOrWhiteSpace(settings.contraseña);
+            var hasDatabase = !string.IsNullOrWhiteSpace(settings.baseDeDatos);
+
+            return hasHost && hasUser && hasPassword && hasDatabase;
         }
 
         private async Task HandleDatabaseConnectionAsync(DBEngine engine)
@@ -143,17 +145,24 @@ namespace EAABAddIn
                 FrameworkApplication.State.Activate("EAABAddIn_InCompanyDomain");
                 return;
             }
+
             DisableAddIn();
         }
 
         private void DisableAddIn()
         {
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                "Este Add-In solo está disponible para usuarios dentro del dominio de la Empresa de Acueducto y Alcantarillado de Bogotá.",
+                "Dominio no válido",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning
+            );
             FrameworkApplication.State.Deactivate("EAABAddIn_InCompanyDomain");
-
+            
             try
             {
                 var dockPane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane");
-                dockPane?.Hide();
+                dockPane?.UnPin();
             }
             catch
             {

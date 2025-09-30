@@ -7,6 +7,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <NoWarn>CA1416</NoWarn>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="Src\Core\Data\Common\**" />
     <Compile Remove="Src\Domain\**" />
@@ -17,37 +18,46 @@
     <Page Remove="Src\Core\Data\Common\**" />
     <Page Remove="Src\Domain\**" />
   </ItemGroup>
+
   <ItemGroup>
     <None Remove="Config.daml" />
   </ItemGroup>
+
   <ItemGroup>
     <Compile Include="Src\Domain\Repositories\AddressLexEntityRepository.cs" />
     <Compile Include="Src\Domain\Repositories\PtAddressGralEntityRepository.cs" />
   </ItemGroup>
+
   <ItemGroup>
     <Content Include="Config.daml" />
     <Content Include="Images\AddInDesktop16.png" />
     <Content Include="Images\AddInDesktop32.png" />
     <Content Include="Images\Geocoder_Local.png" />
     <Content Include="Images\Geocoder_Batch.png" />
-    <Content Include="Images\Settings.png" />
+    <Content Include="Images\Settings16.png" />
+    <Content Include="Images\Settings32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
     <Content Include="DarkImages\Geocoder_Batch.png" />
-    <Content Include="DarkImages\Settings.png" />
+    <Content Include="DarkImages\Settings16.png" />
+    <Content Include="DarkImages\Settings32.png" />
   </ItemGroup>
+
   <ItemGroup>
     <Resource Include="Images\FolderIcon16.png" />
   </ItemGroup>
+
   <ItemGroup>
     <None Include="Properties\launchSettings.json" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="ExcelDataReader" Version="3.7.0" />
   </ItemGroup>
+
   <ItemGroup>
     <Reference Include="ArcGIS.Desktop.Framework">
       <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Framework.dll</HintPath>
