@@ -19,7 +19,7 @@ public interface IPtPoisEaabRepository
 }
 
 
-public class PtPoisEaabRepository : IPtPoisEaabRepository
+public partial class PtPoisEaabRepository : IPtPoisEaabRepository
 {
 	private const string TablePg = "public.sgo_pt_pois_eaab";      // PostgreSQL esquema sgo
 	private const string TableOracle = "sgo.sgo_pt_pois_eaab";  // Ajustar si difiere
@@ -141,7 +141,7 @@ public class PtPoisEaabRepository : IPtPoisEaabRepository
 
 	private static List<PtPoisEaabEntity> FindGenericSimilarity(string search, int limit)
 	{
-		var list = new List<PtPoisEaabEntity>();
+	var list = new List<PtPoisEaabEntity>();
 		var gdb = Module1.DatabaseConnection.Geodatabase;
 		Table table = null;
 		try { table = gdb.OpenDataset<Table>(TableOracle); } catch { }
@@ -243,16 +243,18 @@ public class PtPoisEaabRepository : IPtPoisEaabRepository
 		catch { return null; }
 	}
 
+	[GeneratedRegex("  +")] private static partial Regex MultiSpaceRegex();
+
 	private static string BuildLikeSanitized(string input)
 	{
-		var chars = " !\"#$%&()*+,-./<>?¿@^_´{}[]°¬¡~";
-		var sb = new StringBuilder();
+		if (string.IsNullOrEmpty(input)) return string.Empty;
+		const string chars = " !\"#$%&()*+,-./<>?¿@^_´{}[]°¬¡~"; // caracteres a normalizar a espacio
+		Span<char> buffer = stackalloc char[input.Length];
+		int idx = 0;
 		foreach (var c in input)
-		{
-			if (chars.Contains(c)) sb.Append(' '); else sb.Append(c);
-		}
-		var interim = Regex.Replace(sb.ToString(), "  +", " ").Trim();
-		return interim;
+			buffer[idx++] = chars.IndexOf(c) >= 0 ? ' ' : c;
+		var interim = new string(buffer[..idx]);
+		return MultiSpaceRegex().Replace(interim, " ").Trim();
 	}
 
 	private static string EscapeLike(string s) => s.Replace("'", "''");

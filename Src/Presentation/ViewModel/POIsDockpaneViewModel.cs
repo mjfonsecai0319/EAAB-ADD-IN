@@ -45,8 +45,9 @@ public class POIsDockpaneViewModel : DockPane
     }
 
     public ICommand SearchCommand { get; }
-    public ICommand ZoomToSelectedCommand { get; }
     public ICommand MarkAllCommand { get; }
+    public ICommand MarkSelectedCommand { get; }
+    // ClearLayerCommand eliminado (se retiró botón de UI)
 
     private ObservableCollection<PtPoisEaabEntity> _results = new();
     public ObservableCollection<PtPoisEaabEntity> Results
@@ -79,8 +80,8 @@ public class POIsDockpaneViewModel : DockPane
     public POIsDockpaneViewModel()
     {
         SearchCommand = new RelayCommand(async () => await OnSearchAsync(), () => !IsSearching && !string.IsNullOrWhiteSpace(SearchInput));
-        ZoomToSelectedCommand = new RelayCommand(async () => await ZoomToSelectedAsync(), () => Selected?.Latitude != null && Selected?.Longitude != null);
-        MarkAllCommand = new RelayCommand(async () => await MarkAllAsync(), () => Results.Any());
+        MarkAllCommand = new RelayCommand(async () => await MarkAllAsync(), () => Results.Any() && !IsSearching);
+        MarkSelectedCommand = new RelayCommand(async () => await MarkSelectedAsync(), () => Selected?.Latitude != null && Selected?.Longitude != null && !IsSearching);
     }
 
     private async Task OnSearchAsync()
@@ -101,9 +102,7 @@ public class POIsDockpaneViewModel : DockPane
             }
             foreach (var item in list) Results.Add(item);
             Selected = Results.FirstOrDefault(r => r.Latitude.HasValue && r.Longitude.HasValue) ?? Results.First();
-            Status = $"{Results.Count} resultados";
-            // Marcado masivo SIN zoom punto a punto: se hará un único zoom al extent final (ResultsLayerService.CommitPointsAsync)
-            await MarkAllAsync();
+            Status = $"{Results.Count} resultados. Seleccione un POI y marque (o 'Agregar Todos').";
         }
         catch (Exception ex)
         {
@@ -114,31 +113,8 @@ public class POIsDockpaneViewModel : DockPane
         {
             IsSearching = false;
             (SearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (ZoomToSelectedCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (MarkAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        }
-    }
-
-    private async Task ZoomToSelectedAsync()
-    {
-        var poi = Selected;
-        if (poi == null || !poi.Latitude.HasValue || !poi.Longitude.HasValue) return;
-        try
-        {
-            await QueuedTask.Run(async () =>
-            {
-                var mv = MapView.Active;
-                if (mv == null) return;
-                var mp = MapPointBuilderEx.CreateMapPoint(poi.Longitude.Value, poi.Latitude.Value, SpatialReferences.WGS84);
-                var sr = mv.Map?.SpatialReference ?? SpatialReferences.WGS84;
-                if (!mp.SpatialReference.Equals(sr)) mp = (MapPoint)GeometryEngine.Instance.Project(mp, sr);
-                var env = EnvelopeBuilderEx.CreateEnvelope(mp.X - 25, mp.Y - 25, mp.X + 25, mp.Y + 25, sr);
-                await mv.ZoomToAsync(env, TimeSpan.FromSeconds(0.6));
-            });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("No se pudo hacer zoom: " + ex.Message, "POIs");
+            (MarkSelectedCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
     }
 
@@ -173,12 +149,45 @@ public class POIsDockpaneViewModel : DockPane
             }
 
             var gdbPath = Project.Current.DefaultGeodatabasePath;
-            await ResultsLayerService.CommitPointsAsync(gdbPath);
-            Status = $"Marcados {valid.Count} POIs";
+            // Batch con zoom al conjunto insertado
+            await ResultsLayerService.CommitPointsAsync(gdbPath, true);
+            Status = $"Marcados {valid.Count} POIs (zoom conjunto)";
         }
         catch (Exception ex)
         {
             MessageBox.Show("Error al marcar POIs: " + ex.Message, "POIs");
         }
     }
+
+    private async Task MarkSelectedAsync()
+    {
+        var poi = Selected;
+        if (poi == null || !poi.Latitude.HasValue || !poi.Longitude.HasValue) return;
+        try
+        {
+            var entidad = new PtAddressGralEntity
+            {
+                Latitud = (decimal?)Convert.ToDecimal(poi.Latitude.Value),
+                Longitud = (decimal?)Convert.ToDecimal(poi.Longitude.Value),
+                FullAddressEAAB = poi.NamePoi,
+                FullAddressCadastre = poi.Address,
+                CityDesc = poi.CityDesc,
+                CityCode = poi.CityCode,
+                Source = "POI",
+                Score = poi.TotalScore,
+                ScoreText = poi.TotalScore.ToString("0.000")
+            };
+            await ResultsLayerService.AddPointAsync(entidad, skipDuplicates: true); // evita duplicar el mismo punto/dirección
+            Status = $"Marcado POI: {poi.NamePoi}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Error al marcar POI seleccionado: " + ex.Message, "POIs");
+        }
+        finally
+        {
+            (MarkSelectedCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+    }
+
 }

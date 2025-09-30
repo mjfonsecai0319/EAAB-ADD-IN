@@ -25,12 +25,12 @@ namespace EAABAddIn.Src.Core.Map
         private static readonly List<PtAddressGralEntity> _pendingEntities = new();
         private static readonly object _pendingLock = new();
 
-        public static Task AddPointAsync(PtAddressGralEntity entidad, string gdbPath = null)
+        public static Task AddPointAsync(PtAddressGralEntity entidad, string gdbPath = null, bool skipDuplicates = true)
         {
-            return QueuedTask.Run(() => _AddPointAsync(entidad, gdbPath));
+            return QueuedTask.Run(() => _AddPointAsync(entidad, gdbPath, skipDuplicates));
         }
 
-        private static async Task _AddPointAsync(PtAddressGralEntity entidad, string gdbPath)
+        private static async Task _AddPointAsync(PtAddressGralEntity entidad, string gdbPath, bool skipDuplicates)
         {
             var mapView = MapView.Active;
 
@@ -99,14 +99,31 @@ namespace EAABAddIn.Src.Core.Map
 
                 try
                 {
+                    // Nueva detección de duplicados: búsqueda espacial muy pequeña + comparación de dirección
+                    if (skipDuplicates)
+                    {
+                        var addrCandidate = entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? entidad.MainStreet ?? string.Empty;
+                        if (SpatialFeatureExists(featureClass, mapPoint, addrCandidate))
+                        {
+                            await _ZoomSingleAsync(mapView, mapPoint); // garantizar zoom aunque ya exista
+                            return;
+                        }
+                    }
+
                     using (var rowBuffer = featureClass.CreateRowBuffer())
                     {
                         var def = featureClass.GetDefinition();
                         rowBuffer[def.GetShapeField()] = mapPoint;
-                     
+                        // Asignar Identificador si el campo existe (alineado con inserción masiva)
+                        try
+                        {
+                            if (def.GetFields().Any(f => f.Name.Equals("Identificador", StringComparison.OrdinalIgnoreCase)))
+                                rowBuffer["Identificador"] = entidad.ID.ToString();
+                        }
+                        catch { /* ignorar si campo no existe o cualquier excepción menor */ }
                         var direccionOriginal = !string.IsNullOrWhiteSpace(entidad.FullAddressOld)
                             ? entidad.FullAddressOld
-                            : (entidad.MainStreet ?? string.Empty);
+                            : (entidad.MainStreet ?? entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? string.Empty);
                         rowBuffer["Direccion"] = direccionOriginal;
                         rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
                         rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
@@ -116,9 +133,9 @@ namespace EAABAddIn.Src.Core.Map
                         rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
                         if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
                             rowBuffer["FechaHora"] = DateTime.Now;
-
                         using (var row = featureClass.CreateRow(rowBuffer)) { }
                     }
+                    _addressPointLayer?.ClearDisplayCache();
                 }
                 catch (Exception ex)
                 {
@@ -291,6 +308,42 @@ namespace EAABAddIn.Src.Core.Map
             return QueuedTask.Run(() => _CommitPointsInternal(gdbPath, zoomExtent));
         }
 
+        /// <summary>
+        /// Elimina todas las entidades de la capa GeocodedAddresses (si existe) y opcionalmente hace refresh visual.
+        /// </summary>
+        public static Task ClearLayerAsync(string gdbPath, bool refresh = true)
+        {
+            return QueuedTask.Run(() => _ClearLayerInternal(gdbPath, refresh));
+        }
+
+        private static void _ClearLayerInternal(string gdbPath, bool refresh)
+        {
+            var mapView = MapView.Active;
+            if (mapView?.Map == null) return;
+            var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
+            using var geodatabase = new Geodatabase(gdbConnectionPath);
+            FeatureClass fc = null;
+            try { fc = geodatabase.OpenDataset<FeatureClass>(FeatureClassName); } catch { }
+            if (fc == null) return;
+            // Crear lista de OIDs para borrado seguro
+            var oids = new List<long>();
+            var oidField = fc.GetDefinition().GetObjectIDField();
+            using (var cursor = fc.Search(new QueryFilter { SubFields = oidField }, false))
+            {
+                while (cursor.MoveNext())
+                {
+                    using var row = cursor.Current as Feature;
+                    if (row != null) oids.Add(row.GetObjectID());
+                }
+            }
+            if (oids.Count == 0) return;
+            var editOperation = new EditOperation { Name = "Limpiar GeocodedAddresses" };
+            editOperation.Delete(fc, oids);
+            editOperation.Execute();
+            if (refresh && _addressPointLayer != null)
+                _addressPointLayer.ClearDisplayCache();
+        }
+
         private static async Task _CommitPointsInternal(string gdbPath, bool zoomExtent)
         {
             List<PtAddressGralEntity> toInsert;
@@ -357,6 +410,24 @@ namespace EAABAddIn.Src.Core.Map
                 {
                     // Variables para envelope de puntos nuevos
                     double? minX = null, minY = null, maxX = null, maxY = null;
+                    // Construir índice de duplicados existentes (posición + dirección EAAB) para evitar insertar repetidos si ya existen
+                    var existingSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    try
+                    {
+                        var shapeField = batchFc.GetDefinition().GetShapeField();
+                        using var cur = batchFc.Search(new QueryFilter { SubFields = shapeField + ", FullAdressEAAB, Direccion" }, false);
+                        while (cur.MoveNext())
+                        {
+                            using var r = cur.Current;
+                            if (r[shapeField] is MapPoint mpEx)
+                            {
+                                var addrEx = (r["FullAdressEAAB"]?.ToString() ?? r["Direccion"]?.ToString() ?? string.Empty).Trim();
+                                var sig = BuildSignature(mpEx.X, mpEx.Y, addrEx);
+                                existingSignatures.Add(sig);
+                            }
+                        }
+                    }
+                    catch { }
                     foreach (var entidad in toInsert)
                     {
                         if (!entidad.Latitud.HasValue || !entidad.Longitud.HasValue) continue;
@@ -365,6 +436,11 @@ namespace EAABAddIn.Src.Core.Map
                             (double)entidad.Latitud.Value,
                             SpatialReferences.WGS84
                         );
+                        var addrIns = entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? entidad.MainStreet ?? string.Empty;
+                        var signature = BuildSignature(mapPoint.X, mapPoint.Y, addrIns);
+                        if (existingSignatures.Contains(signature))
+                            continue; // duplicado
+                        existingSignatures.Add(signature);
                         // Expandir bounds
                         if (minX == null || mapPoint.X < minX) minX = mapPoint.X;
                         if (maxX == null || mapPoint.X > maxX) maxX = mapPoint.X;
@@ -496,6 +572,68 @@ namespace EAABAddIn.Src.Core.Map
                     GPExecuteToolFlags.AddToHistory);
             }
         }
+
+        #region Helpers Duplicados / Zoom
+        private static string BuildSignature(double x, double y, string address)
+        {
+            var addrNorm = (address ?? string.Empty).Trim().ToUpperInvariant();
+            // Redondear coords para agrupar duplicados casi idénticos
+            var xr = Math.Round(x, 7); // ~1cm
+            var yr = Math.Round(y, 7);
+            return xr + "|" + yr + "|" + addrNorm;
+        }
+
+        private static bool SpatialFeatureExists(FeatureClass fc, MapPoint point, string address)
+        {
+            try
+            {
+                var def = fc.GetDefinition();
+                var shapeField = def.GetShapeField();
+                // Envelope muy pequeño (aprox 5 cm en grados) para buscar coincidencias cercanas
+                const double delta = 0.0000005; // ~5 cm
+                var env = EnvelopeBuilderEx.CreateEnvelope(point.X - delta, point.Y - delta, point.X + delta, point.Y + delta, point.SpatialReference);
+                var sqf = new SpatialQueryFilter
+                {
+                    FilterGeometry = env,
+                    SpatialRelationship = SpatialRelationship.Intersects,
+                    SubFields = shapeField + ", FullAdressEAAB, Direccion"
+                };
+                var addrNorm = (address ?? string.Empty).Trim().ToUpperInvariant();
+                using var cursor = fc.Search(sqf, false);
+                while (cursor.MoveNext())
+                {
+                    using var row = cursor.Current;
+                    var addrEx = (row["FullAdressEAAB"]?.ToString() ?? row["Direccion"]?.ToString() ?? string.Empty).Trim().ToUpperInvariant();
+                    if (addrEx == addrNorm) return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static async Task _ZoomSingleAsync(MapView mv, MapPoint mp)
+        {
+            try
+            {
+                var sr = mv.Map?.SpatialReference ?? SpatialReferences.WGS84;
+                MapPoint mpProj = mp;
+                if (!mp.SpatialReference.Equals(sr)) mpProj = (MapPoint)GeometryEngine.Instance.Project(mp, sr);
+                Envelope env;
+                if (sr.IsGeographic)
+                {
+                    const double delta = 0.00045; // ~50m
+                    env = EnvelopeBuilderEx.CreateEnvelope(mpProj.X - delta, mpProj.Y - delta, mpProj.X + delta, mpProj.Y + delta, sr);
+                }
+                else
+                {
+                    const double delta = 50; // 50 m
+                    env = EnvelopeBuilderEx.CreateEnvelope(mpProj.X - delta, mpProj.Y - delta, mpProj.X + delta, mpProj.Y + delta, sr);
+                }
+                await mv.ZoomToAsync(env, TimeSpan.FromSeconds(0.6));
+            }
+            catch { }
+        }
+        #endregion
 
     }
 }
