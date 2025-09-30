@@ -4,31 +4,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Framework;
-using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Mapping;
-using ArcGIS.Desktop.Core; // Project para gdb por defecto
+
+using ArcGIS.Desktop.Core;
+
 using EAABAddIn.Src.Core.Entities;
-using EAABAddIn.Src.Core.Map; // ResultsLayerService
+using EAABAddIn.Src.Core.Map;
 using EAABAddIn.Src.Domain.Repositories;
+using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-public class POIsDockpaneViewModel : DockPane
+internal class POIsDockpaneViewModel : BusyViewModelBase
 {
-    private const string _dockPaneID = "EAABAddIn_Src_Presentation_View_POIsDockpane";
+    public override string DisplayName => "POIs EAAB";
 
-    internal static void Show()
-    {
-        DockPane pane = FrameworkApplication.DockPaneManager.Find(_dockPaneID);
-        if (pane is not null)
-        {
-            pane.Activate();
-        }
-        return;
-    }
+    public override string Tooltip => "Buscar POIs en el mapa";
 
     private string _searchInput = string.Empty;
     public string SearchInput
@@ -47,7 +37,6 @@ public class POIsDockpaneViewModel : DockPane
     public ICommand SearchCommand { get; }
     public ICommand MarkAllCommand { get; }
     public ICommand MarkSelectedCommand { get; }
-    // ClearLayerCommand eliminado (se retiró botón de UI)
 
     private ObservableCollection<PtPoisEaabEntity> _results = new();
     public ObservableCollection<PtPoisEaabEntity> Results
@@ -88,7 +77,7 @@ public class POIsDockpaneViewModel : DockPane
     {
         var term = SearchInput?.Trim();
         if (string.IsNullOrWhiteSpace(term)) return;
-    IsSearching = true; Status = "Buscando..."; Results.Clear(); Selected = null;
+        IsSearching = true; Status = "Buscando..."; Results.Clear(); Selected = null;
         try
         {
             var repo = new PtPoisEaabRepository();

@@ -14,11 +14,13 @@ internal class GeocoderDockpaneViewModel : DockPane
 
     private AddressSearchViewModel _paneH1VM;
     private MassiveGeocodeViewModel _paneH2VM;
+    private POIsDockpaneViewModel _paneH3VM;
 
     protected GeocoderDockpaneViewModel()
     {
         _paneH1VM = new AddressSearchViewModel();
         _paneH2VM = new MassiveGeocodeViewModel();
+        _paneH3VM = new POIsDockpaneViewModel();
         _selectedPanelHeaderIndex = 0;
         PrimaryMenuList.Add(new TabControl()
         {
@@ -29,6 +31,11 @@ internal class GeocoderDockpaneViewModel : DockPane
         {
             Text = _paneH2VM.DisplayName,
             Tooltip = _paneH2VM.Tooltip
+        });
+        PrimaryMenuList.Add(new TabControl()
+        {
+            Text = _paneH3VM.DisplayName,
+            Tooltip = _paneH3VM.Tooltip
         });
         CurrentPage = _paneH1VM;
     }
@@ -75,6 +82,8 @@ internal class GeocoderDockpaneViewModel : DockPane
                 CurrentPage = _paneH1VM;
             if (_selectedPanelHeaderIndex == 1)
                 CurrentPage = _paneH2VM;
+            if (_selectedPanelHeaderIndex == 2)
+                CurrentPage = _paneH3VM;
         }
     }
     #endregion

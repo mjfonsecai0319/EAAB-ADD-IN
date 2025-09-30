@@ -26,6 +26,10 @@
       <DataTemplate DataType="{x:Type viewModel:MassiveGeocodeViewModel}">
         <view:MassiveGeocodeView />
       </DataTemplate>
+
+      <DataTemplate DataType="{x:Type viewModel:POIsDockpaneViewModel}">
+        <view:POIsDockpaneView />
+      </DataTemplate>
     </ResourceDictionary>
   </UserControl.Resources>
 
