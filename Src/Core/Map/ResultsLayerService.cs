@@ -114,13 +114,6 @@ namespace EAABAddIn.Src.Core.Map
                     {
                         var def = featureClass.GetDefinition();
                         rowBuffer[def.GetShapeField()] = mapPoint;
-                        // Asignar Identificador si el campo existe (alineado con inserción masiva)
-                        try
-                        {
-                            if (def.GetFields().Any(f => f.Name.Equals("Identificador", StringComparison.OrdinalIgnoreCase)))
-                                rowBuffer["Identificador"] = entidad.ID.ToString();
-                        }
-                        catch { /* ignorar si campo no existe o cualquier excepción menor */ }
                         var direccionOriginal = !string.IsNullOrWhiteSpace(entidad.FullAddressOld)
                             ? entidad.FullAddressOld
                             : (entidad.MainStreet ?? entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? string.Empty);
