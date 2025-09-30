@@ -26,6 +26,7 @@
   <ItemGroup>
     <Compile Include="Src\Domain\Repositories\AddressLexEntityRepository.cs" />
     <Compile Include="Src\Domain\Repositories\PtAddressGralEntityRepository.cs" />
+    <Compile Include="Src\Domain\Repositories\PtPoisEaabRepository.cs" />
   </ItemGroup>
 
   <ItemGroup>
