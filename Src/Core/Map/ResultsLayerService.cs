@@ -129,7 +129,37 @@ namespace EAABAddIn.Src.Core.Map
                     return;
                 }
 
-                await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+                // Zoom suave centrado en el punto recién agregado (buffer pequeño)
+                try
+                {
+                    var currentSR = mapView.Map.SpatialReference ?? SpatialReferences.WGS84;
+                    MapPoint mpProjected = mapPoint;
+                    if (!mapPoint.SpatialReference.Equals(currentSR))
+                    {
+                        mpProjected = (MapPoint)GeometryEngine.Instance.Project(mapPoint, currentSR);
+                    }
+
+                    // Definir un buffer en metros (aprox) dependiendo de la referencia espacial
+                    // Si el SR es geográfico (WGS84) usamos ~0.00045 grados (~50m). Si es proyectado, 50 metros.
+                    Envelope env;
+                    if (currentSR.IsGeographic)
+                    {
+                        const double delta = 0.00045; // ~50 m en lat media
+                        env = EnvelopeBuilderEx.CreateEnvelope(mpProjected.X - delta, mpProjected.Y - delta, mpProjected.X + delta, mpProjected.Y + delta, currentSR);
+                    }
+                    else
+                    {
+                        const double delta = 50; // 50 m
+                        env = EnvelopeBuilderEx.CreateEnvelope(mpProjected.X - delta, mpProjected.Y - delta, mpProjected.X + delta, mpProjected.Y + delta, currentSR);
+                    }
+
+                    await mapView.ZoomToAsync(env, TimeSpan.FromSeconds(0.6));
+                }
+                catch
+                {
+                    // Si el zoom personalizado falla, fallback al extent de la capa
+                    await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
+                }
             }
             else
             {
