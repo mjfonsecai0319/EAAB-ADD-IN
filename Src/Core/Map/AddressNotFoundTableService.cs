@@ -29,10 +29,10 @@ namespace EAABAddIn.Src.Core.Map
         public static (string Name, string Type, string Length)[] TableFields =>
         [
             ("Identificador", "TEXT", "100"),
-            ("Direccion", "TEXT", "255"),
             ("Poblacion", "TEXT", "100"),
-            ("full_address_eaab", "TEXT", "255"),
-            ("full_address_uacd", "TEXT", "255"),
+            ("Direccion", "TEXT", "255"),
+            ("DireccionEAAB", "TEXT", "255"),
+            ("DireccionUACD", "TEXT", "255"),
             ("Geocoder", "TEXT", "100"),
             ("FechaHora", "DATE", "")
         ];
@@ -137,8 +137,8 @@ namespace EAABAddIn.Src.Core.Map
                     rowBuffer["Identificador"] = record.Id;
                     rowBuffer["Direccion"] = record.Address;
                     rowBuffer["Poblacion"] = record.CityCode;
-                    rowBuffer["full_address_eaab"] = null;
-                    rowBuffer["full_address_uacd"] = null;
+                    rowBuffer["DireccionEAAB"] = null;
+                    rowBuffer["DireccionUACD"] = null;
                     rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(record.Geocoder) ? "EAAB" : record.Geocoder;
                     if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
                     {
