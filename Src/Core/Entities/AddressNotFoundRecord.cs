@@ -1,24 +1,22 @@
-namespace EAABAddIn.Src.Core.Entities
-{
-    public readonly struct AddressNotFoundRecord
-    {
-        public AddressNotFoundRecord(string identificador, string direccion, string poblacion, string fullAddressEaab, string fullAddressUacd, string geocoder, double? score)
-        {
-            Identificador = identificador;
-            Direccion = direccion;
-            Poblacion = poblacion;
-            FullAddressEaab = fullAddressEaab;
-            FullAddressUacd = fullAddressUacd;
-            Geocoder = geocoder;
-            Score = score;
-        }
+namespace EAABAddIn.Src.Core.Entities;
 
-        public string Identificador { get; }
-        public string Direccion { get; }
-        public string Poblacion { get; }
-        public string FullAddressEaab { get; }
-        public string FullAddressUacd { get; }
-        public string Geocoder { get; }
-        public double? Score { get; }
+public readonly struct AddressNotFoundRecord
+{
+    public AddressNotFoundRecord(string id, string address, string cityCode, string fullAddressEaab, string fullAddressUacd, string geocoder)
+    {
+        Id = id;
+        Address = address;
+        CityCode = cityCode;
+        FullAddressEaab = fullAddressEaab;
+        FullAddressUacd = fullAddressUacd;
+        Geocoder = geocoder;
     }
+
+    public string Id { get; }
+    public string Address { get; }
+    public string CityCode { get; }
+    public string FullAddressEaab { get; }
+    public string FullAddressUacd { get; }
+    public string Geocoder { get; }
 }
+

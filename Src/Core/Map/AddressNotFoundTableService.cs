@@ -17,182 +17,192 @@ namespace EAABAddIn.Src.Core.Map
     public static class AddressNotFoundTableService
     {
         private const string TableName = "GeocodeNotFound";
+
         private static StandaloneTable _notFoundTable;
+
+        public static StandaloneTable NotFoundTable
+        {
+            get => _notFoundTable;
+            private set => _notFoundTable = value;
+        }
+
+        public static (string Name, string Type, string Length)[] TableFields =>
+        [
+            ("Identificador", "TEXT", "100"),
+            ("Direccion", "TEXT", "255"),
+            ("Poblacion", "TEXT", "100"),
+            ("full_address_eaab", "TEXT", "255"),
+            ("full_address_uacd", "TEXT", "255"),
+            ("Geocoder", "TEXT", "100"),
+            ("FechaHora", "DATE", "")
+        ];
 
         public static Task AddRecordAsync(AddressNotFoundRecord record, string gdbPath = null)
         {
+            if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
+            {
+                gdbPath = Project.Current.DefaultGeodatabasePath;
+            }
+
             return QueuedTask.Run(() => _AddRecordAsync(record, gdbPath));
         }
 
         private static async Task _AddRecordAsync(AddressNotFoundRecord record, string gdbPath)
         {
-            if (string.IsNullOrEmpty(gdbPath) || !Directory.Exists(gdbPath))
-                gdbPath = Project.Current.DefaultGeodatabasePath;
-
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
 
-            // Crear tabla si no existe (evitar schema locks abriendo y cerrando conexión)
-            bool exists;
-            using (var geodatabase = new Geodatabase(gdbConnectionPath))
+            using (var gdb = new Geodatabase(gdbConnectionPath))
             {
-                exists = geodatabase
-                    .GetDefinitions<TableDefinition>()
-                    .Any(d => string.Equals(d.GetName(), TableName, StringComparison.OrdinalIgnoreCase));
-            }
+                var exists = TableExists(gdb, TableName);
 
-            if (!exists)
-            {
-                var createTableParams = Geoprocessing.MakeValueArray(
-                    gdbPath,
-                    TableName
-                );
-                var result = await Geoprocessing.ExecuteToolAsync(
-                    "management.CreateTable",
-                    createTableParams,
-                    null,
-                    CancelableProgressor.None,
-                    GPExecuteToolFlags.AddToHistory);
-                if (result.IsFailed) return;
-            }
-
-            // Asegurar campos requeridos
-            await EnsureFieldsExist(gdbPath);
-
-            // Agregar la tabla al mapa si no existe
-            _AddStandaloneTableToMapView(gdbPath);
-
-            using (var geodatabase = new Geodatabase(gdbConnectionPath))
-            using (var table = geodatabase.OpenDataset<Table>(TableName))
-            {
-                try
+                if (!exists)
                 {
-                    using (var rowBuffer = table.CreateRowBuffer())
-                    {
-                        var def = table.GetDefinition();
-                        // Cargar valores en el buffer con seguridad ante nulos
-                        rowBuffer["Identificador"] = record.Identificador ?? string.Empty;
-                        rowBuffer["Direccion"] = record.Direccion ?? string.Empty;
-                        rowBuffer["Poblacion"] = record.Poblacion ?? string.Empty;
-                        rowBuffer["full_address_eaab"] = record.FullAddressEaab ?? string.Empty;
-                        rowBuffer["full_address_uacd"] = record.FullAddressUacd ?? string.Empty;
-                        rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(record.Geocoder) ? "EAAB" : record.Geocoder;
-                        if (record.Score.HasValue) rowBuffer["Score"] = record.Score.Value; else rowBuffer["Score"] = null;
-                        // Timestamp
-                        if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
-                            rowBuffer["FechaHora"] = DateTime.Now;
+                    var result = await Geoprocessing.ExecuteToolAsync(
+                        toolPath: "management.CreateTable",
+                        values: Geoprocessing.MakeValueArray(gdbPath, TableName),
+                        environments: null,
+                        progressor: CancelableProgressor.None,
+                        flags: GPExecuteToolFlags.AddToHistory
+                    );
 
-                        using (var row = table.CreateRow(rowBuffer)) { }
-                    }
+                    System.Diagnostics.Debug.WriteLine($"CreateTable result: {result.IsFailed}, {result.ReturnValue}");
+                    if (result.IsFailed) return;
                 }
-                catch (Exception)
+
+                await EnsureFieldsExist(gdb);
+
+                AddNotFoundTable(gdb);
+
+                using (var table = gdb.OpenDataset<Table>(TableName))
                 {
-                    // Silenciar para no bloquear el flujo en caso de esquema inconsistente
-                    // (similar a manejo en ResultsLayerService)
+                    InsertRecord(table, record);
                 }
             }
+
         }
 
-        private static void _AddStandaloneTableToMapView(string gdbPath)
+        private static bool TableExists(Geodatabase geodatabase, string tableName)
+        {
+            return geodatabase.GetDefinitions<TableDefinition>().Any(d => string.Equals(d.GetName(), tableName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static void AddNotFoundTable(Geodatabase gdb)
         {
             var mapView = MapView.Active;
-            if (mapView?.Map == null)
-                return;
 
-            // Buscar si ya está agregada
-            if (_notFoundTable is null)
+            if (mapView?.Map == null)
             {
-                try
-                {
-                    var existing = mapView.Map.StandaloneTables
-                        .FirstOrDefault(st => string.Equals(st.Name, TableName, StringComparison.OrdinalIgnoreCase));
-                    if (existing is not null)
-                    {
-                        _notFoundTable = existing;
-                        return;
-                    }
-                }
-                catch
-                {
-                    // Si falla la inspección, continuamos con la creación
-                }
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "No se pudo agregar la tabla de direcciones no encontradas al mapa activo porque no hay ningún mapa abierto.",
+                    caption: "EAAB Add-In",
+                    button: System.Windows.MessageBoxButton.OK,
+                    icon: System.Windows.MessageBoxImage.Error
+                );
+                return;
             }
 
-            if (_notFoundTable is not null)
-                return;
-
-            var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            using (var gdb = new Geodatabase(gdbConnectionPath))
-            using (var table = gdb.OpenDataset<Table>(TableName))
+            if (NotFoundTable is null)
             {
-                var stParams = new StandaloneTableCreationParams(table)
+                using (var table = gdb.OpenDataset<Table>(TableName))
                 {
-                    Name = TableName
-                };
-                _notFoundTable = StandaloneTableFactory.Instance.CreateStandaloneTable(stParams, mapView.Map);
+                    var stParams = new StandaloneTableCreationParams(table)
+                    {
+                        Name = TableName
+                    };
+                    NotFoundTable = StandaloneTableFactory.Instance.CreateStandaloneTable(stParams, mapView.Map);
+                }
+                return;
+            }
+
+            var existing = mapView.Map.StandaloneTables.FirstOrDefault(
+                st => string.Equals(st.Name, TableName, StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (existing is not null)
+            {
+                NotFoundTable = existing;
+                return;
             }
         }
 
-        private static async Task EnsureFieldsExist(string gdbPath)
+        private static void InsertRecord(Table table, AddressNotFoundRecord record)
         {
-            var required = new (string Name, string Type, string Length)[]
-            {
-                ("Identificador", "TEXT", "100"),
-                ("Direccion", "TEXT", "255"),
-                ("Poblacion", "TEXT", "100"),
-                ("full_address_eaab", "TEXT", "255"),
-                ("full_address_uacd", "TEXT", "255"),
-                ("Geocoder", "TEXT", "100"),
-                ("Score", "DOUBLE", ""),
-                ("FechaHora", "DATE", "")
-            };
 
-            var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-
-            // Verificar campos existentes primero para evitar errores al intentar crear duplicados
-            HashSet<string> existingFieldNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                using (var gdb = new Geodatabase(gdbConnectionPath))
+                using (var rowBuffer = table.CreateRowBuffer())
                 {
-                    // Si la tabla no existe aún, saltar comprobación de campos (se crearán después)
-                    if (gdb.GetDefinitions<TableDefinition>().Any(d => string.Equals(d.GetName(), TableName, StringComparison.OrdinalIgnoreCase)))
+                    var def = table.GetDefinition();
+
+                    rowBuffer["Identificador"] = record.Id;
+                    rowBuffer["Direccion"] = record.Address;
+                    rowBuffer["Poblacion"] = record.CityCode;
+                    rowBuffer["full_address_eaab"] = null;
+                    rowBuffer["full_address_uacd"] = null;
+                    rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(record.Geocoder) ? "EAAB" : record.Geocoder;
+                    if (def.GetFields().Any(f => f.Name.Equals("FechaHora", StringComparison.OrdinalIgnoreCase)))
                     {
-                        using (var table = gdb.OpenDataset<Table>(TableName))
-                        {
-                            existingFieldNames = table
-                                .GetDefinition()
-                                .GetFields()
-                                .Select(f => f.Name)
-                                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                        }
+                        rowBuffer["FechaHora"] = DateTime.Now;
+                    }
+
+                    using (var row = table.CreateRow(rowBuffer)) { }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"No se pudo insertar el registro en la tabla de direcciones no encontradas: {ex}");
+            }
+        }
+
+        private static async Task EnsureFieldsExist(Geodatabase gdb)
+        {
+            var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                if (gdb.GetDefinitions<TableDefinition>().Any(d => string.Equals(d.GetName(), TableName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    using (var table = gdb.OpenDataset<Table>(TableName))
+                    {
+                        existing = table
+                            .GetDefinition()
+                            .GetFields()
+                            .Select(f => f.Name)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     }
                 }
             }
             catch
             {
-                // Si falla la lectura del esquema, continuamos a intentar agregar campos via GP
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: "No se pudo leer la estructura de la tabla de direcciones no encontradas. Se intentará agregar los campos faltantes.",
+                    caption: "EAAB Add-In",
+                    button: System.Windows.MessageBoxButton.OK,
+                    icon: System.Windows.MessageBoxImage.Warning
+                );
             }
 
-            foreach (var field in required)
-            {
-                if (existingFieldNames.Contains(field.Name))
-                    continue;
+            await AddMissingTableFieldsAsync(gdb, existing);
+        }
 
-                var tablePath = Path.Combine(gdbPath, TableName);
-                var addFieldParams = Geoprocessing.MakeValueArray(
-                    tablePath,
-                    field.Name,
-                    field.Type,
-                    "",
-                    "",
-                    field.Length
-                );
+        private static async Task AddMissingTableFieldsAsync(Geodatabase gdb, HashSet<string> existing)
+        {
+            var tablePath = Path.Combine(gdb.GetPath().AbsolutePath, TableName);
+
+            foreach (var field in TableFields)
+            {
+                if (existing.Contains(field.Name))
+                {
+                    continue;
+                }
+
                 await Geoprocessing.ExecuteToolAsync(
                     "management.AddField",
-                    addFieldParams,
+                    Geoprocessing.MakeValueArray(tablePath, field.Name, field.Type, "", "", field.Length),
                     null,
                     CancelableProgressor.None,
-                    GPExecuteToolFlags.AddToHistory);
+                    GPExecuteToolFlags.AddToHistory
+                );
             }
         }
     }

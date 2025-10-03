@@ -6,10 +6,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
+using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Core.Data;
 
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Application.UseCases;
@@ -373,7 +373,14 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     else throw; // otros códigos se dejan propagar
                 }
 
-                var result = search.Invoke(searchAddress, cityCode, cityDesc, GdbPath);
+                var result = search.Invoke(
+                    address: searchAddress,
+                    cityCode: cityCode,
+                    cityDesc: cityDesc,
+                    gdbPath: GdbPath,
+                    showNoResultsMessage: true
+                );
+
                 if (result == null || result.Count == 0)
                 {
                     StatusMessage = $"Sin coincidencias en {SelectedCity.CityDesc}";

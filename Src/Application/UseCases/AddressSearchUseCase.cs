@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-
+using DocumentFormat.OpenXml.Office2010.Excel;
 using EAABAddIn.Src.Application.Mappers.EsriMappingExtensions;
 using EAABAddIn.Src.Application.Mappers.IdecaMappingExtensions;
 using EAABAddIn.Src.Application.Models;
@@ -28,6 +28,7 @@ public class AddressSearchUseCase
         string cityCode = "11001",
         string cityDesc = "BOGOTA D.C.",
         string gdbPath = null,
+        string addressId = null,
         bool showNoResultsMessage = true
     )
     {
@@ -54,13 +55,12 @@ public class AddressSearchUseCase
         if (searchResults.Count == 0)
         {
             var record = new AddressNotFoundRecord(
-                identificador: string.Empty,
-                direccion: address,
-                poblacion: cityCode,
-                fullAddressEaab: address,
-                fullAddressUacd: address,
-                geocoder: null,
-                score: null
+                id: addressId,
+                address: address,
+                cityCode: cityCode,
+                fullAddressEaab: null,
+                fullAddressUacd: null,
+                geocoder: "EAAB, IDECA, ESRI"
             );
 
             _ = AddressNotFoundTableService.AddRecordAsync(record, gdbPath);

@@ -284,6 +284,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         try
                         {
                             var resultados = usecase.Invoke(
+                                addressId: registro.Identificador,
                                 address: registro.Direccion,
                                 cityCode: registro.Poblacion,
                                 cityDesc: ciudadesDict.TryGetValue(registro.Poblacion, out var cityDesc) ? cityDesc : null,
