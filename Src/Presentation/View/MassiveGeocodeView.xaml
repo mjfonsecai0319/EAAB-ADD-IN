@@ -178,21 +178,29 @@
                 </Grid>
 
                 <Border Style="{StaticResource InstructionsContainerStyle}">
-                    <TextBlock Style="{StaticResource InfoTextStyle}">
-                        <Run Text="El archivo debe ser un Excel (.xlsx) con las columnas:" />
-                        <LineBreak />
-                        <Run Text="   • " />
-                        <Run Text="Identificador" FontWeight="Medium" />
-                        <Run Text=" - ID único del registro" />
-                        <LineBreak />
-                        <Run Text="   • " />
-                        <Run Text="Direccion" FontWeight="Medium" />
-                        <Run Text=" - Dirección a geocodificar" />
-                        <LineBreak />
-                        <Run Text="   • " />
-                        <Run Text="Poblacion" FontWeight="Medium" />
-                        <Run Text=" - Nombre de la ciudad o población" />
-                    </TextBlock>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource InfoTextStyle}">
+                            <Run Text="El archivo debe ser un Excel (.xlsx) con las columnas:" />
+                            <LineBreak />
+                            <Run Text="   • " />
+                            <Run Text="Identificador" FontWeight="Medium" />
+                            <Run Text=" - ID único del registro (opcional pero recomendado)" />
+                            <LineBreak />
+                            <Run Text="   • " />
+                            <Run Text="Direccion" FontWeight="Medium" />
+                            <Run Text=" - Dirección a geocodificar" />
+                            <LineBreak />
+                            <Run Text="   • " />
+                            <Run Text="Poblacion" FontWeight="Medium" />
+                            <Run Text=" - Código de ciudad (NO el nombre)." />
+                            <LineBreak />
+                            <Run Text="      Ejemplos de códigos:" FontStyle="Italic" />
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource InfoTextStyle}" TextWrapping="Wrap" Foreground="{DynamicResource Esri_TextPrimaryBrush}">
+                            <Run Text="      " />
+                            <Run Text="{Binding CityCodesPreview}" />
+                        </TextBlock>
+                    </StackPanel>
                 </Border>
             </StackPanel>
 
