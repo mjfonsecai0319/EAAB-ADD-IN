@@ -37,12 +37,16 @@
     <Content Include="Images\Geocoder_Batch.png" />
     <Content Include="Images\Settings16.png" />
     <Content Include="Images\Settings32.png" />
+    <Content Include="Images\SearchPoi16.png" />
+    <Content Include="Images\SearchPoi32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
     <Content Include="DarkImages\Geocoder_Batch.png" />
     <Content Include="DarkImages\Settings16.png" />
     <Content Include="DarkImages\Settings32.png" />
+    <Content Include="DarkImages\SearchPoi16.png" />
+    <Content Include="DarkImages\SearchPoi32.png" />
   </ItemGroup>
 
   <ItemGroup>

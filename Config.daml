@@ -5,7 +5,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
 >
-  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.9.0" desktopVersion="3.4.55405">
+  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.9.1" desktopVersion="3.4.55405">
     <Name>EAAB Add-In</Name>
     <Description>EAABAddIn description</Description>
     <Image>Images\AddinDesktop32.png</Image>
@@ -104,8 +104,8 @@
           caption="POIs"
           className="EAABAddIn.Src.Presentation.View.Buttons.POIsButton"
           loadOnClick="true"
-          smallImage="GenericButtonPurple16"
-          largeImage="GenericButtonPurple16"
+          smallImage="Images\SearchPoi16.png"
+          largeImage="Images\SearchPoi32.png"
           condition="EAABAddIn_DomainCheck"
           keytip="B4"
         >
