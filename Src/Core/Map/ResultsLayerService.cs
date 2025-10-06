@@ -25,6 +25,19 @@ namespace EAABAddIn.Src.Core.Map
         private static readonly List<PtAddressGralEntity> _pendingEntities = new();
         private static readonly object _pendingLock = new();
 
+        public static (string Name, string Type, string Length)[] TableFields =>
+        [
+            ("Identificador", "TEXT", "100"),
+            ("Poblacion", "TEXT", "100"),
+            ("Direccion", "TEXT", "255"),
+            ("DireccionEAAB", "TEXT", "255"),
+            ("DireccionUACD", "TEXT", "255"),
+            ("Geocoder", "TEXT", "100"),
+            ("Score", "DOUBLE", ""),
+            ("ScoreText", "TEXT", "100"),
+            ("FechaHora", "DATE", "")
+        ];
+
         public static Task AddPointAsync(PtAddressGralEntity entidad, string gdbPath = null, bool skipDuplicates = true)
         {
             return QueuedTask.Run(() => _AddPointAsync(entidad, gdbPath, skipDuplicates));
@@ -113,14 +126,17 @@ namespace EAABAddIn.Src.Core.Map
                     using (var rowBuffer = featureClass.CreateRowBuffer())
                     {
                         var def = featureClass.GetDefinition();
-                        rowBuffer[def.GetShapeField()] = mapPoint;
+
                         var direccionOriginal = !string.IsNullOrWhiteSpace(entidad.FullAddressOld)
                             ? entidad.FullAddressOld
                             : (entidad.MainStreet ?? entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? string.Empty);
-                        rowBuffer["Direccion"] = direccionOriginal;
+
+                        rowBuffer[def.GetShapeField()] = mapPoint;
+                        rowBuffer["Identificador"] = entidad.ID.ToString();
                         rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
-                        rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
-                        rowBuffer["FullAdressUACD"] = entidad.FullAddressCadastre ?? string.Empty;
+                        rowBuffer["Direccion"] = direccionOriginal;
+                        rowBuffer["DireccionEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
+                        rowBuffer["DireccionUACD"] = entidad.FullAddressCadastre ?? string.Empty;
                         rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                         rowBuffer["Score"] = entidad.Score.HasValue ? entidad.Score.Value : null;
                         rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
@@ -453,8 +469,8 @@ namespace EAABAddIn.Src.Core.Map
                                         : (entidad.MainStreet ?? string.Empty)));
                             rowBuffer["Direccion"] = direccionFinal;
                             rowBuffer["Poblacion"] = entidad.CityDesc ?? entidad.CityCode ?? string.Empty;
-                            rowBuffer["FullAdressEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
-                            rowBuffer["FullAdressUACD"] = entidad.FullAddressCadastre ?? string.Empty;
+                            rowBuffer["DireccionEAAB"] = entidad.FullAddressEAAB ?? string.Empty;
+                            rowBuffer["DireccionUACD"] = entidad.FullAddressCadastre ?? string.Empty;
                             rowBuffer["Geocoder"] = string.IsNullOrWhiteSpace(entidad.Source) ? "EAAB" : entidad.Source;
                             if (entidad.Score.HasValue) rowBuffer["Score"] = entidad.Score.Value; else rowBuffer["Score"] = null;
                             rowBuffer["ScoreText"] = entidad.ScoreText ?? string.Empty;
@@ -518,19 +534,6 @@ namespace EAABAddIn.Src.Core.Map
 
         private static async Task EnsureFieldsExist(string gdbPath)
         {
-            var required = new (string Name, string Type, string Length)[]
-            {
-                ("Identificador", "TEXT", "100"),
-                ("Direccion", "TEXT", "255"),
-                ("Poblacion", "TEXT", "100"),
-                ("FullAdressEAAB", "TEXT", "255"),
-                ("FullAdressUACD", "TEXT", "255"),
-                ("Geocoder", "TEXT", "100"),
-                ("Score", "DOUBLE", ""),
-                ("ScoreText", "TEXT", "100"),
-                ("FechaHora", "DATE", "")
-            };
-
             var gdbConnectionPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
             HashSet<string> existingFieldNames;
             using (var gdb = new Geodatabase(gdbConnectionPath))
@@ -543,7 +546,7 @@ namespace EAABAddIn.Src.Core.Map
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
 
-            foreach (var field in required)
+            foreach (var field in TableFields)
             {
                 if (existingFieldNames.Contains(field.Name))
                     continue;

@@ -167,9 +167,11 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
 
     protected override PtAddressGralEntity MapRowToEntity(Row row)
     {
+        var id = row["OBJECTID"];
+
         return new PtAddressGralEntity
         {
-            ID = row["OBJECTID"] is long id ? id : 0,
+            ID = long.TryParse(id?.ToString(), out var parsedId) ? parsedId : 0,
             Source = row["SOURCE"]?.ToString(),
             CityCode = row["CITY_CODE"]?.ToString(),
             CityDesc = row["CITY_DESC"]?.ToString(),
@@ -271,9 +273,11 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
 
     protected override PtAddressGralEntity MapRowToEntity(Row row)
     {
+        var id = row["id"];
+
         return new PtAddressGralEntity
         {
-            ID = row["id"] is long id ? id : 0,
+            ID = long.TryParse(id?.ToString(), out var parsedId) ? parsedId : 0,
             Source = row["source"]?.ToString(),
             CityCode = row["city_code"]?.ToString(),
             CityDesc = row["city_desc"]?.ToString(),

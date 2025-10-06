@@ -194,12 +194,31 @@
                             <Run Text="Poblacion" FontWeight="Medium" />
                             <Run Text=" - Código de ciudad (NO el nombre)." />
                             <LineBreak />
-                            <Run Text="      Ejemplos de códigos:" FontStyle="Italic" />
                         </TextBlock>
-                        <TextBlock Style="{StaticResource InfoTextStyle}" TextWrapping="Wrap" Foreground="{DynamicResource Esri_TextPrimaryBrush}">
-                            <Run Text="      " />
-                            <Run Text="{Binding CityCodesPreview}" />
-                        </TextBlock>
+
+                        <StackPanel>
+                            <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" TextWrapping="Wrap" Text="Códigos de ciudad:" />
+                            <Border BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1" CornerRadius="2" Padding="4" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}">
+                                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding CityCodes}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100" />
+                                                        <ColumnDefinition Width="10" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding CityCode}" FontWeight="SemiBold" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding CityDesc}" TextTrimming="CharacterEllipsis" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+
                     </StackPanel>
                 </Border>
             </StackPanel>
