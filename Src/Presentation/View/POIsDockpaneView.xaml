@@ -10,14 +10,15 @@
     xmlns:view="clr-namespace:EAABAddIn.Src.Presentation.View"
     mc:Ignorable="d"
     d:DesignHeight="300"
-    d:DataContext="{Binding Path=viewModel.POIsDockpaneViewModel}" Width="346"
+    d:DataContext="{Binding Path=viewModel.POIsDockpaneViewModel}"
+    MinWidth="250"
 >
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <!-- Converter para placeholder -->
+            
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
             <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -25,6 +26,7 @@
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="Margin" Value="0,0,0,5" />
+                <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
             <Style x:Key="ThemedTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
@@ -33,7 +35,7 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="Height" Value="28" />
                 <Setter Property="Padding" Value="8,4" />
-                <Setter Property="Margin" Value="0,0,0,15" />
+                <Setter Property="Margin" Value="0,0,0,8" />
                 <Setter Property="FontSize" Value="13" />
             </Style>
 
@@ -41,8 +43,8 @@
                 <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Height" Value="32" />
-                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="Padding" Value="12,6" />
                 <Setter Property="FontWeight" Value="Medium" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
@@ -55,104 +57,162 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+
+            <Style x:Key="ResponsiveButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="14">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="10,14,10,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" CornerRadius="6" Background="{DynamicResource Esri_BackgroundContentBrush}" Padding="10" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1" Margin="0,0,0,8">
-            <StackPanel Orientation="Vertical">
-                <TextBlock Text="Buscar POIs" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,6" />
-                <DockPanel LastChildFill="True">
-                    <Grid>
+            <!-- Sección de búsqueda -->
+            <Border Grid.Row="0" 
+                    CornerRadius="6" 
+                    Background="{DynamicResource Esri_BackgroundContentBrush}" 
+                    Padding="10" 
+                    BorderBrush="{DynamicResource Esri_BorderBrush}" 
+                    BorderThickness="1" 
+                    Margin="0,0,0,8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" 
+                               Text="Buscar POIs" 
+                               Style="{StaticResource HeaderTextStyle}" 
+                               Margin="0,0,0,8" />
+
+                    <!-- TextBox de búsqueda - ocupará el ancho completo -->
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
                         <TextBox
                             x:Name="SearchBox"
                             Style="{StaticResource ThemedTextBoxStyle}"
                             Text="{Binding SearchInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Margin="0"
-                            Width="200" />
-                        <TextBlock Text="Ingrese término (mín 2 caracteres)" Foreground="{DynamicResource Esri_TextSecondaryBrush}"
-                                   IsHitTestVisible="False" Margin="6,0,6,0" VerticalAlignment="Center"
+                            Margin="0" />
+                        <TextBlock Text="Ingrese término (mín 2 caracteres)" 
+                                   Foreground="{DynamicResource Esri_TextSecondaryBrush}"
+                                   IsHitTestVisible="False" 
+                                   Margin="10,0,6,8" 
+                                   VerticalAlignment="Center"
                                    Visibility="{Binding ElementName=SearchBox, Path=Text, Converter={StaticResource BoolToVis}, ConverterParameter=empty}" />
                     </Grid>
-                    <Button
-                        Content="Buscar"
-                        Width="100
-                        "
-                        Height="30"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Command="{Binding SearchCommand}" />
-                </DockPanel>
+
+                    <!-- Botón de búsqueda - ocupará el ancho completo -->
+                    <Button Grid.Row="2"
+                            Content="Buscar"
+                            HorizontalAlignment="Stretch"
+                            Height="32"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding SearchCommand}" />
+                </Grid>
+            </Border>
+
+            <!-- Encabezado de resultados -->
+            <StackPanel Grid.Row="1" 
+                        Orientation="Vertical" 
+                        Margin="0,4,0,8">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Resultados:" 
+                               Style="{StaticResource HeaderTextStyle}" 
+                               Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Status}" 
+                               VerticalAlignment="Center" 
+                               Foreground="{DynamicResource Esri_TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
             </StackPanel>
-        </Border>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,4">
-            <TextBlock Text="Resultados:" Style="{StaticResource HeaderTextStyle}" Margin="0,0,12,0" />
-            <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource Esri_TextSecondaryBrush}" />
-        </StackPanel>
+            <!-- DataGrid de resultados -->
+            <Border Grid.Row="2" 
+                    CornerRadius="6" 
+                    BorderBrush="{DynamicResource Esri_BorderBrush}" 
+                    BorderThickness="1" 
+                    Background="{DynamicResource Esri_BackgroundContentBrush}" 
+                    Padding="4" 
+                    Margin="0,0,0,12">
+                <DataGrid
+                    ItemsSource="{Binding Results}"
+                    SelectedItem="{Binding Selected}"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="False"
+                    CanUserDeleteRows="False"
+                    IsReadOnly="True"
+                    SelectionMode="Single"
+                    RowHeaderWidth="0"
+                    Margin="0"
+                    MinHeight="140"
+                    MaxHeight="300"
+                    GridLinesVisibility="Horizontal"
+                    HeadersVisibility="Column"
+                    AlternationCount="2"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Resources>
+                        <SolidColorBrush x:Key="DataGridRowBackgroundAlternate" Color="#102030" Opacity="0.04" />
+                    </DataGrid.Resources>
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Padding" Value="4" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Esri_BlueHighlight}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                                <Trigger Property="AlternationIndex" Value="1">
+                                    <Setter Property="Background" Value="{StaticResource DataGridRowBackgroundAlternate}" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                            <Setter Property="BorderThickness" Value="0,0,0,1" />
+                            <Setter Property="Padding" Value="6,4" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontSize" Value="12" />
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="POI" Binding="{Binding NamePoi}" Width="1.5*" MinWidth="80" />
+                        <DataGridTextColumn Header="Dirección" Binding="{Binding Address}" Width="2*" MinWidth="100" />
+                        <DataGridTextColumn Header="Ciudad" Binding="{Binding CityDesc}" Width="*" MinWidth="70" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
 
-        <Border Grid.Row="2" CornerRadius="6" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1" Background="{DynamicResource Esri_BackgroundContentBrush}" Padding="4" Margin="0,0,0,8">
-            <DataGrid
-                ItemsSource="{Binding Results}"
-                SelectedItem="{Binding Selected}"
-                AutoGenerateColumns="False"
-                CanUserAddRows="False"
-                CanUserDeleteRows="False"
-                IsReadOnly="True"
-                SelectionMode="Single"
-                RowHeaderWidth="0"
-                Margin="0"
-                MinHeight="140"
-                MaxHeight="260"
-                GridLinesVisibility="Horizontal"
-                HeadersVisibility="Column"
-                AlternationCount="2">
-                <DataGrid.Resources>
-                    <SolidColorBrush x:Key="DataGridRowBackgroundAlternate" Color="#102030" Opacity="0.04" />
-                </DataGrid.Resources>
-                <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
-                        <Setter Property="Padding" Value="4" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{DynamicResource Esri_BlueHighlight}" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                            <Trigger Property="AlternationIndex" Value="1">
-                                <Setter Property="Background" Value="{StaticResource DataGridRowBackgroundAlternate}" />
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
-                <DataGrid.ColumnHeaderStyle>
-                    <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
-                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
-                        <Setter Property="BorderThickness" Value="0,0,0,1" />
-                        <Setter Property="Padding" Value="6,4" />
-                        <Setter Property="FontWeight" Value="SemiBold" />
-                        <Setter Property="FontSize" Value="12" />
-                    </Style>
-                </DataGrid.ColumnHeaderStyle>
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="POI" Binding="{Binding NamePoi}" Width="2*" />
-                    <DataGridTextColumn Header="Dirección" Binding="{Binding Address}" Width="3*" />
-                    <DataGridTextColumn Header="Ciudad" Binding="{Binding CityDesc}" Width="*" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
-
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Agregar" Width="100" Height="40" Style="{StaticResource Esri_Button}" Command="{Binding MarkSelectedCommand}" Margin="0,0,8,0" />
-            <Button Content="Agregar Todos" Width="130" Height="40" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding MarkAllCommand}" />
-        </StackPanel>
-    </Grid>
+            <!-- Botones de acción -->
+            <StackPanel Grid.Row="3" Orientation="Vertical">
+                <Button Content="Agregar" 
+                        Height="36"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource ResponsiveButtonStyle}" 
+                        Command="{Binding MarkSelectedCommand}" 
+                        Margin="0,0,0,8" />
+                
+                <Button Content="Agregar Todos" 
+                        Height="36"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource PrimaryButtonStyle}" 
+                        Command="{Binding MarkAllCommand}"
+                        Margin="0" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
 </UserControl>

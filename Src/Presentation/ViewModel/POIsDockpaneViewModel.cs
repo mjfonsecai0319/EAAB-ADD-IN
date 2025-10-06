@@ -81,7 +81,6 @@ internal class POIsDockpaneViewModel : BusyViewModelBase
         try
         {
             var repo = new PtPoisEaabRepository();
-            // Llamamos directamente al método asíncrono (internamente usa QueuedTask)
             var list = await repo.FindByWordAsync(term, 25);
             if (list.Count == 0)
             {
@@ -119,7 +118,6 @@ internal class POIsDockpaneViewModel : BusyViewModelBase
                 return;
             }
 
-            // Cargar en memoria y luego un solo commit batch
             ResultsLayerService.ClearPending();
             foreach (var poi in valid)
             {
@@ -138,7 +136,6 @@ internal class POIsDockpaneViewModel : BusyViewModelBase
             }
 
             var gdbPath = Project.Current.DefaultGeodatabasePath;
-            // Batch con zoom al conjunto insertado
             await ResultsLayerService.CommitPointsAsync(gdbPath, true);
             Status = $"Marcados {valid.Count} POIs (zoom conjunto)";
         }
@@ -166,7 +163,7 @@ internal class POIsDockpaneViewModel : BusyViewModelBase
                 Score = poi.TotalScore,
                 ScoreText = poi.TotalScore.ToString("0.000")
             };
-            await ResultsLayerService.AddPointAsync(entidad, skipDuplicates: true); // evita duplicar el mismo punto/dirección
+            await ResultsLayerService.AddPointAsync(entidad, skipDuplicates: true); 
             Status = $"Marcado POI: {poi.NamePoi}";
         }
         catch (Exception ex)
