@@ -55,19 +55,13 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        private string _cityCodesPreview;
-        public string CityCodesPreview
+        public class CityCodePreviewItem
         {
-            get => _cityCodesPreview;
-            set
-            {
-                if (_cityCodesPreview != value)
-                {
-                    _cityCodesPreview = value;
-                    NotifyPropertyChanged(nameof(CityCodesPreview));
-                }
-            }
+            public string CityCode { get; set; }
+            public string CityDesc { get; set; }
         }
+
+        public System.Collections.ObjectModel.ObservableCollection<CityCodePreviewItem> CityCodes { get; } = new();
 
         public ICommand OpenFileDialogCommand { get; private set; }
         public ICommand SearchCommand { get; private set; }
@@ -101,21 +95,19 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     _ => null
                 };
                 if (repo == null) return;
-                var codigos = await QueuedTask.Run(() => repo.GetAllCities()
-                    .Select(c => c.CityCode?.Trim())
-                    .Where(c => !string.IsNullOrWhiteSpace(c))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                var lista = await QueuedTask.Run(() => repo.GetAllCities()
+                    .Where(c => !string.IsNullOrWhiteSpace(c.CityCode))
+                    .GroupBy(c => c.CityCode.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .OrderBy(c => c.CityCode)
                     .Take(25)
+                    .Select(c => new CityCodePreviewItem { CityCode = c.CityCode.Trim(), CityDesc = c.CityDesc })
                     .ToList());
-                if (codigos.Count > 0)
-                {
-                    CityCodesPreview = string.Join(", ", codigos);
-                }
+                if (lista.Count == 0) return;
+                CityCodes.Clear();
+                foreach (var item in lista) CityCodes.Add(item);
             }
-            catch
-            {
-                // Silencioso: no romper UI si falla la carga de ejemplos.
-            }
+            catch { }
         }
 
         private void Browse_Click()
@@ -336,7 +328,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                                 entidad.FullAddressOld = entidad.MainStreet ?? string.Empty;
 
                             ResultsLayerService.AddPointToMemory(entidad);
-                            encontrados++;                          
+                            encontrados++;
                         }
                         catch
                         {
