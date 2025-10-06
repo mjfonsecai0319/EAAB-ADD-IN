@@ -28,6 +28,9 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public override string Tooltip => "Buscar múltiples direcciones a la vez desde un archivo .xlsx o .xls";
 
         private string _fileInput;
+        private string _gdbPath;
+        private string _cityCodesPreview;
+
         public string FileInput
         {
             get => _fileInput;
@@ -41,7 +44,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        private string _gdbPath;
         public string GdbPath
         {
             get => _gdbPath;
@@ -77,7 +79,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             SearchCommand = new AsyncRelayCommand(Search_Click);
             BrowseGdbCommand = new RelayCommand(BrowseGdb);
 
-            // Inicializar vista previa de códigos de ciudad (asíncrono, sin bloquear UI).
             _ = InitCityCodesPreview();
         }
 
@@ -109,7 +110,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
             catch { }
         }
-
         private void Browse_Click()
         {
             var dialog = new OpenFileDialog()
@@ -123,6 +123,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 FileInput = dialog.FileName;
             }
         }
+
 
         private async Task Search_Click()
         {
@@ -165,16 +166,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return;
                 }
 
-                // ================== VALIDACIÓN ESTRICTA DE ARCHIVO ==================
-                // 1. Verificar estructura mínima: tres columnas no vacías según uso.
-                //    (Se asume cabecera ya saltada en la lectura Excel.)
                 if (registros.Count == 0)
                 {
                     MessageBox.Show("El archivo no contiene filas de datos válidas (tras la cabecera).", "Archivo vacío");
                     return;
                 }
 
-                // 2. Validar que cada registro tenga Dirección y Código de ciudad; el Identificador puede ser opcional, pero lo marcamos si falta.
                 var filasSinDireccion = registros.Where(r => string.IsNullOrWhiteSpace(r.Direccion)).Select(r => r.Identificador).ToList();
                 var filasSinCodigoCiudad = registros.Where(r => string.IsNullOrWhiteSpace(r.Poblacion)).Select(r => r.Identificador).ToList();
                 if (filasSinDireccion.Any())
@@ -188,7 +185,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return;
                 }
 
-                // 3. Obtener listado de códigos válidos desde BD. Algunos repos o contextos pueden requerir MCT (ArcGIS Pro Main CIM Thread).
                 List<string> codigosValidos;
                 try
                 {
@@ -212,7 +208,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     return;
                 }
 
-                // 4. Verificar cada código suministrado. Registrar inválidos (para feedback) y válidos.
                 var detallesCodigos = registros
                     .Select(r => r.Poblacion.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -225,7 +220,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                 if (codigosInvalidos.Count == detallesCodigos.Count)
                 {
-                    // Todos son inválidos → probablemente usaron nombres en lugar de códigos.
                     var muestra = string.Join(", ", codigosInvalidos.Take(10));
                     var algunosValidosEjemplo = string.Join(", ", codigosValidos.Take(10));
                     MessageBox.Show(
@@ -248,7 +242,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                         "Advertencia códigos inválidos");
                 }
 
-                // 5. Filtrar registros a solo aquellos con código válido. Si después no queda ninguno, abortar.
                 registros = registros
                     .Where(r => codigosValidos.Contains(r.Poblacion.Trim(), StringComparer.OrdinalIgnoreCase))
                     .ToList();
@@ -257,7 +250,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     MessageBox.Show("Después de filtrar códigos inválidos no quedó ninguna fila para procesar.", "Sin filas válidas");
                     return;
                 }
-                // ================== FIN VALIDACIÓN ==================
 
                 int encontrados = 0, noEncontrados = 0;
                 int total = registros.Count;
@@ -298,7 +290,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                             var entidad = resultados[0];
                             var src = (entidad.Source ?? string.Empty).ToLowerInvariant();
-                            // Clasificación unificada ScoreText / Geocoder
                             if (src.Contains("cat") || src.Contains("catastro"))
                             {
                                 entidad.ScoreText = "Aproximada por Catastro";
@@ -306,28 +297,27 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                             }
                             else if (src.Contains("esri"))
                             {
-                                // Score numérico con prefijo ESRI
                                 if (entidad.Score.HasValue)
                                     entidad.ScoreText = $"ESRI {Math.Round(entidad.Score.Value, 2)}";
                                 else
                                     entidad.ScoreText = "ESRI";
                                 entidad.Source = "ESRI";
                             }
-                            else // EAAB u otro => Exacta si no tiene marca previa
+                            else 
                             {
                                 entidad.ScoreText = string.IsNullOrWhiteSpace(entidad.ScoreText) ? "Exacta" : entidad.ScoreText;
                                 entidad.Source = "EAAB";
                             }
 
-                            // Ajustar campo Direccion para almacenar la dirección encontrada (prioridad EAAB > Catastro > Original > MainStreet)
                             if (!string.IsNullOrWhiteSpace(entidad.FullAddressEAAB))
-                                entidad.FullAddressOld = entidad.FullAddressEAAB; // reutilizamos FullAddressOld para visualización original previa si existiera
+                                entidad.FullAddressOld = entidad.FullAddressEAAB; 
                             else if (!string.IsNullOrWhiteSpace(entidad.FullAddressCadastre))
                                 entidad.FullAddressOld = entidad.FullAddressCadastre;
                             else if (string.IsNullOrWhiteSpace(entidad.FullAddressOld))
                                 entidad.FullAddressOld = entidad.MainStreet ?? string.Empty;
 
                             ResultsLayerService.AddPointToMemory(entidad);
+                            encontrados++;
                             encontrados++;
                         }
                         catch
@@ -359,7 +349,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
             using (var reader = ExcelReaderFactory.CreateReader(stream))
             {
-                // Saltar cabecera
                 reader.Read();
 
                 while (reader.Read())
@@ -400,10 +389,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             if (ok == true && dlg.Items != null && dlg.Items.Any())
             {
                 var item = dlg.Items.First();
-                // item.Path devolverá la ruta a la carpeta .gdb seleccionada
                 GdbPath = item.Path;
             }
         }
+
 
         public class RegistroDireccion
         {

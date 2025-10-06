@@ -197,7 +197,7 @@
                         </TextBlock>
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource InfoTextStyle}" TextWrapping="Wrap" Foreground="{DynamicResource Esri_TextPrimaryBrush}" Text="Códigos de ciudad (muestra):" />
+                            <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" TextWrapping="Wrap" Text="Códigos de ciudad:" />
                             <Border BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1" CornerRadius="2" Padding="4" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}">
                                 <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding CityCodes}">
