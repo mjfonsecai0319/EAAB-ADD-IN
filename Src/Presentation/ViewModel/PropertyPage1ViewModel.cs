@@ -134,6 +134,14 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             set => SetProperty(ref _rutaArchivoCredenciales, value);
         }
 
+        // Permitir polígonos de 3 puntos (por defecto desactivado => se exige >=4)
+        private bool _permitirTresPuntos;
+        public bool PermitirTresPuntos
+        {
+            get => _permitirTresPuntos;
+            set => SetProperty(ref _permitirTresPuntos, value);
+        }
+
         public ICommand ProbarConexionCommand { get; }
         public ICommand GuardarYReconectarCommand { get; }
         public ICommand SeleccionarArchivoGdbCommand { get; }
@@ -170,6 +178,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 
                 RutaArchivoCredenciales = _settings.rutaArchivoCredenciales ?? string.Empty;
 
+                PermitirTresPuntos = _settings.permitirTresPuntos; // false si no existía
+
                 Debug.WriteLine($"📥 Configuración cargada - Motor: {MotorSeleccionado}, Host: {Host}, Usuario: {Usuario}, DB: {BaseDeDatos}");
                 _previousMotor = MotorSeleccionado;
                 CheckConnectionStatus();
@@ -192,6 +202,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             _settings.rutaArchivoGdb = RutaArchivoGdb;
             
             _settings.rutaArchivoCredenciales = RutaArchivoCredenciales;
+            _settings.permitirTresPuntos = PermitirTresPuntos;
 
             _settings.Save();
             Debug.WriteLine("💾 Configuración guardada automáticamente");

@@ -14,6 +14,7 @@ namespace EAABAddIn
         public string baseDeDatos { get; set; } = string.Empty;
         public string rutaArchivoGdb { get; set; } = string.Empty;
         public string rutaArchivoCredenciales { get; set; } = string.Empty; // Para archivos .SDE
+        public bool permitirTresPuntos { get; set; } = false; // Permitir polígonos de solo 3 vértices
 
         // Ruta del archivo de configuración
         private static readonly string configPath = Path.Combine(
@@ -55,6 +56,9 @@ namespace EAABAddIn
                     settings.baseDeDatos ??= string.Empty;
                     settings.rutaArchivoGdb ??= string.Empty;
                     settings.rutaArchivoCredenciales ??= string.Empty;
+                    // Nueva propiedad booleana
+                    // Si es null (versiones anteriores del archivo) se mantiene false por defecto
+                    // JsonSerializer asignará false si no existe la clave
                     
                     return settings;
                 }

@@ -153,6 +153,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid.Resources>
@@ -326,6 +327,16 @@
                             Command="{Binding GuardarYReconectarCommand}"
                         />
                     </Grid>
+
+                    <!-- Opción para permitir polígonos de 3 puntos (default desmarcado => requiere >=4) -->
+                    <CheckBox
+                        Grid.Row="8"
+                        Grid.Column="2"
+                        Content="Permitir polígonos de 3 vértices"
+                        IsChecked="{Binding PermitirTresPuntos, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="0,4,0,8"
+                        ToolTip="Si se marca, se aceptarán polígonos con exactamente 3 puntos. Si no, se exige mínimo 4."
+                    />
                 </Grid>
 
                 <Border Style="{StaticResource InstructionsContainerStyle}">
