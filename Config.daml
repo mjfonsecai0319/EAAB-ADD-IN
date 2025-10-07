@@ -61,6 +61,8 @@
 
         <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1">
           <button refID="EAABAddIn_DrawPolygonButton" size="large" />
+          <button refID="EAABAddIn_ImportPolygonButton" size="large" />
+          <button refID="EAABAddIn_UnionPolygonsButton" size="large" />
         </group>
       </groups>
 
@@ -124,6 +126,24 @@
           keytip="B5"
         >
           <tooltip heading="Dibujar polígono">Dibuja un polígono en el mapa.<disabledText /></tooltip>
+        </button>
+
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.ImportPolygonButton"
+          id="EAABAddIn_ImportPolygonButton"
+          caption="Importar Polígono"
+          keytip="B6"
+        >
+          <tooltip heading="Importar polígono">Importa un polígono desde una gdb.<disabledText /></tooltip>
+        </button>
+
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.UnionPolygonsButton"
+          id="EAABAddIn_UnionPolygonsButton"
+          caption="Unir Polígonos"
+          keytip="B7"
+        >
+          <tooltip heading="Unir polígonos">Une varios polígonos desde una gdb.<disabledText /></tooltip>
         </button>
       </controls>
 
