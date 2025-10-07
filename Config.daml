@@ -47,56 +47,61 @@
       <tabs>
         <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
           <group refID="EAABAddIn_Group1" />
+          <group refID="EAABAddIn_Group_DrawingTools" />
         </tab>
       </tabs>
 
       <groups>
         <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1">
-          <button refID="EAABAddIn_Button1" size="large" />
-          <button refID="EAABAddIn_Button2" size="large" />
+          <button refID="EAABAddIn_AddressSearchButton" size="large" />
+          <button refID="EAABAddIn_MassiveGeocodeButton" size="large" />
           <button refID="EAABAddIn_POIsButton" size="large" />
-          <button refID="EAABAddIn_Button3" size="middle" />
+          <button refID="EAABAddIn_SettingsButton" size="middle" />
+        </group>
+
+        <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1">
+          <button refID="EAABAddIn_DrawPolygonButton" size="large" />
         </group>
       </groups>
 
       <controls>
         <button
-          id="EAABAddIn_Button1"
+          id="EAABAddIn_AddressSearchButton"
           caption="Buscar"
-          className="EAABAddIn.Src.Presentation.View.Button1"
+          className="EAABAddIn.Src.Presentation.View.Buttons.AddressSearchButton"
           loadOnClick="true"
           smallImage="Images\Geocoder_Local.png"
           largeImage="Images\Geocoder_Local.png"
           condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B1"
         >
-          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+          <tooltip heading="Buscar dirección">Busca una dirección en el mapa.<disabledText /></tooltip>
         </button>
 
         <button
-          id="EAABAddIn_Button2"
+          id="EAABAddIn_MassiveGeocodeButton"
           caption="Masivo"
-          className="EAABAddIn.Src.Presentation.View.Button2"
+          className="EAABAddIn.Src.Presentation.View.Buttons.MassiveGeocodeButton"
           loadOnClick="true"
           smallImage="Images\Geocoder_Batch.png"
           largeImage="Images\Geocoder_Batch.png"
           condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B2"
         >
-          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+          <tooltip heading="Geocodificación masiva">Geocodifica direcciones desde Excel.<disabledText /></tooltip>
         </button>
 
         <button
-          id="EAABAddIn_Button3"
+          id="EAABAddIn_SettingsButton"
           caption="Ajustes"
-          className="EAABAddIn.Src.Presentation.View.Button3"
+          className="EAABAddIn.Src.Presentation.View.Buttons.SettingsButton"
           loadOnClick="true"
           smallImage="Images\Settings.png"
           largeImage="Images\Settings.png"
           condition="EAABAddIn_DomainCheck"
           keytip="B3"
         >
-          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+          <tooltip heading="Ajustes">Configura la conexión y opciones.<disabledText /></tooltip>
         </button>
 
         <button
@@ -109,7 +114,16 @@
           condition="EAABAddIn_DomainCheck"
           keytip="B4"
         >
-          <tooltip heading="Tooltip Heading"> Tooltip text<disabledText /></tooltip>
+          <tooltip heading="Puntos de interés">Busca y muestra POIs en el mapa.<disabledText /></tooltip>
+        </button>
+
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.DrawPolygonButton"
+          id="EAABAddIn_DrawPolygonButton"
+          caption="Dibujar Polígono"
+          keytip="B5"
+        >
+          <tooltip heading="Dibujar polígono">Dibuja un polígono en el mapa.<disabledText /></tooltip>
         </button>
       </controls>
 

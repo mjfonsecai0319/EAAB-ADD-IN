@@ -1,18 +1,15 @@
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 
-using EAABAddIn.Src.Presentation.ViewModel;
+namespace EAABAddIn.Src.Presentation.View.Buttons;
 
-namespace EAABAddIn.Src.Presentation.View;
-
-
-internal class Button3 : Button
+internal class SettingsButton : Button
 {
     protected override void OnClick()
     {
         var data = new object[] { "Configuración" };
 
-        if(!PropertySheet.IsVisible)
+        if (!PropertySheet.IsVisible)
         {
             PropertySheet.ShowDialog("EAABAddIn_PropertySheet1", "EAABAddIn_PropertyPage2", data);
         }

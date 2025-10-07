@@ -3,9 +3,9 @@ using ArcGIS.Desktop.Framework.Contracts;
 
 using EAABAddIn.Src.Presentation.ViewModel;
 
-namespace EAABAddIn.Src.Presentation.View;
+namespace EAABAddIn.Src.Presentation.View.Buttons;
 
-internal class Button1 : Button
+internal class MassiveGeocodeButton : Button
 {
     protected override void OnClick()
     {
@@ -14,7 +14,8 @@ internal class Button1 : Button
         var pane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane") as GeocoderDockpaneViewModel;
         if (pane != null)
         {
-            pane.SelectedPanelHeaderIndex = 0;
+            pane.SelectedPanelHeaderIndex = 1;
         }
     }
 }
+

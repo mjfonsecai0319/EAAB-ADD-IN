@@ -1,11 +1,11 @@
-﻿using ArcGIS.Desktop.Framework;
+using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 
 using EAABAddIn.Src.Presentation.ViewModel;
 
-namespace EAABAddIn.Src.Presentation.View;
+namespace EAABAddIn.Src.Presentation.View.Buttons;
 
-internal class Button2 : Button
+internal class AddressSearchButton : Button
 {
     protected override void OnClick()
     {
@@ -14,8 +14,7 @@ internal class Button2 : Button
         var pane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane") as GeocoderDockpaneViewModel;
         if (pane != null)
         {
-            pane.SelectedPanelHeaderIndex = 1;
+            pane.SelectedPanelHeaderIndex = 0;
         }
     }
 }
-
