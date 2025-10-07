@@ -1,355 +1,1228 @@
-# EAAB-AddIn para ArcGIS Pro
+# Documentación Técnica - EAAB AddIn para ArcGIS Pro
 
-El Add-In para ArcGIS Pro que facilita la **búsqueda de direcciones**, la **geocodificación masiva** y la **conexión a bases de datos corporativas**.  
-Optimiza la gestión de datos espaciales, permitiendo integrar información directamente desde PostgreSQL u Oracle al entorno de ArcGIS Pro con persistencia de configuración automática.
+## Descripción General
 
-## Características principales
+AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE. Incluye también búsqueda de Puntos de Interés (POIs) y almacenamiento estructurado de resultados.
 
-1. **Conexión persistente** a bases de datos PostgreSQL y Oracle (modo credenciales) 
-2. **Conexión mediante archivo .sde** para Oracle SDE y PostgreSQL SDE (sin exponer usuario/host)  
-3. **Búsqueda individual** de direcciones con localización inmediata en el mapa  
-4. **Geocodificación masiva** optimizada (batch insert en memoria) desde archivos Excel (.xlsx)  
-5. **Registro automático de auditoría** con sello de fecha y hora local (campo `FechaHora`) tanto para encontrados como no encontrados  
-6. **Clasificación unificada de origen** (EAAB / CATASTRO / ESRI) y calidad (Exacta / Aproximada / Score numérico)  
-7. **Dirección ingresada vs dirección encontrada**: En geocodificación manual se preserva exactamente la dirección escrita por el usuario; en masivo se guarda la mejor dirección normalizada encontrada  
-8. **Persistencia y recarga de configuración automática** entre sesiones  
-9. **Interfaz adaptable** a tema claro/oscuro de ArcGIS Pro usando DynamicResource  
-10. **Validación de conexión en tiempo real** y mensajes de estado descriptivos  
-11. **Fallback inteligente de normalización**: Si el normalizador falla por léxico (CODE_145 / CODE_146) se usa la dirección original sin abortar  
-12. **Soporte de búsqueda ampliada**: Coincidencia exacta + segundo intento LIKE si no hay resultados
+## Stack Tecnológico
 
-## Requisitos del sistema
+- **.NET 8**
+- **ArcGIS Pro SDK 3.4+**
+- **WPF** con patrón MVVM
+- **PostgreSQL 15+** con PostGIS
+- **Oracle 18+**
+- **EPPlus / ExcelDataReader** para lectura de Excel (según implementación)
+- **Npgsql / Oracle Managed Data Access**
 
-### Requisitos obligatorios
+## Requisitos de Desarrollo
 
-1. ArcGIS Pro 3.4 o superior ejecutándose correctamente
-2. .NET 8 Runtime (normalmente incluido con ArcGIS Pro)
-3. Conexión a la base de datos corporativa (PostgreSQL u Oracle)
+### Entorno de desarrollo
 
-> [!tip]
-> Consultar requisitos adicionales en [Requisitos del sistema de ArcGIS Pro 3.5](https://pro.arcgis.com/es/pro-app/latest/get-started/arcgis-pro-system-requirements.htm)
+- Visual Studio 2022 o superior
+- ArcGIS Pro SDK for .NET instalado (Extension Manager)
+- ArcGIS Pro 3.4+ instalado (mismo equipo)
+- .NET 8 SDK
 
-### Requisitos de base de datos
+### Dependencias del proyecto
 
-1. PostgreSQL 15+ con PostGIS habilitado, o Oracle 18+  
-2. Opcional: Archivos `.sde` válidos generados desde ArcGIS Pro / ArcCatalog para conexión SDE (Oracle o PostgreSQL)
+```xml
+<PackageReference Include="ArcGIS.Desktop.SDK" Version="3.4.*" />
+<PackageReference Include="EPPlus" Version="7.0+" />
+<PackageReference Include="ExcelDataReader" Version="3.6+" />
+<PackageReference Include="Npgsql" Version="8.0+" />
+<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21+" />
+```
 
-## Instalación
+## Arquitectura del Sistema
 
-![Video de Instalación](<docs/res/Grabación 2025-09-23 083552.gif>)
-
-### Paso 1: Obtención del archivo (Add-In)
-
-Recibirás el archivo de instalación con extensión `.esriAddInX` a través de uno de estos métodos:
-
-* USB: Archivo físico en una unidad USB
-* Correo electrónico: Archivo adjunto o enlace de descarga
-* Red compartida: Carpeta de red compartida corporativa
-
-Guarda el archivo **EAABAddIn.esriAddInX** en una ubicación accesible como:
-
-* Escritorio
-* Carpeta de Descargas
-* Documentos
-
-### Paso 2: Instalación del complemento
-
-1. Cierra ArcGIS Pro si está ejecutándose
-2. Navega hasta la ubicación del archivo `EAABAddIn.esriAddInX`
-3. Haz doble clic en el archivo
-4. Aparecerá el instalador de Add-In de ArcGIS Pro
-5. Haz clic en "Instalar" y acepta los términos si se solicitan
-6. Espera el mensaje de "Instalación completada"
-7. Inicia ArcGIS Pro
-
-## Configuración
-
-### Configuración inicial automática
-
-Al utilizar el Add-In por primera vez:
-
-1. **Si no hay configuración previa**: Los campos aparecerán vacíos para configuración manual
-2. **Si hay configuración guardada**: Los campos se llenarán automáticamente con los valores previamente guardados
-
-#### Configuración manual paso a paso
-
-1. Abre ArcGIS Pro
-2. Ve a **Archivo → Opciones → EAAB Add-In** (en el panel lateral izquierdo)
-3. Haz clic en **Probar Conexión** - debe mostrar *"Conexión exitosa"*
-4. Haz clic en **Guardar y Conectar** para establecer la conexión permanente
-
-#### Completa los parámetros según tu motor de base de datos
-
-##### Para PostgreSQL (credenciales)
-
-* Motor: PostgreSQL
-* Host: `localhost` o dirección IP del servidor
-* Puerto: `5432` (se establece automáticamente)
-* Base de datos: Nombre de la base de datos PostgreSQL
-* Usuario: Tu nombre de usuario
-* Contraseña: Tu contraseña
-
-##### Para Oracle (credenciales)
-
-* Motor: Oracle
-* Host: `localhost` o dirección IP del servidor
-* Puerto: `1521` (se establece automáticamente)
-* Base de datos: SID o nombre del servicio Oracle
-* Usuario: Tu nombre de usuario
-* Contraseña: Tu contraseña
-
-##### Para PostgreSQL SDE / Oracle SDE (archivo .sde)
-
-* Selecciona el motor: "PostgreSQL SDE" u "Oracle SDE"  
-* El formulario ocultará campos de Host/Usuario/Contraseña/Base y mostrará el selector de archivo  
-* Navega y selecciona el archivo `.sde`  
-* Haz clic en "Probar Conexión" y luego "Guardar y Conectar"  
-
-> [!note]
-> El archivo .sde encapsula los parámetros de conexión, por lo que no se almacenan credenciales explícitas en la configuración del Add-In.
-
-### Cambio de motor de base de datos
-
-Al cambiar de motor (credenciales ↔ SDE o entre motores):
-
-* Se limpian campos no aplicables automáticamente  
-* Se asigna el puerto por defecto cuando aplica (5432 / 1521)  
-* Para modos SDE solo se persiste la ruta del archivo  
-
-> [!warning]
-> Si la conexión falla, revisa que los parámetros de red y las credenciales sean correctas antes de continuar.
-
-## Cómo usar el Add-In EAAB
-
-Una vez configurado correctamente, el Add-In ofrece herramientas principales accesibles desde la pestaña **"EAAB Add-in"** en la cinta de opciones de ArcGIS Pro.
-
-### 1. Búsqueda Individual de Direcciones
-
-**Propósito**: Consultar y ubicar direcciones específicas en el mapa con información detallada.
-
-**Acceso**: Botón **"Buscar"** en la pestaña EAAB Add-in
-
-#### Pasos para usar
-
-1. Haz clic en **"Buscar"** para abrir el panel de búsqueda
-2. **Selecciona la ciudad** desde el dropdown (se cargan automáticamente desde la base de datos)
-3. **Ingresa la dirección** en el campo de texto (ej: "Calle 123 #45-67")
-4. Haz clic en **"Buscar Dirección"**
-
-> [!tip]
-> Si la lista de ciudades aparece vacía o incompleta (por ejemplo tras cambiar de motor o reconectar), usa el botón **"Recargar" / ícono de refresco** del panel para volver a consultar el catálogo directamente desde la base de datos.
-
-#### Funcionalidades del panel de búsqueda
-
-* **Estado de conexión**: Indica si la base de datos está conectada
-* **Botón de refrescar**: Actualiza la lista de ciudades disponibles
-* **Validación en tiempo real**: Los campos se validan antes de permitir la búsqueda
-* **Barra de progreso**: Muestra el estado del proceso de búsqueda
-
-#### Resultados esperados
-
-* **Localización en mapa** y zoom automático a los resultados
-* **Auditoría en capa** `GeocodedAddresses`: Campos principales:
-  * Identificador
-  * Direccion (exactamente lo que escribió el usuario en búsqueda individual)
-  * FullAdressEAAB / FullAdressUACD (cuando existan)
-  * Geocoder (EAAB / CATASTRO / ESRI)
-  * Score (numérico, solo ESRI)
-  * ScoreText (Exacta / Aproximada por Catastro / ESRI n.n)
-  * FechaHora (hora local)
-* **Tabla de no encontrados** (cuando se implementa): registro de direcciones sin resultado con timestamp
-
-### 2. Geocodificación Masiva
-
-**Propósito**: Procesar múltiples direcciones simultáneamente desde archivos Excel.
-
-**Acceso**: Botón **"Masivo"** en la pestaña EAAB Add-in
-
-#### Formato requerido del archivo Excel
-
-El archivo debe contener **obligatoriamente** estas columnas:
-
-| Identificador | Direccion | Poblacion |
-|--------------|-----------|-----------|
-| 001 | Calle 123 #45-67 | Bogotá |
-
-* **Identificador**: ID único de cada registro (texto o número)
-* **Direccion**: Dirección completa a geocodificar
-* **Poblacion**: Ciudad o población donde se encuentra la dirección
-
-#### Pasos para usar
-
-1. Haz clic en **"Masivo"** para abrir el panel de geocodificación masiva
-2. Haz clic en **"Examinar..."** para seleccionar tu archivo Excel (.xlsx)
-3. **El sistema validará automáticamente**:
-   - Formato del archivo
-   - Presencia de columnas requeridas
-   - Integridad de los datos
-4. Si la validación es exitosa, haz clic en **"Procesar Archivo"**
-5. **Monitorea el progreso**:
-   - Barra de progreso indeterminada durante el procesamiento
-   - Mensaje de estado con información del proceso
-
-#### Resultados del procesamiento:
-
-* Inserción optimizada en lote (menor tiempo y menos locks)
-* La columna `Direccion` almacena la mejor dirección encontrada (prioridad: EAAB > Catastro > Original > Calle básica)
-* Campos de clasificación y timestamp idénticos a la búsqueda individual
-* **Contador final:** Encontradas / No encontradas / Total
-* Posibilidad de reintentos ampliando coincidencias por LIKE en la segunda pasada
-
----
-
-### 3. Configuración de Conexión
-
-**Propósito**: Configurar, validar y gestionar la conexión a la base de datos corporativa.
-
-**Acceso**: **Archivo → Opciones → Database**
-
-#### Estado de la conexión:
-
-Estados posibles (credenciales y SDE):
-
-* ✅ Conexión activa
-* ⚠️ Configuración válida pero no conectado
-* ❌ Configure los parámetros de conexión
-
-#### Funciones disponibles:
-
-1. **Probar Conexión**: Valida los parámetros sin guardar cambios
-2. **Guardar y Conectar**: Guarda la configuración y establece conexión permanente
-3. **Cambio automático de puerto**: Al cambiar el motor de BD, se actualiza el puerto predeterminado
-
-#### Persistencia de configuración:
-
-- **Guardado automático**: Los cambios se guardan al modificar cualquier campo
-- **Carga automática**: Al abrir la configuración, se cargan los valores previamente guardados
-- **Configuración por motor**: Cada motor de BD mantiene su configuración independiente
-
----
-
-## Arquitectura técnica
-
-### Componentes principales
-
-1. `Module1.cs`: Inicialización, reconexión diferida y soporte multi-motor (incluye SDE)
-2. `DatabaseConnectionService`: Abstracción de conexión (credenciales o archivo .sde) con liberación controlada
-3. `ConnectionPropertiesFactory`: Factory para propiedades Oracle / PostgreSQL
-4. `ResultsLayerService`: Gestión de Feature Class `GeocodedAddresses` (creación, campos, batch insert)
-5. `AddressNotFoundTableService`: Registro de intentos fallidos con timestamp
-6. `PtAddressGralEntityRepository` (Oracle / Postgres): Búsqueda de direcciones y catálogo de ciudades
-7. `AddressNormalizer` y fallback de errores de léxico
-8. ViewModels (AddressSearch / Massive / PropertyPage): Orquestación MVVM
-
-### Patrones implementados
-
-* MVVM (WPF + ArcGIS Pro SDK)
-* Factory (conexiones)
-* Singleton controlado (`Module1` + settings cache)
-* Command (RelayCommand / AsyncRelayCommand)
-* Fallback Strategy (normalización / búsqueda LIKE)
-* Lazy initialization (carga diferida de capa y campos)
-
-### Almacenamiento de configuración
-
-Ubicaciones:
-
-1. JSON: `%AppData%\EAABAddIn\settings.json`
-2. ApplicationSettings: respaldo
-
-Campos guardados por motor (independientes): host, puerto, base, usuario, archivo .sde, etc.
-
----
-
-## Solución de problemas
-
-### Problemas de conexión
-
-| Error | Causa probable | Solución |
-|-------|----------------|----------|
-| ❌ "Conflicting connection parameters" | Formato incorrecto de parámetros de conexión | Verificar formato: PostgreSQL usa `host:puerto`, Oracle usa `host:puerto/database` |
-| ❌ "Error de conexión: authentication failed" | Credenciales incorrectas | Verificar usuario y contraseña en la base de datos |
-| ❌ "No se pudo conectar a la base de datos" | Servidor inaccesible o puerto cerrado | Verificar conectividad de red y configuración del firewall |
-| ❌ "Database does not exist" | Nombre de base de datos incorrecto | Confirmar el nombre exacto de la base de datos |
-
-### Problemas de geocodificación
-
-| Error | Causa probable | Solución |
-|-------|----------------|----------|
-| ❌ "El archivo no contiene la columna requerida" | Encabezados incorrectos en Excel | Verificar que las columnas sean: `Identificador`, `Direccion`, `Poblacion` |
-| ❌ "No se pudo leer el archivo" | Archivo corrupto o formato incorrecto | Usar Excel (.xlsx) y verificar que no esté protegido |
-| ⚠️ "Sin coincidencias" | Primera pasada exacta falló | Se ejecuta fallback LIKE automáticamente |
-| ❌ "No hay ciudades disponibles" | Sin conexión a base de datos | Verificar conexión antes de usar herramientas |
-
-### Problemas de instalación
-
-| Error | Causa probable | Solución |
-|-------|----------------|----------|
-| ❌ "El Add-In no aparece en ArcGIS Pro" | Instalación incompleta | Reinstalar el `.esriAddInX` con ArcGIS Pro cerrado |
-| ❌ "Error al cargar el complemento" | Versión incompatible de ArcGIS Pro | Verificar que ArcGIS Pro sea 3.0 o superior |
-| ❌ "Faltan dependencias .NET" | Runtime .NET no instalado | Instalar .NET 8 Runtime desde Microsoft |
-
----
-
-## Logs y diagnóstico
-
-### Ubicación de logs:
-
-Los logs de diagnóstico se escriben en la ventana de **Output** de Visual Studio cuando se ejecuta en modo desarrollo, o en el **Event Viewer** de Windows en producción.
-
-### Información de diagnóstico útil
-
-Se registran (Output VS / Debug):
-
-* Intento de conexión y motor seleccionado
-* Ruta de archivo .sde (cuando aplica)
-* Código de error de normalización (cuando se produce fallback)
-* Número de resultados por búsqueda
-* Errores de inserción en Feature Class / tabla auxiliar
-
----
-
-## Desarrollo y contribución
-
-Si deseas contribuir al desarrollo del Add-In:
-
-### Configuración del entorno de desarrollo:
-
-1. **Clonar repositorio**: `git clone [repository-url]`
-2. **Visual Studio 2022** o superior con ArcGIS Pro SDK
-3. **ArcGIS Pro 3.0+** instalado para pruebas
-4. **Configurar rutas de salida** hacia la carpeta de Add-Ins de ArcGIS Pro
-
-### Estructura del proyecto:
+### Estructura de Carpetas
 
 ```
 EAABAddIn/
 ├── Src/
-│   ├── Application/          # Lógica de aplicación
-│   ├── Core/                 # Servicios core y configuración
-│   │   ├── Config/          # Sistema de configuración
-│   │   └── Data/            # Servicios de datos y conexión
-│   └── Presentation/        # UI y ViewModels
-│       ├── Converters/      # Converters XAML
-│       ├── View/            # Vistas XAML
-│       └── ViewModel/       # ViewModels MVVM
-├── Images/                  # Recursos gráficos
-└── Config.daml             # Configuración del Add-In
+│   ├── Application/              # Capa de aplicación (casos de uso / servicios orquestadores)
+│   │   ├── Services/
+│   │   │   ├── AddressNormalizer.cs
+│   │   │   ├── AddressSearchService.cs
+│   │   │   ├── MassiveGeocodingService.cs
+│   │   │   └── PoiSearchService.cs
+│   │   └── DTOs/
+│   │
+│   ├── Core/                     # Transversal: conexión, capa de datos base, utilidades
+│   │   ├── Config/
+│   │   │   ├── ConfigurationManager.cs
+│   │   │   ├── DatabaseConfiguration.cs
+│   │   │   └── PersistentSettings.cs
+│   │   │
+│   │   ├── Data/
+│   │   │   ├── DatabaseConnectionService.cs
+│   │   │   ├── ConnectionPropertiesFactory.cs
+│   │   │   ├── ResultsLayerService.cs
+│   │   │   ├── AddressNotFoundTableService.cs
+│   │   │   ├── PoiResultsLayerService.cs
+│   │   │   └── Repositories/
+│   │   │       ├── PtAddressGralEntityRepository.cs
+│   │   │       ├── OraclePtAddressGralRepository.cs
+│   │   │       ├── PostgresPtAddressGralRepository.cs
+│   │   │       └── PoiRepository*.cs (si aplica)
+│   │   │
+│   │   └── Map/ (servicios de mapa, transformaciones)
+│   │
+│   └── Presentation/             # MVVM UI
+│       ├── Converters/
+│       ├── View/
+│       └── ViewModel/
+│
+├── Images/                       # Recursos gráficos
+├── Config.daml                   # Configuración AddIn / DAML (UI ArcGIS Pro)
+└── Module1.cs                    # Punto de entrada / ciclo de vida
 ```
 
-### Compilación y despliegue:
+### Capas y Responsabilidades
 
-1. **Build Release**: Genera el archivo `.esriAddInX`
-2. **Testing**: Instalar en ArcGIS Pro de desarrollo
-3. **Distribución**: Compartir el `.esriAddInX` para instalación
+| Capa | Responsabilidad | Ejemplos |
+|------|-----------------|----------|
+| Presentation | Interacción usuario, binding WPF | *ViewModels, XAML Views* |
+| Application | Orquestación de casos de uso | *MassiveGeocodingService* |
+| Core.Data | Conexión y repositorios | *DatabaseConnectionService* |
+| Core.Map | Creación de capas, escritura espacial | *ResultsLayerService* |
+| Domain (implícita) | Entidades lógicas | *PtAddressGralEntity* |
+
+### Flujo de Geocodificación Individual
+
+1. Usuario ingresa dirección y ciudad.  
+2. ViewModel invoca `AddressSearchService`.  
+3. El servicio consulta repositorio principal (EAAB).  
+4. Si vacío, fallback a Catastro / ESRI según configuración o heurística.  
+5. Resultados se normalizan (dirección preferida EAAB > Catastro > Original).  
+6. Se envían a `ResultsLayerService` para persistir punto.
+
+### Flujo de Geocodificación Masiva
+
+1. Lectura de Excel → generación de lista de registros.  
+2. Validaciones: estructura, campos obligatorios, códigos de ciudad válidos.  
+3. Iteración paralela controlada (en esta versión: secuencial por seguridad ArcGIS MCT).  
+4. Clasificación de resultados y enriquecimiento de atributos.  
+5. Batch insert (acumulación + commit).  
+6. Resumen (found / not found).  
+
+### Flujo de Búsqueda de POIs
+
+1. Usuario ingresa término (ej: "hospital").  
+2. `PoiSearchService` genera un patrón (LIKE normalizado).  
+3. Repositorio POI ejecuta consulta (index por nombre / categoría).  
+4. Se limita número máximo (paginación futura).  
+5. Se inserta en capa `POIResults` o memoria y luego commit.  
+6. Selección de un resultado centra el mapa.
+
+### Patrones de Diseño Implementados
+
+(Se mantienen los ya descritos: MVVM, Factory, Repository, Singleton Controlado, Strategy (fallback), Lazy Initialization.)
+
+Se adicionan:
+- **Adapter** (normalización entre fuentes de resultados EAAB, Catastro, ESRI hacia `GeocodeResult`).
+- **Value Objects ligeros** para direcciones normalizadas (en evolución).
+- **Fail-Fast Validation** en masivo antes de consumir recursos.
+
+## Componentes Principales (Resumen)
+
+### 1. Module1.cs - Punto de Entrada
+
+```csharp
+internal class Module1 : Module
+{
+    protected override bool Initialize()
+    {
+        // Cargar configuración persistente
+        LoadConfiguration();
+        
+        // Inicializar servicios
+        InitializeServices();
+        
+        // Intentar reconexión diferida
+        _ = Task.Run(async () => await AttemptReconnectionAsync());
+        
+        return base.Initialize();
+    }
+    
+    private async Task AttemptReconnectionAsync()
+    {
+        var config = ConfigurationManager.LoadConfiguration();
+        if (config.IsValid)
+        {
+            await ConnectionService.ConnectAsync(config);
+        }
+    }
+}
+```
+
+### 2. DatabaseConnectionService
+
+Gestiona las conexiones a bases de datos con soporte multi-motor.
+
+```csharp
+public class DatabaseConnectionService : IDisposable
+{
+    private Geodatabase _geodatabase;
+    private DatabaseEngine _currentEngine;
+    private string _sdeFilePath;
+    
+    public async Task<bool> ConnectAsync(DatabaseConfiguration config)
+    {
+        try
+        {
+            DatabaseConnectionProperties connectionProps;
+            
+            if (config.Engine is DatabaseEngine.PostgreSQLSDE or DatabaseEngine.OracleSDE)
+            {
+                // Conexión mediante archivo SDE
+                connectionProps = new DatabaseConnectionFile(
+                    new Uri(config.SdeFilePath, UriKind.Absolute));
+            }
+            else
+            {
+                // Conexión por credenciales
+                connectionProps = ConnectionPropertiesFactory.Create(
+                    config.Engine, config.Host, config.Port, 
+                    config.Database, config.User, config.Password);
+            }
+            
+            await QueuedTask.Run(() =>
+            {
+                _geodatabase = new Geodatabase(connectionProps);
+            });
+            
+            _currentEngine = config.Engine;
+            IsConnected = true;
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error de conexión: {ex.Message}");
+            return false;
+        }
+    }
+    
+    public async Task<Geodatabase> GetConnectionAsync()
+    {
+        if (!IsConnected || _geodatabase == null)
+            throw new InvalidOperationException("No hay conexión activa");
+        
+        return await Task.FromResult(_geodatabase);
+    }
+    
+    public void Dispose()
+    {
+        _geodatabase?.Dispose();
+        _geodatabase = null;
+        IsConnected = false;
+    }
+}
+```
+
+### 3. ResultsLayerService
+
+Gestiona la capa de resultados de geocodificación con batch insert optimizado.
+
+```csharp
+public class ResultsLayerService
+{
+    private const string FEATURE_CLASS_NAME = "GeocodedAddresses";
+    
+    public async Task InsertBatchAsync(List<GeocodeResult> results)
+    {
+        var featureClass = await GetOrCreateFeatureClassAsync();
+        
+        await QueuedTask.Run(() =>
+        {
+            using var operation = new EditOperation
+            {
+                Name = "Insertar resultados de geocodificación"
+            };
+            
+            foreach (var result in results)
+            {
+                var attributes = new Dictionary<string, object>
+                {
+                    ["Identificador"] = result.Identifier,
+                    ["Direccion"] = result.Address,
+                    ["FullAdressEAAB"] = result.FullAddressEAAB,
+                    ["FullAdressUACD"] = result.FullAddressUACD,
+                    ["Geocoder"] = result.Geocoder.ToString(),
+                    ["Score"] = result.Score,
+                    ["ScoreText"] = result.ScoreText,
+                    ["FechaHora"] = DateTime.Now
+                };
+                
+                var geometry = MapPointBuilderEx.CreateMapPoint(
+                    result.X, result.Y, SpatialReferences.WGS84);
+                
+                operation.Create(featureClass, attributes, geometry);
+            }
+            
+            operation.Execute();
+        });
+    }
+    
+    private FeatureClass CreateOrRetrieveFeatureClass()
+    {
+        var gdb = GetDefaultGeodatabase();
+        
+        // Intentar abrir existente
+        try
+        {
+            return gdb.OpenDataset<FeatureClass>(FEATURE_CLASS_NAME);
+        }
+        catch
+        {
+            // Crear nuevo
+            return CreateNewFeatureClass(gdb);
+        }
+    }
+    
+    private FeatureClass CreateNewFeatureClass(Geodatabase gdb)
+    {
+        var fcDescription = new FeatureClassDescription(
+            FEATURE_CLASS_NAME,
+            new List<FieldDescription>
+            {
+                new FieldDescription("Identificador", FieldType.String),
+                new FieldDescription("Direccion", FieldType.String),
+                new FieldDescription("FullAdressEAAB", FieldType.String),
+                new FieldDescription("FullAdressUACD", FieldType.String),
+                new FieldDescription("Geocoder", FieldType.String),
+                new FieldDescription("Score", FieldType.Double),
+                new FieldDescription("ScoreText", FieldType.String),
+                new FieldDescription("FechaHora", FieldType.Date)
+            },
+            new ShapeDescription(GeometryType.Point, SpatialReferences.WGS84)
+        );
+        
+        return gdb.CreateFeatureClass(fcDescription);
+    }
+}
+```
+
+### 4. AddressSearchService
+
+Orquesta la búsqueda de direcciones con fallback inteligente.
+
+```csharp
+public class AddressSearchService
+{
+    private readonly IPtAddressGralEntityRepository _repository;
+    private readonly AddressNormalizer _normalizer;
+    
+    public async Task<SearchResult> SearchAsync(
+        string address, string city, CancellationToken cancellationToken)
+    {
+        // Primer intento: búsqueda exacta
+        var results = await _repository.SearchAddressesAsync(
+            address, city, cancellationToken);
+        
+        if (results.Any())
+            return new SearchResult(results, SearchStrategy.Exact);
+        
+        // Segundo intento: búsqueda LIKE ampliada
+        Debug.WriteLine("Búsqueda exacta sin resultados, intentando LIKE...");
+        results = await _repository.SearchAddressesLikeAsync(
+            address, city, cancellationToken);
+        
+        return new SearchResult(results, SearchStrategy.Like);
+    }
+    
+    public async Task<string> NormalizeAddressAsync(string address)
+    {
+        try
+        {
+            return await _normalizer.NormalizeAsync(address);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error de normalización: {ex.Message}");
+            return address; // Fallback a dirección original
+        }
+    }
+}
+```
+
+### 5. MassiveGeocodingService
+
+Procesamiento masivo con optimizaciones de rendimiento.
+
+```csharp
+public class MassiveGeocodingService
+{
+    private readonly AddressSearchService _searchService;
+    private readonly ResultsLayerService _resultsService;
+    
+    public async Task<MassiveResult> ProcessFileAsync(
+        string filePath, IProgress<ProgressInfo> progress)
+    {
+        var records = await ReadExcelFileAsync(filePath);
+        var results = new List<GeocodeResult>();
+        var notFound = new List<NotFoundRecord>();
+        
+        int processed = 0;
+        int total = records.Count;
+        
+        foreach (var record in records)
+        {
+            var searchResult = await _searchService.SearchAsync(
+                record.Address, record.City, CancellationToken.None);
+            
+            if (searchResult.HasResults)
+            {
+                // Determinar mejor dirección: EAAB > Catastro > Original
+                var bestAddress = DetermineBestAddress(searchResult);
+                results.Add(CreateGeocodeResult(record, bestAddress));
+            }
+            else
+            {
+                notFound.Add(new NotFoundRecord
+                {
+                    Identifier = record.Identifier,
+                    Address = record.Address,
+                    City = record.City,
+                    Timestamp = DateTime.Now
+                });
+            }
+            
+            processed++;
+            progress?.Report(new ProgressInfo(processed, total));
+        }
+        
+        // Inserción en lote optimizada
+        await _resultsService.InsertBatchAsync(results);
+        await _notFoundService.InsertBatchAsync(notFound);
+        
+        return new MassiveResult
+        {
+            Found = results.Count,
+            NotFound = notFound.Count,
+            Total = total
+        };
+    }
+    
+    private string DetermineBestAddress(SearchResult result)
+    {
+        // Prioridad: FullAddressEAAB > FullAddressUACD > Original > Calle básica
+        var first = result.Addresses.First();
+        
+        if (!string.IsNullOrEmpty(first.FullAddressEAAB))
+            return first.FullAddressEAAB;
+        
+        if (!string.IsNullOrEmpty(first.FullAddressUACD))
+            return first.FullAddressUACD;
+        
+        return first.Direccion;
+    }
+}
+```
+
+## Sistema de Configuración
+
+- Persistencia JSON + respaldo en settings App.
+- Validación contextual según tipo de motor.
+- Admite cambio caliente (runtime) disparando reconexión.
+
+### Seguridad de Configuración
+
+- Contraseñas no se registran en logs.
+- Posible mejora: cifrado AES local (pendiente) usando DPAPI Windows.
+- Recomendado: restringir permisos de carpeta `%AppData%/EAABAddIn`.
+
+## Modelo de Datos (Lógico Simplificado)
+
+| Entidad | Campos clave | Fuente | Notas |
+|---------|--------------|--------|-------|
+| PtAddressGralEntity | ID, Direccion, FullAddressEAAB, FullAddressCadastre, Poblacion | BD corporativa | Base principal de direcciones |
+| GeocodeResult | Identifier, Address, Source, Score, Lat/Long | Derivado | Unión de varias fuentes |
+| NotFoundRecord | Identifier, Address, City, Timestamp | Generado | Auditoría de intentos fallidos |
+| PoiEntity | PoiId, Name, Category, City, X, Y | BD corporativa / vista | Indexable para búsqueda |
+
+## Capa de Resultados Espaciales
+
+### `ResultsLayerService`
+- Lazy create de Feature Class `GeocodedAddresses` (WGS84).  
+- Inserciones agrupadas dentro de `EditOperation`.  
+- Campos calculados en el ViewModel (score interpretado).
+
+### `PoiResultsLayerService`
+- Similar estrategia: `POIResults` con campos `PoiId`, `Nombre`, `Categoria`, `Ciudad`, `FechaHora`.
+- Reutiliza builder de geometrías estándar.
+
+## Logging y Observabilidad
+
+Estado actual: logging mínimo mediante `Debug.WriteLine` y mensajes UI.  
+Sugerido:
+- Introducir `ILogger` (MS.Extensions.Logging) con proveedor simple.
+- Niveles: Info (operaciones), Warning (faltantes), Error (excepciones).
+- Métricas futuras: tiempo promedio por geocodificación, % éxito.
+
+## Rendimiento y Escalabilidad
+
+| Área | Riesgo | Mitigación Actual | Mejora Potencial |
+|------|-------|-------------------|------------------|
+| Masivo secuencial | Lento con >50k filas | Procesamiento controlado | Paralelizar lectura + cola MCT |
+| Acceso BD | Latencia variable | Repositorio único | Cache ciudades en memoria |
+| Insert espacial | Bloqueos si muchas ediciones | Batch + single commit | Chunk configurable |
+| Normalización externa | Timeout/errores | Fallback inmediato | Circuit breaker + retry |
+
+## Tratamiento de Errores
+
+- Validaciones previas detienen proceso temprano (fail-fast).
+- Excepciones en loop masivo contabilizan como "no encontrados" sin detener el resto.
+- Mostrar mensajes al usuario solo cuando agregan valor (no spam por cada fila).
+
+## Pruebas (Testing)
+
+### Estrategia Propuesta
+
+| Tipo | Objetivo | Ejemplos |
+|------|----------|----------|
+| Unit | Lógica pura (normalizador, filtros) | `AddressNormalizerTests` |
+| Repository (mock) | Queries adaptadas por motor | `PtAddressGralRepositoryTests` |
+| Integration (opcional) | Conexión real a GDB de prueba | Escenarios mínimos |
+| UI (manual) | Flujo MVVM básico | Buscar, Masivo, POI |
+
+### Recomendaciones
+- Introducir interfaces para capa ResultsLayer para facilitar mocks.
+- Usar `xUnit` + `Moq`.
+- Datos de prueba ligeros (JSON) para direcciones.
+
+## Build y Empaquetado
+
+### Compilación Local
+
+1. Abrir solución en Visual Studio con ArcGIS Pro instalado.
+2. Restaurar paquetes NuGet.
+3. Asegurar target: `net8.0-windows` con `UseWPF` habilitado.
+4. Compilar en modo Release.
+
+### Generación del AddIn (.esriAddInX)
+
+1. Verificar `Config.daml` actualizado (botones/paneles).  
+2. Build Release genera carpeta `bin/Release`.  
+3. Utilizar herramienta de empaquetado del SDK (si configurada) o copiar output.  
+4. Validar firma (si política corporativa lo exige).  
+
+### Versionado
+
+- Mantener versión en AssemblyInfo o proyecto (PropertyGroup `<Version>`).  
+- Sincronizar con sección "Información de Versión" de manual usuario.  
+
+## Despliegue
+
+| Entorno | Acción | Notas |
+|---------|-------|-------|
+| Usuario final | Distribuir `.esriAddInX` | Instrucciones en READMEUSER |
+| Piloto | Revisión funcional | Capturar métricas básicas |
+| Producción | Publicación controlada | Registrar hash archivo |
+
+## Seguridad y Acceso a Datos
+
+- Principio de mínimo privilegio para usuarios de BD.
+- No almacenar contraseñas en texto plano fuera de `%AppData%` (cifrar futuro).
+- Validar origen de archivos Excel (no macros, no binarios maliciosos).
+
+## Internacionalización (i18n)
+
+- Textos actualmente en español embebidos.
+- Mejora futura: recursos (.resx) para soportar EN/ES.
+
+## Roadmap Propuesto
+
+| Prioridad | Feature | Descripción |
+|-----------|---------|-------------|
+| Alta | Cancelación masiva | Token cancelar proceso en curso |
+| Media | Cache ciudades | Reducir llamadas repetidas |
+| Media | Exportar no encontrados | CSV automático |
+| Media | Paginación POIs | Controlar grandes resultados |
+| Baja | Cifrado credenciales | DPAPI / AES |
+| Baja | Telemetría | Eventos anónimos de uso |
+
+## Ejemplo Simplificado de POI Repository
+
+```csharp
+public interface IPoiRepository {
+    IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500);
+}
+
+public class PostgresPoiRepository : IPoiRepository {
+    private readonly DatabaseConnectionService _connection;
+    public IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500) {
+        // Implementación con ILIKE y limit
+    }
+}
+```
+
+## Notas de Mantenimiento
+
+- Revisar compatibilidad ArcGIS Pro antes de subir versión SDK.
+- Ejecutar pruebas de regresión después de cambios en repositorios.
+- Documentar nuevas columnas añadidas a Feature Class.
 
 ---
 
-## Licencia y soporte
+(Sección original de patrones y ejemplos mantenida abajo para referencia)
 
-Este Add-In es de uso interno de la EAAB. Para soporte técnico, contactar al equipo de desarrollo de sistemas de información geográfica.
+# Documentación Técnica - EAAB AddIn para ArcGIS Pro
 
-**Versión**: 1.1  
-**Última actualización**: 29-09-2025  
-**Compatible con**: ArcGIS Pro 3.4+  
-**Novedades 1.1**: Soporte PostgreSQL SDE, timestamps locales, clasificación origen/score, fallback LIKE, auditoría no encontrados.
+## Descripción General
+
+AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE.
+
+## Stack Tecnológico
+
+- **.NET 8**
+- **ArcGIS Pro SDK 3.4+**
+- **WPF** con patrón MVVM
+- **PostgreSQL 15+** con PostGIS
+- **Oracle 18+**
+- **EPPlus** para procesamiento de archivos Excel
+
+## Requisitos de Desarrollo
+
+### Entorno de desarrollo
+
+- Visual Studio 2022 o superior
+- ArcGIS Pro SDK for .NET
+- ArcGIS Pro 3.4+ instalado
+- .NET 8 SDK
+
+### Dependencias del proyecto
+
+```xml
+<PackageReference Include="ArcGIS.Desktop.SDK" Version="3.4.*" />
+<PackageReference Include="EPPlus" Version="7.0+" />
+<PackageReference Include="Npgsql" Version="8.0+" />
+<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21+" />
+```
+
+## Arquitectura del Sistema
+
+### Estructura de Carpetas
+
+```
+EAABAddIn/
+├── Src/
+│   ├── Application/              # Capa de aplicación
+│   │   ├── Services/
+│   │   │   ├── AddressNormalizer.cs
+│   │   │   ├── AddressSearchService.cs
+│   │   │   └── MassiveGeocodingService.cs
+│   │   └── DTOs/
+│   │
+│   ├── Core/                     # Capa core
+│   │   ├── Config/
+│   │   │   ├── ConfigurationManager.cs
+│   │   │   ├── DatabaseConfiguration.cs
+│   │   │   └── PersistentSettings.cs
+│   │   │
+│   │   └── Data/
+│   │       ├── DatabaseConnectionService.cs
+│   │       ├── ConnectionPropertiesFactory.cs
+│   │       ├── ResultsLayerService.cs
+│   │       ├── AddressNotFoundTableService.cs
+│   │       └── Repositories/
+│   │           ├── PtAddressGralEntityRepository.cs
+│   │           ├── OraclePtAddressGralRepository.cs
+│   │           └── PostgresPtAddressGralRepository.cs
+│   │
+│   └── Presentation/             # Capa de presentación
+│       ├── Converters/           # Convertidores XAML
+│       │   ├── BoolToVisibilityConverter.cs
+│       │   └── ConnectionStatusConverter.cs
+│       │
+│       ├── View/                 # Vistas XAML
+│       │   ├── AddressSearchView.xaml
+│       │   ├── MassiveGeocodingView.xaml
+│       │   └── PropertyPageView.xaml
+│       │
+│       └── ViewModel/            # ViewModels
+│           ├── AddressSearchViewModel.cs
+│           ├── MassiveGeocodingViewModel.cs
+│           └── PropertyPageViewModel.cs
+│
+├── Images/                       # Recursos gráficos
+├── Config.daml                   # Configuración del AddIn
+└── Module1.cs                    # Punto de entrada
+```
+
+### Patrones de Diseño Implementados
+
+#### 1. MVVM (Model-View-ViewModel)
+
+```csharp
+// ViewModel base con INotifyPropertyChanged
+public class ViewModelBase : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler PropertyChanged;
+    
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+
+// Ejemplo de comando asíncrono
+private AsyncRelayCommand _searchCommand;
+public ICommand SearchCommand => _searchCommand ??= 
+    new AsyncRelayCommand(ExecuteSearchAsync, CanExecuteSearch);
+```
+
+#### 2. Factory Pattern
+
+```csharp
+public static class ConnectionPropertiesFactory
+{
+    public static DatabaseConnectionProperties Create(DatabaseEngine engine, 
+        string host, int port, string database, string user, string password)
+    {
+        return engine switch
+        {
+            DatabaseEngine.PostgreSQL => CreatePostgreSQL(host, port, database, user, password),
+            DatabaseEngine.Oracle => CreateOracle(host, port, database, user, password),
+            DatabaseEngine.PostgreSQLSDE => CreateFromSdeFile(sdeFilePath),
+            DatabaseEngine.OracleSDE => CreateFromSdeFile(sdeFilePath),
+            _ => throw new NotSupportedException($"Motor no soportado: {engine}")
+        };
+    }
+}
+```
+
+#### 3. Repository Pattern
+
+```csharp
+public interface IPtAddressGralEntityRepository
+{
+    Task<IEnumerable<PtAddressGralEntity>> SearchAddressesAsync(
+        string address, string city, CancellationToken cancellationToken);
+    
+    Task<IEnumerable<string>> GetAvailableCitiesAsync(
+        CancellationToken cancellationToken);
+}
+
+public class OraclePtAddressGralRepository : IPtAddressGralEntityRepository
+{
+    private readonly DatabaseConnectionService _connectionService;
+    
+    public async Task<IEnumerable<PtAddressGralEntity>> SearchAddressesAsync(
+        string address, string city, CancellationToken cancellationToken)
+    {
+        var connection = await _connectionService.GetConnectionAsync();
+        using var command = connection.CreateCommand();
+        
+        command.CommandText = @"
+            SELECT ID, DIRECCION, FULLADDRESSEAAB, FULLADDRESSUACD, POBLACION
+            FROM PT_ADDRESS_GRAL_ENTITY
+            WHERE UPPER(POBLACION) = UPPER(:city) 
+            AND UPPER(DIRECCION) = UPPER(:address)";
+        
+        // Implementación...
+    }
+}
+```
+
+#### 4. Singleton Controlado
+
+```csharp
+public class Module1 : Module
+{
+    private static Module1 _this = null;
+    private static DatabaseConnectionService _connectionService;
+    
+    public static Module1 Current => _this ?? (_this = 
+        (Module1)FrameworkApplication.FindModule("EAABAddIn_Module"));
+    
+    public static DatabaseConnectionService ConnectionService => 
+        _connectionService ??= new DatabaseConnectionService();
+}
+```
+
+#### 5. Strategy Pattern (Fallback)
+
+```csharp
+public class AddressNormalizer
+{
+    public async Task<string> NormalizeAsync(string address)
+    {
+        try
+        {
+            // Intento de normalización con servicio ESRI
+            return await ESRINormalizationService.NormalizeAsync(address);
+        }
+        catch (LexiconException ex) when (ex.Code is "CODE_145" or "CODE_146")
+        {
+            // Fallback: usar dirección original
+            Debug.WriteLine($"Fallback de normalización: {ex.Code}");
+            return address;
+        }
+    }
+}
+```
+
+#### 6. Lazy Initialization
+
+```csharp
+public class ResultsLayerService
+{
+    private FeatureClass _geocodedAddressesFC;
+    
+    public async Task<FeatureClass> GetOrCreateFeatureClassAsync()
+    {
+        if (_geocodedAddressesFC != null)
+            return _geocodedAddressesFC;
+        
+        await QueuedTask.Run(() =>
+        {
+            // Crear o recuperar Feature Class
+            _geocodedAddressesFC = CreateOrRetrieveFeatureClass();
+        });
+        
+        return _geocodedAddressesFC;
+    }
+}
+```
+
+## Componentes Principales
+
+### 1. Module1.cs - Punto de Entrada
+
+```csharp
+internal class Module1 : Module
+{
+    protected override bool Initialize()
+    {
+        // Cargar configuración persistente
+        LoadConfiguration();
+        
+        // Inicializar servicios
+        InitializeServices();
+        
+        // Intentar reconexión diferida
+        _ = Task.Run(async () => await AttemptReconnectionAsync());
+        
+        return base.Initialize();
+    }
+    
+    private async Task AttemptReconnectionAsync()
+    {
+        var config = ConfigurationManager.LoadConfiguration();
+        if (config.IsValid)
+        {
+            await ConnectionService.ConnectAsync(config);
+        }
+    }
+}
+```
+
+### 2. DatabaseConnectionService
+
+Gestiona las conexiones a bases de datos con soporte multi-motor.
+
+```csharp
+public class DatabaseConnectionService : IDisposable
+{
+    private Geodatabase _geodatabase;
+    private DatabaseEngine _currentEngine;
+    private string _sdeFilePath;
+    
+    public async Task<bool> ConnectAsync(DatabaseConfiguration config)
+    {
+        try
+        {
+            DatabaseConnectionProperties connectionProps;
+            
+            if (config.Engine is DatabaseEngine.PostgreSQLSDE or DatabaseEngine.OracleSDE)
+            {
+                // Conexión mediante archivo SDE
+                connectionProps = new DatabaseConnectionFile(
+                    new Uri(config.SdeFilePath, UriKind.Absolute));
+            }
+            else
+            {
+                // Conexión por credenciales
+                connectionProps = ConnectionPropertiesFactory.Create(
+                    config.Engine, config.Host, config.Port, 
+                    config.Database, config.User, config.Password);
+            }
+            
+            await QueuedTask.Run(() =>
+            {
+                _geodatabase = new Geodatabase(connectionProps);
+            });
+            
+            _currentEngine = config.Engine;
+            IsConnected = true;
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error de conexión: {ex.Message}");
+            return false;
+        }
+    }
+    
+    public async Task<Geodatabase> GetConnectionAsync()
+    {
+        if (!IsConnected || _geodatabase == null)
+            throw new InvalidOperationException("No hay conexión activa");
+        
+        return await Task.FromResult(_geodatabase);
+    }
+    
+    public void Dispose()
+    {
+        _geodatabase?.Dispose();
+        _geodatabase = null;
+        IsConnected = false;
+    }
+}
+```
+
+### 3. ResultsLayerService
+
+Gestiona la capa de resultados de geocodificación con batch insert optimizado.
+
+```csharp
+public class ResultsLayerService
+{
+    private const string FEATURE_CLASS_NAME = "GeocodedAddresses";
+    
+    public async Task InsertBatchAsync(List<GeocodeResult> results)
+    {
+        var featureClass = await GetOrCreateFeatureClassAsync();
+        
+        await QueuedTask.Run(() =>
+        {
+            using var operation = new EditOperation
+            {
+                Name = "Insertar resultados de geocodificación"
+            };
+            
+            foreach (var result in results)
+            {
+                var attributes = new Dictionary<string, object>
+                {
+                    ["Identificador"] = result.Identifier,
+                    ["Direccion"] = result.Address,
+                    ["FullAdressEAAB"] = result.FullAddressEAAB,
+                    ["FullAdressUACD"] = result.FullAddressUACD,
+                    ["Geocoder"] = result.Geocoder.ToString(),
+                    ["Score"] = result.Score,
+                    ["ScoreText"] = result.ScoreText,
+                    ["FechaHora"] = DateTime.Now
+                };
+                
+                var geometry = MapPointBuilderEx.CreateMapPoint(
+                    result.X, result.Y, SpatialReferences.WGS84);
+                
+                operation.Create(featureClass, attributes, geometry);
+            }
+            
+            operation.Execute();
+        });
+    }
+    
+    private FeatureClass CreateOrRetrieveFeatureClass()
+    {
+        var gdb = GetDefaultGeodatabase();
+        
+        // Intentar abrir existente
+        try
+        {
+            return gdb.OpenDataset<FeatureClass>(FEATURE_CLASS_NAME);
+        }
+        catch
+        {
+            // Crear nuevo
+            return CreateNewFeatureClass(gdb);
+        }
+    }
+    
+    private FeatureClass CreateNewFeatureClass(Geodatabase gdb)
+    {
+        var fcDescription = new FeatureClassDescription(
+            FEATURE_CLASS_NAME,
+            new List<FieldDescription>
+            {
+                new FieldDescription("Identificador", FieldType.String),
+                new FieldDescription("Direccion", FieldType.String),
+                new FieldDescription("FullAdressEAAB", FieldType.String),
+                new FieldDescription("FullAdressUACD", FieldType.String),
+                new FieldDescription("Geocoder", FieldType.String),
+                new FieldDescription("Score", FieldType.Double),
+                new FieldDescription("ScoreText", FieldType.String),
+                new FieldDescription("FechaHora", FieldType.Date)
+            },
+            new ShapeDescription(GeometryType.Point, SpatialReferences.WGS84)
+        );
+        
+        return gdb.CreateFeatureClass(fcDescription);
+    }
+}
+```
+
+### 4. AddressSearchService
+
+Orquesta la búsqueda de direcciones con fallback inteligente.
+
+```csharp
+public class AddressSearchService
+{
+    private readonly IPtAddressGralEntityRepository _repository;
+    private readonly AddressNormalizer _normalizer;
+    
+    public async Task<SearchResult> SearchAsync(
+        string address, string city, CancellationToken cancellationToken)
+    {
+        // Primer intento: búsqueda exacta
+        var results = await _repository.SearchAddressesAsync(
+            address, city, cancellationToken);
+        
+        if (results.Any())
+            return new SearchResult(results, SearchStrategy.Exact);
+        
+        // Segundo intento: búsqueda LIKE ampliada
+        Debug.WriteLine("Búsqueda exacta sin resultados, intentando LIKE...");
+        results = await _repository.SearchAddressesLikeAsync(
+            address, city, cancellationToken);
+        
+        return new SearchResult(results, SearchStrategy.Like);
+    }
+    
+    public async Task<string> NormalizeAddressAsync(string address)
+    {
+        try
+        {
+            return await _normalizer.NormalizeAsync(address);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error de normalización: {ex.Message}");
+            return address; // Fallback a dirección original
+        }
+    }
+}
+```
+
+### 5. MassiveGeocodingService
+
+Procesamiento masivo con optimizaciones de rendimiento.
+
+```csharp
+public class MassiveGeocodingService
+{
+    private readonly AddressSearchService _searchService;
+    private readonly ResultsLayerService _resultsService;
+    
+    public async Task<MassiveResult> ProcessFileAsync(
+        string filePath, IProgress<ProgressInfo> progress)
+    {
+        var records = await ReadExcelFileAsync(filePath);
+        var results = new List<GeocodeResult>();
+        var notFound = new List<NotFoundRecord>();
+        
+        int processed = 0;
+        int total = records.Count;
+        
+        foreach (var record in records)
+        {
+            var searchResult = await _searchService.SearchAsync(
+                record.Address, record.City, CancellationToken.None);
+            
+            if (searchResult.HasResults)
+            {
+                // Determinar mejor dirección: EAAB > Catastro > Original
+                var bestAddress = DetermineBestAddress(searchResult);
+                results.Add(CreateGeocodeResult(record, bestAddress));
+            }
+            else
+            {
+                notFound.Add(new NotFoundRecord
+                {
+                    Identifier = record.Identifier,
+                    Address = record.Address,
+                    City = record.City,
+                    Timestamp = DateTime.Now
+                });
+            }
+            
+            processed++;
+            progress?.Report(new ProgressInfo(processed, total));
+        }
+        
+        // Inserción en lote optimizada
+        await _resultsService.InsertBatchAsync(results);
+        await _notFoundService.InsertBatchAsync(notFound);
+        
+        return new MassiveResult
+        {
+            Found = results.Count,
+            NotFound = notFound.Count,
+            Total = total
+        };
+    }
+    
+    private string DetermineBestAddress(SearchResult result)
+    {
+        // Prioridad: FullAddressEAAB > FullAddressUACD > Original > Calle básica
+        var first = result.Addresses.First();
+        
+        if (!string.IsNullOrEmpty(first.FullAddressEAAB))
+            return first.FullAddressEAAB;
+        
+        if (!string.IsNullOrEmpty(first.FullAddressUACD))
+            return first.FullAddressUACD;
+        
+        return first.Direccion;
+    }
+}
+```
+
+## Sistema de Configuración
+
+- Persistencia JSON + respaldo en settings App.
+- Validación contextual según tipo de motor.
+- Admite cambio caliente (runtime) disparando reconexión.
+
+### Seguridad de Configuración
+
+- Contraseñas no se registran en logs.
+- Posible mejora: cifrado AES local (pendiente) usando DPAPI Windows.
+- Recomendado: restringir permisos de carpeta `%AppData%/EAABAddIn`.
+
+## Modelo de Datos (Lógico Simplificado)
+
+| Entidad | Campos clave | Fuente | Notas |
+|---------|--------------|--------|-------|
+| PtAddressGralEntity | ID, Direccion, FullAddressEAAB, FullAddressCadastre, Poblacion | BD corporativa | Base principal de direcciones |
+| GeocodeResult | Identifier, Address, Source, Score, Lat/Long | Derivado | Unión de varias fuentes |
+| NotFoundRecord | Identifier, Address, City, Timestamp | Generado | Auditoría de intentos fallidos |
+| PoiEntity | PoiId, Name, Category, City, X, Y | BD corporativa / vista | Indexable para búsqueda |
+
+## Capa de Resultados Espaciales
+
+### `ResultsLayerService`
+- Lazy create de Feature Class `GeocodedAddresses` (WGS84).  
+- Inserciones agrupadas dentro de `EditOperation`.  
+- Campos calculados en el ViewModel (score interpretado).
+
+### `PoiResultsLayerService`
+- Similar estrategia: `POIResults` con campos `PoiId`, `Nombre`, `Categoria`, `Ciudad`, `FechaHora`.
+- Reutiliza builder de geometrías estándar.
+
+## Logging y Observabilidad
+
+Estado actual: logging mínimo mediante `Debug.WriteLine` y mensajes UI.  
+Sugerido:
+- Introducir `ILogger` (MS.Extensions.Logging) con proveedor simple.
+- Niveles: Info (operaciones), Warning (faltantes), Error (excepciones).
+- Métricas futuras: tiempo promedio por geocodificación, % éxito.
+
+## Rendimiento y Escalabilidad
+
+| Área | Riesgo | Mitigación Actual | Mejora Potencial |
+|------|-------|-------------------|------------------|
+| Masivo secuencial | Lento con >50k filas | Procesamiento controlado | Paralelizar lectura + cola MCT |
+| Acceso BD | Latencia variable | Repositorio único | Cache ciudades en memoria |
+| Insert espacial | Bloqueos si muchas ediciones | Batch + single commit | Chunk configurable |
+| Normalización externa | Timeout/errores | Fallback inmediato | Circuit breaker + retry |
+
+## Tratamiento de Errores
+
+- Validaciones previas detienen proceso temprano (fail-fast).
+- Excepciones en loop masivo contabilizan como "no encontrados" sin detener el resto.
+- Mostrar mensajes al usuario solo cuando agregan valor (no spam por cada fila).
+
+## Pruebas (Testing)
+
+### Estrategia Propuesta
+
+| Tipo | Objetivo | Ejemplos |
+|------|----------|----------|
+| Unit | Lógica pura (normalizador, filtros) | `AddressNormalizerTests` |
+| Repository (mock) | Queries adaptadas por motor | `PtAddressGralRepositoryTests` |
+| Integration (opcional) | Conexión real a GDB de prueba | Escenarios mínimos |
+| UI (manual) | Flujo MVVM básico | Buscar, Masivo, POI |
+
+### Recomendaciones
+- Introducir interfaces para capa ResultsLayer para facilitar mocks.
+- Usar `xUnit` + `Moq`.
+- Datos de prueba ligeros (JSON) para direcciones.
+
+## Build y Empaquetado
+
+### Compilación Local
+
+1. Abrir solución en Visual Studio con ArcGIS Pro instalado.
+2. Restaurar paquetes NuGet.
+3. Asegurar target: `net8.0-windows` con `UseWPF` habilitado.
+4. Compilar en modo Release.
+
+### Generación del AddIn (.esriAddInX)
+
+1. Verificar `Config.daml` actualizado (botones/paneles).  
+2. Build Release genera carpeta `bin/Release`.  
+3. Utilizar herramienta de empaquetado del SDK (si configurada) o copiar output.  
+4. Validar firma (si política corporativa lo exige).  
+
+### Versionado
+
+- Mantener versión en AssemblyInfo o proyecto (PropertyGroup `<Version>`).  
+- Sincronizar con sección "Información de Versión" de manual usuario.  
+
+## Despliegue
+
+| Entorno | Acción | Notas |
+|---------|-------|-------|
+| Usuario final | Distribuir `.esriAddInX` | Instrucciones en READMEUSER |
+| Piloto | Revisión funcional | Capturar métricas básicas |
+| Producción | Publicación controlada | Registrar hash archivo |
+
+## Seguridad y Acceso a Datos
+
+- Principio de mínimo privilegio para usuarios de BD.
+- No almacenar contraseñas en texto plano fuera de `%AppData%` (cifrar futuro).
+- Validar origen de archivos Excel (no macros, no binarios maliciosos).
+
+## Internacionalización (i18n)
+
+- Textos actualmente en español embebidos.
+- Mejora futura: recursos (.resx) para soportar EN/ES.
+
+## Roadmap Propuesto
+
+| Prioridad | Feature | Descripción |
+|-----------|---------|-------------|
+| Alta | Cancelación masiva | Token cancelar proceso en curso |
+| Media | Cache ciudades | Reducir llamadas repetidas |
+| Media | Exportar no encontrados | CSV automático |
+| Media | Paginación POIs | Controlar grandes resultados |
+| Baja | Cifrado credenciales | DPAPI / AES |
+| Baja | Telemetría | Eventos anónimos de uso |
+
+## Ejemplo Simplificado de POI Repository
+
+```csharp
+public interface IPoiRepository {
+    IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500);
+}
+
+public class PostgresPoiRepository : IPoiRepository {
+    private readonly DatabaseConnectionService _connection;
+    public IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500) {
+        // Implementación con ILIKE y limit
+    }
+}
+```
+
+## Notas de Mantenimiento
+
+- Revisar compatibilidad ArcGIS Pro antes de subir versión SDK.
+- Ejecutar pruebas de regresión después de cambios en repositorios.
+- Documentar nuevas columnas añadidas a Feature Class.
