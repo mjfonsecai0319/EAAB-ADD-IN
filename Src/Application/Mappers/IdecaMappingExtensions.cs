@@ -16,7 +16,7 @@ internal static class IdecaMappingExtensions
         if (lon == null || lat == null) return null;
         return new PtAddressGralEntity
         {
-            Source = "IDECA API",
+            Source = "IDECA",
             CityCode = data.Codloc,
             CityDesc = "BOGOTA D.C.",
             FullAddressCadastre = data.Dirtrad ?? data.Diraprox ?? data.Dirinput,
@@ -32,9 +32,8 @@ internal static class IdecaMappingExtensions
             ZoneCode = data.Codupz,
             PointType = data.Tipo_Direccion,
             HouseNumber = "00",
-
             Score = null,
-            ScoreText = "Aproximada por Catastro"
+            ScoreText = "Asignada por Catastro"
         };
 
     }

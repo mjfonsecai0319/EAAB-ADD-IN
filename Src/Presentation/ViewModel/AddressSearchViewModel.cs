@@ -633,33 +633,26 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         }
 
         // Lógica unificada de clasificación de origen / ScoreText y normalización de direccion mostrada
-        private void ClasificarYNormalizar(EAABAddIn.Src.Core.Entities.PtAddressGralEntity addr)
+        private void ClasificarYNormalizar(PtAddressGralEntity entity)
         {
-            if (addr == null) return;
-            var srcLower = (addr.Source ?? string.Empty).ToLowerInvariant();
-            if (srcLower.Contains("cat") || srcLower.Contains("catastro"))
+            if (entity is null)
             {
-                addr.ScoreText = "Aproximada por Catastro";
-                addr.Source = "CATASTRO";
-            }
-            else if (srcLower.Contains("esri"))
-            {
-                if (addr.Score.HasValue)
-                    addr.ScoreText = $"ESRI {Math.Round(addr.Score.Value, 2)}";
-                else
-                    addr.ScoreText = "ESRI";
-                addr.Source = "ESRI";
-            }
-            else // EAAB u otro
-            {
-                if (string.IsNullOrWhiteSpace(addr.ScoreText))
-                    addr.ScoreText = "Exacta";
-                addr.Source = "EAAB";
+                return;
             }
 
-            // Ajuste Direccion (campo mostrado en feature class) se hace en ResultsLayerService, pero aquí guardamos FullAddressOld como respaldo original input
-            if (string.IsNullOrWhiteSpace(addr.FullAddressOld))
-                addr.FullAddressOld = addr.MainStreet ?? addr.FullAddressEAAB ?? addr.FullAddressCadastre;
+            var source = entity.Source.ToLowerInvariant();
+
+            if (source == "eaab")
+            {
+                entity.Source = "EAAB";
+                entity.ScoreText = "Exacta";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(entity.FullAddressOld))
+            {
+                entity.FullAddressOld = entity.MainStreet ?? entity.FullAddressEAAB ?? entity.FullAddressCadastre;
+            }
         }
     }
 }

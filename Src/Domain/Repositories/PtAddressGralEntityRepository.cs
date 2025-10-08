@@ -172,7 +172,6 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
         return new PtAddressGralEntity
         {
             ID = long.TryParse(id?.ToString(), out var parsedId) ? parsedId : 0,
-            Source = row["SOURCE"]?.ToString(),
             CityCode = row["CITY_CODE"]?.ToString(),
             CityDesc = row["CITY_DESC"]?.ToString(),
             LocaCode = row["LOCALITIE_CODE"]?.ToString(),
@@ -202,7 +201,10 @@ public class PtAddressGralOracleRepository : PtAddressGralEntityRepositoryBase, 
             StormUgaCode = row["STORM_UGA_CODE"]?.ToString(),
             StormUgaDesc = row["STORM_UGA_DESC"]?.ToString(),
             GridH3Index = row["GRID_H3_INDEX"]?.ToString(),
-            ZipCode = row["ZIP_CODE"]?.ToString()
+            ZipCode = row["ZIP_CODE"]?.ToString(),
+            Source = "EAAB",
+            Score = null,
+            ScoreText = "Exacta"
         };
     }
 }
@@ -260,7 +262,7 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
     {
         return Find(
             "public.sgo_pt_address_gral",
-            null, 
+            null,
             address,
             "id",
             "full_address_eaab",
@@ -278,7 +280,6 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
         return new PtAddressGralEntity
         {
             ID = long.TryParse(id?.ToString(), out var parsedId) ? parsedId : 0,
-            Source = row["source"]?.ToString(),
             CityCode = row["city_code"]?.ToString(),
             CityDesc = row["city_desc"]?.ToString(),
             LocaCode = row["localitie_code"]?.ToString(),
@@ -308,7 +309,10 @@ public class PtAddressGralPostgresRepository : PtAddressGralEntityRepositoryBase
             StormUgaCode = row["storm_uga_code"]?.ToString(),
             StormUgaDesc = row["storm_uga_desc"]?.ToString(),
             GridH3Index = row["grid_h3_index"]?.ToString(),
-            ZipCode = row["zip_code"]?.ToString()
+            ZipCode = row["zip_code"]?.ToString(),
+            Source = "EAAB",
+            Score = null,
+            ScoreText = "Exacta"
         };
     }
 }
