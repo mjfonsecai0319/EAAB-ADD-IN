@@ -21,6 +21,8 @@ namespace EAABAddIn.Src.Core.Map
     {
         private static FeatureLayer _addressPointLayer;
         private const string FeatureClassName = "GeocodedAddresses";
+    // Eliminado soporte de subcapas de identificadores
+    // private static bool _identifierSublayersAttempted;
 
         private static readonly List<PtAddressGralEntity> _pendingEntities = new();
         private static readonly object _pendingLock = new();
@@ -194,6 +196,8 @@ namespace EAABAddIn.Src.Core.Map
                     caption: "Error - Capa no disponible o editable"
                 );
             }
+
+            // (Subcapas de identificadores removidas según requerimiento)
         }
 
         private async static Task<bool> _CreateFeatureClassIfNotExist(string path)
@@ -485,6 +489,7 @@ namespace EAABAddIn.Src.Core.Map
                     ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Error en inserción en lote: {ex.Message}");
                     return;
                 }
+                // Eliminado: lógica de creación automática de subcapas de identificadores
                 if (zoomExtent)
                 {
                     try

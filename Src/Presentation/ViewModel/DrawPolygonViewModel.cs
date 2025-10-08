@@ -33,6 +33,8 @@ internal class DrawPolygonViewModel : BusyViewModelBase
     public ICommand FeatureClassCommand { get; private set; }
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
+    public ICommand BuildPolygonsCommand { get; private set; }
+    // Eliminado RefreshIdentifiersCommand (ya no se gestionan subcapas de identificadores)
 
     public DrawPolygonViewModel()
     {
@@ -40,7 +42,47 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         FeatureClassCommand = new RelayCommand(OnFeatureClass);
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
+        BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy);
+    // RefreshIdentifiersCommand eliminado
     }
+
+    private async Task OnBuildPolygons()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "Construyendo polígonos...";
+            var gdb = Workspace;
+            var result = await GeocodedPolygonsLayerService.GenerateAsync(gdb);
+            bool allow3 = Module1.Settings?.permitirTresPuntos == true;
+            int minPoints = allow3 ? 3 : 4;
+            if (result.Count == 0)
+            {
+                StatusMessage = $"No se generaron polígonos (necesitan >={minPoints} puntos por identificador).";
+                return;
+            }
+            if (result.ContainsKey("__DIAGNOSTICO__") && result.Count == 1)
+            {
+                StatusMessage = $"No se generaron polígonos. Ver consola (Debug) para causas (<{minPoints}).";
+                return;
+            }
+            var resumen = string.Join(", ", result.Keys.Where(k=>k!="__DIAGNOSTICO__").Take(10));
+            var total = result.Keys.Count(k=>k!="__DIAGNOSTICO__");
+            if (total > 10) resumen += $" (+{total - 10} más)";
+            StatusMessage = $"Generados {total} polígonos (mínimo {minPoints}). IDs: {resumen}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Error construyendo polígonos";
+            MessageBox.Show($"Error al construir polígonos: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    // Método OnRefreshIdentifiers eliminado
 
     private void OnWorkspace()
     {
