@@ -94,7 +94,6 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
-
         </ResourceDictionary>
     </UserControl.Resources>
 

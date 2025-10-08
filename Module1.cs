@@ -63,7 +63,7 @@ namespace EAABAddIn
                     !string.IsNullOrWhiteSpace(settings.rutaArchivoCredenciales) &&
                     System.IO.File.Exists(settings.rutaArchivoCredenciales)
                 );
-            } 
+            }
 
             var hasHost = !string.IsNullOrWhiteSpace(settings.host);
             var hasUser = !string.IsNullOrWhiteSpace(settings.usuario);
@@ -158,10 +158,10 @@ namespace EAABAddIn
                 System.Windows.MessageBoxImage.Warning
             );
             FrameworkApplication.State.Deactivate("EAABAddIn_InCompanyDomain");
-            
+
             try
             {
-                var dockPane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Src_Presentation_View_GeocoderDockpane");
+                var dockPane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_AddressGeocoder");
                 dockPane?.UnPin();
             }
             catch

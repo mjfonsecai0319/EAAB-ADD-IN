@@ -1,6 +1,6 @@
 ﻿using System.Windows.Controls;
 
-namespace EAABAddIn.Src.Presentation.View
+namespace EAABAddIn.Src.Presentation.View.Dockpanes
 {
  
     public partial class GeocoderDockpaneView : UserControl

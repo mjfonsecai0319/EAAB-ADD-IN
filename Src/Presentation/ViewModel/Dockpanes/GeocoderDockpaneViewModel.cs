@@ -6,11 +6,11 @@ using ArcGIS.Desktop.Framework.Controls;
 
 using EAABAddIn.Src.Presentation.Base;
 
-namespace EAABAddIn.Src.Presentation.ViewModel;
+namespace EAABAddIn.Src.Presentation.ViewModel.DockPanes;
 
 internal class GeocoderDockpaneViewModel : DockPane
 {
-    private const string _dockPaneID = "EAABAddIn_Src_Presentation_View_GeocoderDockpane";
+    private const string _dockPaneID = "EAABAddIn_Dockpane_AddressGeocoder";
 
     private AddressSearchViewModel _paneH1VM;
     private MassiveGeocodeViewModel _paneH2VM;
