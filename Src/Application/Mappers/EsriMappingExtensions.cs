@@ -1,3 +1,5 @@
+using System;
+
 using EAABAddIn.Src.Application.Models;
 using EAABAddIn.Src.Core.Entities;
 
@@ -9,9 +11,11 @@ internal static class EsriMappingExtensions
     {
         if (candidate == null || candidate.Location == null) return null;
 
+        var score = Math.Round(candidate.Score ?? 0, 2);
+
         return new PtAddressGralEntity
         {
-            Source = "ESRI GEOCODE",
+            Source = "ESRI",
             CityCode = null,
             CityDesc = null,
             FullAddressCadastre = candidate.Address,
@@ -27,11 +31,8 @@ internal static class EsriMappingExtensions
             ZoneCode = null,
             PointType = "GEOCODE_CANDIDATE",
             HouseNumber = "00",
-            
-            // Aquí ya va como texto
-            Score = candidate.Score ?? 0,
-            ScoreText = $"{candidate.Score?.ToString("F2")}"
-
+            Score = score,
+            ScoreText = $"ESRI {score}"
         };
     }
 }
