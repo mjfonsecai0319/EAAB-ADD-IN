@@ -9,6 +9,7 @@ using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Mapping;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using EAABAddIn.Core.Geometry;
 
 namespace EAABAddIn.Src.Core.Map;
 
@@ -140,8 +141,8 @@ public static class GeocodedPolygonsLayerService
 
             try
             {
-                // Crear polígono usando Concave Hull optimizado
-                var polygon = CreateConcaveHull(kv.Value, gdbPath, gdb);
+                // Crear polígono usando algoritmo mejorado que incluye todos los puntos
+                var polygon = CreatePolygonFromAllPoints(kv.Value, kv.Value.First().SpatialReference);
                 
                 if (polygon != null && !polygon.IsEmpty && polygon.Area > 0)
                 {
@@ -356,83 +357,22 @@ public static class GeocodedPolygonsLayerService
         polygonLayer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
     }
 
-    private static Polygon CreateConcaveHull(List<MapPoint> points, string gdbPath, Geodatabase gdb)
+    /// <summary>
+    /// Crea un polígono donde TODOS los puntos son vértices, usando ordenamiento por ángulo polar
+    /// </summary>
+    private static Polygon CreatePolygonFromAllPoints(List<MapPoint> points, SpatialReference sr)
     {
         if (points == null || points.Count < 3)
             return null;
 
         try
         {
-            var sr = points.First().SpatialReference;
-            Polygon resultPolygon = null;
-            
-            // SIEMPRE usar Nearest Neighbor para garantizar que TODOS los puntos se incluyan
-            System.Diagnostics.Debug.WriteLine($"[ConcaveHull] Usando Nearest Neighbor para {points.Count} puntos (TODOS incluidos)");
-            resultPolygon = CreatePolygonWithNearestNeighbor(points, sr);
-            
-            // Validar y corregir auto-intersecciones
-            if (resultPolygon != null && !resultPolygon.IsEmpty)
-            {
-                // Intentar simplificar el polígono para corregir auto-intersecciones
-                try
-                {
-                    var simplified = GeometryEngine.Instance.SimplifyAsFeature(resultPolygon);
-                    if (simplified is Polygon simplePoly && !simplePoly.IsEmpty && simplePoly.Area > 0)
-                    {
-                        // Verificar si la simplificación mejoró el polígono
-                        if (simplePoly.Area <= resultPolygon.Area * 1.1) // No más del 10% más grande
-                        {
-                            resultPolygon = simplePoly;
-                            System.Diagnostics.Debug.WriteLine("[ConcaveHull] Polígono simplificado exitosamente");
-                        }
-                    }
-                }
-                catch
-                {
-                    // Si la simplificación falla, continuar con el polígono original
-                }
-                
-                // Validación final
-                if (resultPolygon.Area > 0)
-                {
-                    // Verificar que todos los puntos estén incluidos
-                    bool allPointsIncluded = VerifyAllPointsIncluded(resultPolygon, points);
-                    
-                    if (allPointsIncluded)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ConcaveHull] ✓ Polígono creado: {points.Count} puntos TODOS incluidos, área={resultPolygon.Area:F2}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[ConcaveHull] ⚠ Polígono creado pero algunos puntos pueden estar fuera, área={resultPolygon.Area:F2}");
-                    }
-                    
-                    return resultPolygon;
-                }
-            }
-            
-            // Si todo falla, usar ConvexHull como último recurso
-            System.Diagnostics.Debug.WriteLine("[ConcaveHull] Usando ConvexHull como fallback");
-            return CreateConvexHullPolygon(points, sr);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ConcaveHull] Excepción: {ex.Message}");
-            return CreateConvexHullPolygon(points, points.First().SpatialReference);
-        }
-    }
+            System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] Creando polígono con {points.Count} puntos como vértices");
 
-    /// <summary>
-    /// Crea un polígono usando el algoritmo de vecino más cercano
-    /// </summary>
-    private static Polygon CreatePolygonWithNearestNeighbor(List<MapPoint> points, SpatialReference sr)
-    {
-        try
-        {
-            // Ordenar puntos usando algoritmo de vecino más cercano
-            var orderedPoints = OrderPointsByNearestNeighbor(points);
+            // 1. Ordenar puntos usando algoritmo que minimice cruces
+            var orderedPoints = OrderPointsForSimplePolygon(points);
             
-            // Crear polígono desde coordenadas ordenadas
+            // 2. Crear polígono con todos los puntos ordenados
             var coords = new List<Coordinate2D>();
             foreach (var point in orderedPoints)
             {
@@ -445,112 +385,186 @@ public static class GeocodedPolygonsLayerService
                 coords.Add(new Coordinate2D(orderedPoints[0].X, orderedPoints[0].Y));
             }
             
-            return PolygonBuilderEx.CreatePolygon(coords, sr);
+            var polygon = PolygonBuilderEx.CreatePolygon(coords, sr);
+            
+            // 3. Verificar y corregir auto-intersecciones si las hay
+            if (polygon != null && !polygon.IsEmpty)
+            {
+                var cleanedPolygon = CleanSelfIntersections(polygon, sr);
+                if (cleanedPolygon != null && !cleanedPolygon.IsEmpty)
+                {
+                    polygon = cleanedPolygon;
+                }
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] ✓ Polígono creado con {orderedPoints.Count} vértices, área={polygon?.Area:F2}");
+            return polygon;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] Error: {ex.Message}");
+            return CreateConvexHullPolygon(points, sr); // Fallback
         }
     }
 
     /// <summary>
-    /// Algoritmo híbrido: usa Convex Hull para el perímetro exterior y conecta puntos en orden óptimo
+    /// Ordena puntos para crear un polígono simple que minimice auto-intersecciones
     /// </summary>
-    private static Polygon CreateHybridConcaveHull(List<MapPoint> points, SpatialReference sr)
+    private static List<MapPoint> OrderPointsForSimplePolygon(List<MapPoint> points)
     {
+        if (points.Count <= 3)
+            return points.ToList();
+
         try
         {
-            // 1. Crear Convex Hull para obtener puntos del perímetro
-            var mpBuilder = new MultipointBuilderEx(sr);
-            foreach (var p in points) mpBuilder.AddPoint(p);
-            var multipoint = mpBuilder.ToGeometry();
-            var convexHull = GeometryEngine.Instance.ConvexHull(multipoint) as Polygon;
+            // Calcular centroide
+            double centroidX = points.Average(p => p.X);
+            double centroidY = points.Average(p => p.Y);
             
-            if (convexHull == null || convexHull.IsEmpty)
-                return CreatePolygonWithNearestNeighbor(points, sr);
+            System.Diagnostics.Debug.WriteLine($"[PolarOrdering] Centroide: ({centroidX:F2}, {centroidY:F2})");
             
-            // 2. Identificar qué puntos están en el perímetro (convex hull)
-            var perimeterPoints = new List<MapPoint>();
-            var interiorPoints = new List<MapPoint>();
-            
-            foreach (var point in points)
+            // Ordenar por ángulo polar desde el centroide
+            var ordered = points.OrderBy(p => 
             {
-                bool isOnPerimeter = false;
-                
-                // Verificar si el punto está en el borde del convex hull
-                var partCount = convexHull.PartCount;
-                for (int partIndex = 0; partIndex < partCount; partIndex++)
-                {
-                    var part = convexHull.Parts[partIndex];
-                    
-                    // Iterar sobre los segmentos para obtener los puntos
-                    foreach (var segment in part)
-                    {
-                        // Verificar punto inicial del segmento
-                        var startPt = segment.StartPoint;
-                        double distStart = Math.Sqrt(
-                            Math.Pow(startPt.X - point.X, 2) + 
-                            Math.Pow(startPt.Y - point.Y, 2)
-                        );
-                        
-                        if (distStart < 0.001) // Tolerancia de 1mm
-                        {
-                            isOnPerimeter = true;
-                            break;
-                        }
-                        
-                        // Verificar punto final del segmento
-                        var endPt = segment.EndPoint;
-                        double distEnd = Math.Sqrt(
-                            Math.Pow(endPt.X - point.X, 2) + 
-                            Math.Pow(endPt.Y - point.Y, 2)
-                        );
-                        
-                        if (distEnd < 0.001)
-                        {
-                            isOnPerimeter = true;
-                            break;
-                        }
-                    }
-                    if (isOnPerimeter) break;
-                }
-                
-                if (isOnPerimeter)
-                    perimeterPoints.Add(point);
-                else
-                    interiorPoints.Add(point);
-            }
+                double angle = Math.Atan2(p.Y - centroidY, p.X - centroidX);
+                return angle < 0 ? angle + 2 * Math.PI : angle;
+            }).ToList();
             
-            System.Diagnostics.Debug.WriteLine($"[HybridAlgorithm] Perímetro: {perimeterPoints.Count}, Interior: {interiorPoints.Count}");
+            System.Diagnostics.Debug.WriteLine($"[PolarOrdering] ✓ {ordered.Count} puntos ordenados por ángulo polar");
             
-            // 3. Si hay pocos puntos interiores, usar algoritmo normal
-            if (interiorPoints.Count <= 2)
-            {
-                return CreatePolygonWithNearestNeighbor(points, sr);
-            }
-            
-            // 4. Ordenar puntos del perímetro por nearest neighbor
-            var orderedPerimeter = OrderPointsByNearestNeighbor(perimeterPoints);
-            
-            // 5. Crear polígono con puntos del perímetro
-            var coords = new List<Coordinate2D>();
-            foreach (var point in orderedPerimeter)
-            {
-                coords.Add(new Coordinate2D(point.X, point.Y));
-            }
-            
-            // Cerrar polígono
-            if (orderedPerimeter.Count > 0)
-            {
-                coords.Add(new Coordinate2D(orderedPerimeter[0].X, orderedPerimeter[0].Y));
-            }
-            
-            return PolygonBuilderEx.CreatePolygon(coords, sr);
+            return ordered;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[HybridAlgorithm] Error: {ex.Message}");
-            return CreatePolygonWithNearestNeighbor(points, sr);
+            System.Diagnostics.Debug.WriteLine($"[PolarOrdering] Error: {ex.Message}, usando orden original");
+            return points.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Limpia auto-intersecciones en el polígono
+    /// </summary>
+    private static Polygon CleanSelfIntersections(Polygon polygon, SpatialReference sr)
+    {
+        try
+        {
+            // Usar simplificación de ArcGIS para corregir geometrías
+            var simplified = GeometryEngine.Instance.SimplifyAsFeature(polygon);
+            if (simplified is Polygon simplePoly && !simplePoly.IsEmpty)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CleanPolygon] Auto-intersecciones corregidas");
+                return simplePoly;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CleanPolygon] Error en simplificación: {ex.Message}");
+            // Si falla la simplificación, intentar reconstruir el polígono
+            return RebuildPolygonWithoutIntersections(polygon, sr);
+        }
+        
+        return polygon;
+    }
+
+    /// <summary>
+    /// Reconstruye el polígono eliminando segmentos que se auto-intersectan
+    /// </summary>
+    private static Polygon RebuildPolygonWithoutIntersections(Polygon polygon, SpatialReference sr)
+    {
+        try
+        {
+            // Extraer todos los puntos del polígono original
+            var allPoints = new List<MapPoint>();
+            for (int partIndex = 0; partIndex < polygon.PartCount; partIndex++)
+            {
+                var part = polygon.Parts[partIndex];
+                foreach (var segment in part)
+                {
+                    allPoints.Add(segment.StartPoint);
+                }
+            }
+            
+            // Eliminar duplicados (tolerancia pequeña)
+            var uniquePoints = new List<MapPoint>();
+            foreach (var point in allPoints)
+            {
+                if (!uniquePoints.Any(p => 
+                    Math.Abs(p.X - point.X) < 0.001 && 
+                    Math.Abs(p.Y - point.Y) < 0.001))
+                {
+                    uniquePoints.Add(point);
+                }
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Reconstruyendo con {uniquePoints.Count} puntos únicos");
+            
+            // Recrear polígono con ordenamiento mejorado
+            return CreatePolygonFromAllPoints(uniquePoints, sr);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Error: {ex.Message}");
+            return polygon; // Devolver original si falla
+        }
+    }
+
+    private static Polygon CreateConcaveHull(List<MapPoint> points, string gdbPath, Geodatabase gdb)
+    {
+        if (points == null || points.Count < 3)
+            return null;
+
+        try
+        {
+            var sr = points.First().SpatialReference;
+            
+            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Procesando {points.Count} puntos");
+            
+            // PARA GRUPOS PEQUEÑOS (3-15 puntos): Usar algoritmo que incluye todos los puntos como vértices
+            if (points.Count <= 15)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando algoritmo de todos-los-puntos para {points.Count} puntos");
+                var resultPolygon = CreatePolygonFromAllPoints(points, sr);
+                
+                if (resultPolygon != null && !resultPolygon.IsEmpty && resultPolygon.Area > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ✓ Polígono creado con {points.Count} vértices, área={resultPolygon.Area:F2}");
+                    
+                    // Verificar que todos los puntos estén incluidos
+                    bool allIncluded = VerifyAllPointsIncluded(resultPolygon, points);
+                    if (allIncluded)
+                    {
+                        return resultPolygon;
+                    }
+                }
+            }
+            
+            // PARA GRUPOS GRANDES (>15 puntos): Usar Concave Hull optimizado
+            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando Concave Hull para {points.Count} puntos");
+            try
+            {
+                double chiValue = 0.1; // Valor más agresivo para mayor concavidad
+                var concaveHull = new DelaunayConcaveHull(points, chiValue);
+                var resultPolygon = concaveHull.BuildConcaveHull();
+                
+                if (resultPolygon != null && !resultPolygon.IsEmpty && resultPolygon.Area > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ✓ Concave Hull completado, vértices={resultPolygon.PointCount}, área={resultPolygon.Area:F2}");
+                    return resultPolygon;
+                }
+            }
+            catch (Exception exDelaunay)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ⚠ Error en Concave Hull: {exDelaunay.Message}");
+            }
+            
+            // FALLBACK: Usar algoritmo de todos-los-puntos
+            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando fallback de todos-los-puntos");
+            return CreatePolygonFromAllPoints(points, sr);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Excepción: {ex.Message}");
+            return CreateConvexHullPolygon(points, points.First().SpatialReference);
         }
     }
 
@@ -569,171 +583,6 @@ public static class GeocodedPolygonsLayerService
         catch
         {
             return null;
-        }
-    }
-
-    /// <summary>
-    /// Ordena los puntos usando el algoritmo de vecino más cercano (Nearest Neighbor)
-    /// con selección inteligente del punto inicial
-    /// </summary>
-    private static List<MapPoint> OrderPointsByNearestNeighbor(List<MapPoint> points)
-    {
-        if (points == null || points.Count <= 3)
-            return points?.ToList() ?? new List<MapPoint>();
-
-        var ordered = new List<MapPoint>();
-        var remaining = new List<MapPoint>(points);
-        
-        // Encontrar el mejor punto inicial
-        MapPoint startPoint = FindBestStartPoint(points);
-        ordered.Add(startPoint);
-        remaining.Remove(startPoint);
-        
-        var current = startPoint;
-        
-        // Mientras queden puntos por visitar
-        while (remaining.Count > 0)
-        {
-            // Encontrar el punto más cercano al actual
-            MapPoint nearest = null;
-            double minDistance = double.MaxValue;
-            
-            foreach (var point in remaining)
-            {
-                double distance = GeometryEngine.Instance.Distance(current, point);
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearest = point;
-                }
-            }
-            
-            if (nearest != null)
-            {
-                ordered.Add(nearest);
-                remaining.Remove(nearest);
-                current = nearest;
-            }
-            else
-            {
-                // Si no hay punto más cercano, tomar el primero disponible
-                if (remaining.Count > 0)
-                {
-                    var fallback = remaining[0];
-                    ordered.Add(fallback);
-                    remaining.Remove(fallback);
-                    current = fallback;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-        
-        System.Diagnostics.Debug.WriteLine($"[NearestNeighbor] Ordenados {ordered.Count} de {points.Count} puntos, inicio en ({startPoint.X:F2}, {startPoint.Y:F2})");
-        return ordered;
-    }
-
-    /// <summary>
-    /// Encuentra el mejor punto de inicio para minimizar auto-intersecciones
-    /// Para muchos puntos (>15), prueba múltiples inicios y elige el mejor
-    /// </summary>
-    private static MapPoint FindBestStartPoint(List<MapPoint> points)
-    {
-        if (points == null || points.Count == 0)
-            return null;
-        
-        if (points.Count <= 4)
-        {
-            // Para pocos puntos, usar esquina inferior izquierda
-            return points.OrderBy(p => p.X).ThenBy(p => p.Y).First();
-        }
-        
-        // Calcular centroide
-        double centroidX = points.Average(p => p.X);
-        double centroidY = points.Average(p => p.Y);
-        
-        // Calcular desviación estándar para detectar distribución
-        double stdDevX = Math.Sqrt(points.Average(p => Math.Pow(p.X - centroidX, 2)));
-        double stdDevY = Math.Sqrt(points.Average(p => Math.Pow(p.Y - centroidY, 2)));
-        
-        // Si la distribución es muy irregular, usar esquina
-        if (stdDevX > stdDevY * 3 || stdDevY > stdDevX * 3)
-        {
-            // Distribución alargada - usar extremo
-            var corner = points.OrderBy(p => p.X).ThenBy(p => p.Y).First();
-            System.Diagnostics.Debug.WriteLine($"[StartPoint] Distribución alargada, inicio en esquina: ({corner.X:F2}, {corner.Y:F2})");
-            return corner;
-        }
-        
-        // Para distribución regular con muchos puntos, usar optimización
-        if (points.Count > 15)
-        {
-            // Encontrar convex hull y usar uno de sus puntos
-            try
-            {
-                var mpBuilder = new MultipointBuilderEx(points.First().SpatialReference);
-                foreach (var p in points) mpBuilder.AddPoint(p);
-                var multipoint = mpBuilder.ToGeometry();
-                var convexHull = GeometryEngine.Instance.ConvexHull(multipoint) as Polygon;
-                
-                if (convexHull != null && !convexHull.IsEmpty && convexHull.PartCount > 0)
-                {
-                    // Usar el primer vértice del convex hull como inicio
-                    var part = convexHull.Parts[0];
-                    var firstSegment = part.First();
-                    var hullStart = firstSegment.StartPoint;
-                    
-                    // Encontrar el punto original más cercano a este vértice del hull
-                    var bestStart = points.OrderBy(p => 
-                        Math.Sqrt(Math.Pow(p.X - hullStart.X, 2) + Math.Pow(p.Y - hullStart.Y, 2))
-                    ).First();
-                    
-                    System.Diagnostics.Debug.WriteLine($"[StartPoint] Usando vértice de Convex Hull: ({bestStart.X:F2}, {bestStart.Y:F2})");
-                    return bestStart;
-                }
-            }
-            catch
-            {
-                // Si falla, continuar con método estándar
-            }
-        }
-        
-        // Para distribución regular, encontrar punto más externo (más alejado del centroide)
-        var extremePoint = points.OrderByDescending(p => 
-            Math.Sqrt(Math.Pow(p.X - centroidX, 2) + Math.Pow(p.Y - centroidY, 2))
-        ).First();
-        
-        System.Diagnostics.Debug.WriteLine($"[StartPoint] Centroide: ({centroidX:F2}, {centroidY:F2}), Inicio externo: ({extremePoint.X:F2}, {extremePoint.Y:F2})");
-        
-        return extremePoint;
-    }
-
-    /// <summary>
-    /// Calcula una medida de calidad del polígono basada en compacidad
-    /// Valores cercanos a 1 = más circular/compacto, valores más altos = más irregular
-    /// </summary>
-    private static double CalculatePolygonQuality(Polygon polygon)
-    {
-        if (polygon == null || polygon.IsEmpty || polygon.Area <= 0)
-            return double.MaxValue;
-        
-        try
-        {
-            double perimeter = polygon.Length;
-            double area = polygon.Area;
-            
-            // Índice de Polsby-Popper: 4π × área / perímetro²
-            // 1 = círculo perfecto, <1 = más irregular
-            double compactness = (4 * Math.PI * area) / (perimeter * perimeter);
-            
-            // Retornar inverso para que valores más bajos = mejor calidad
-            return 1.0 / compactness;
-        }
-        catch
-        {
-            return double.MaxValue;
         }
     }
 
@@ -776,24 +625,9 @@ public static class GeocodedPolygonsLayerService
                 return false;
             }
             
-            // Validación 5: No es demasiado degenerado (muy delgado o alargado)
-            // RELAJADA: permitir relaciones de aspecto mayores para polígonos con todos los puntos
-            double aspectRatio = Math.Max(extent.Width, extent.Height) / Math.Min(extent.Width, extent.Height);
-            if (aspectRatio > 10000) // Relación de aspecto MUY extrema (relajado de 1000 a 10000)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Validation] Relación de aspecto extrema: {aspectRatio:F2}");
-                return false;
-            }
-            
-            // Validación 6: Área razonable comparada con extensión
-            // RELAJADA: permitir polígonos más delgados cuando incluyen todos los puntos
-            double extentArea = extent.Width * extent.Height;
-            double areaRatio = polygon.Area / extentArea;
-            if (areaRatio < 0.0001) // Polígono extremadamente lineal (relajado de 0.001 a 0.0001)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Validation] Polígono casi lineal, ratio: {areaRatio:F6}");
-                return false;
-            }
+            // RELAJAR validaciones para polígonos que incluyen todos los puntos
+            // No rechazar por relaciones de aspecto extremas o áreas pequeñas
+            // si el polígono representa fielmente la distribución de puntos
             
             return true;
         }
@@ -829,7 +663,7 @@ public static class GeocodedPolygonsLayerService
                 else
                 {
                     // Verificar si está en el borde (puede ser que esté EN el vértice)
-                    double distanceToBoundary = GeometryEngine.Instance.Distance(polygon.Extent, point);
+                    double distanceToBoundary = GeometryEngine.Instance.Distance(polygon, point);
                     if (distanceToBoundary <= tolerance)
                     {
                         pointsOnBoundary++;
@@ -855,5 +689,36 @@ public static class GeocodedPolygonsLayerService
             System.Diagnostics.Debug.WriteLine($"[Verification] Error: {ex.Message}");
             return true; // En caso de error, no rechazar
         }
+    }
+
+    // Métodos auxiliares existentes (si los necesitas para otras funcionalidades)
+    private static double CrossProduct(MapPoint o, MapPoint a, MapPoint b)
+    {
+        return (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
+    }
+    
+    private static double Distance(MapPoint p1, MapPoint p2)
+    {
+        double dx = p2.X - p1.X;
+        double dy = p2.Y - p1.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+    
+    private static double DistanceToSegment(MapPoint p, MapPoint a, MapPoint b)
+    {
+        double dx = b.X - a.X;
+        double dy = b.Y - a.Y;
+        double lengthSquared = dx * dx + dy * dy;
+        
+        if (lengthSquared < 0.0001) return Distance(p, a);
+        
+        double t = Math.Max(0, Math.Min(1, ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared));
+        double projX = a.X + t * dx;
+        double projY = a.Y + t * dy;
+        
+        double distX = p.X - projX;
+        double distY = p.Y - projY;
+        
+        return Math.Sqrt(distX * distX + distY * distY);
     }
 }
