@@ -61,6 +61,15 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Margin" Value="0,0,0,15" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -136,6 +145,26 @@
                 </Grid>
 
                 <TextBlock
+                    Text="Identificador *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <ComboBox
+                    Style="{StaticResource ThemedComboBoxStyle}"
+                    ItemsSource="{Binding FeatureClassFields}"
+                    SelectedItem="{Binding SelectedFeatureClassField}"
+                >
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                            <Setter Property="Padding" Value="8,4" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                </ComboBox>
+
+                <TextBlock
                     Text="Barrios"
                     Style="{StaticResource HeaderTextStyle}"
                     Margin="0,0,0,10"
@@ -201,7 +230,7 @@
             <StackPanel Grid.Row="3">
                 <TextBlock
                     Text="{Binding StatusMessage}" Margin="0,0,0,8" TextWrapping="Wrap"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"/>
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}" />
                 <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">

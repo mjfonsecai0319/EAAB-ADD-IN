@@ -34,7 +34,6 @@ internal class DrawPolygonViewModel : BusyViewModelBase
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
     public ICommand BuildPolygonsCommand { get; private set; }
-    // Eliminado RefreshIdentifiersCommand (ya no se gestionan subcapas de identificadores)
 
     public DrawPolygonViewModel()
     {
@@ -43,32 +42,36 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
         BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy);
-        // RefreshIdentifiersCommand eliminado
     }
 
     private async Task OnBuildPolygons()
     {
+        StatusMessage = "Construyendo polígonos...";
+        IsBusy = true;
+
         try
         {
-            IsBusy = true;
-            StatusMessage = "Construyendo polígonos...";
-            var gdb = Workspace;
-            var result = await GeocodedPolygonsLayerService.GenerateAsync(gdb);
+            var result = await GeocodedPolygonsLayerService.GenerateAsync(Workspace);
             bool allow3 = Module1.Settings?.permitirTresPuntos == true;
             int minPoints = allow3 ? 3 : 4;
+
             if (result.Count == 0)
             {
-                StatusMessage = $"No se generaron polígonos (necesitan >={minPoints} puntos por identificador).";
+                StatusMessage = $"No se generaron polígonos, se necesitan más de {minPoints} puntos por identificador.";
                 return;
             }
+
             if (result.ContainsKey("__DIAGNOSTICO__") && result.Count == 1)
             {
                 StatusMessage = $"No se generaron polígonos. Ver consola (Debug) para causas (<{minPoints}).";
                 return;
             }
+
             var resumen = string.Join(", ", result.Keys.Where(k => k != "__DIAGNOSTICO__").Take(10));
             var total = result.Keys.Count(k => k != "__DIAGNOSTICO__");
+
             if (total > 10) resumen += $" (+{total - 10} más)";
+
             StatusMessage = $"Generados {total} polígonos (mínimo {minPoints}). IDs: {resumen}";
         }
         catch (Exception ex)
@@ -81,8 +84,6 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             IsBusy = false;
         }
     }
-
-    // Método OnRefreshIdentifiers eliminado
 
     private void OnWorkspace()
     {
@@ -165,6 +166,76 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         }
     }
 
+    private async Task<List<string>> GetFeatureClassFieldNamesAsync()
+    {
+        var fields = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(FeatureClass))
+        {
+            return fields;
+        }
+
+        try
+        {
+            string gdbPath = Workspace;
+            string datasetName = FeatureClass;
+
+            int idx = FeatureClass.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                int gdbEnd = idx + 4;
+                gdbPath = FeatureClass.Substring(0, gdbEnd);
+                if (FeatureClass.Length > gdbEnd)
+                {
+                    var remainder = FeatureClass.Substring(gdbEnd).TrimStart('\\', '/');
+                    datasetName = (remainder.Contains('\\') || remainder.Contains('/'))
+                        ? remainder.Split('\\', '/').Last()
+                        : remainder;
+                }
+                else
+                {
+                    datasetName = Path.GetFileName(FeatureClass);
+                }
+            }
+            else
+            {
+                // Ruta sin .gdb -> usar Workspace como gdb y último segmento como nombre
+                datasetName = (FeatureClass.Contains('\\') || FeatureClass.Contains('/'))
+                    ? FeatureClass.Split('\\', '/').Last()
+                    : FeatureClass;
+            }
+
+            // Validar GDB
+            if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
+                gdbPath = Workspace;
+
+            if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath) || string.IsNullOrWhiteSpace(datasetName))
+                return fields;
+
+            // Operaciones sobre datos en el MCT
+            fields = await QueuedTask.Run(() =>
+            {
+                var lista = new List<string>();
+                var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
+                using (var gdb = new ArcGIS.Core.Data.Geodatabase(connPath))
+                using (var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName))
+                {
+                    var def = fc.GetDefinition();
+                    foreach (var field in def.GetFields())
+                        lista.Add(field.Name);
+                }
+                return lista.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DrawPolygonViewModel] Error obteniendo campos de '{FeatureClass}': {ex.Message}");
+        }
+
+        FeatureClassFields = fields;
+        return fields;
+    }
+
     #region Properties
     private string _workspace = Project.Current.DefaultGeodatabasePath;
     public string Workspace
@@ -190,6 +261,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
+                _ = GetFeatureClassFieldNamesAsync();
             }
         }
     }
@@ -235,5 +307,28 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             }
         }
     }
+
+    private List<string> _featureClassFields = [];
+
+    public List<string> FeatureClassFields
+    {
+        get => _featureClassFields;
+        private set => SetProperty(ref _featureClassFields, value);
+    }
+
+    private string? _selectedFeatureClassField = null;
+    public string? SelectedFeatureClassField
+    {
+        get => _selectedFeatureClassField;
+        set
+        {
+            if (_selectedFeatureClassField != value)
+            {
+                _selectedFeatureClassField = value;
+                NotifyPropertyChanged(nameof(SelectedFeatureClassField));
+            }
+        }
+    }
+
     #endregion
 }
