@@ -154,6 +154,7 @@
                     Style="{StaticResource ThemedComboBoxStyle}"
                     ItemsSource="{Binding FeatureClassFields}"
                     SelectedItem="{Binding SelectedFeatureClassField}"
+                    IsEnabled="{Binding IsFeatureClassSelected}"
                 >
                     <ComboBox.ItemContainerStyle>
                         <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">

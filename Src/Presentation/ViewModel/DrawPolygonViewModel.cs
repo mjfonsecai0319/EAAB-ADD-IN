@@ -11,7 +11,7 @@ using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-
+using ArcGIS.Desktop.Internal.Mapping;
 using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Map;
@@ -166,74 +166,60 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         }
     }
 
-    private async Task<List<string>> GetFeatureClassFieldNamesAsync()
+    private async Task GetFeatureClassFieldNamesAsync()
     {
         var fields = new List<string>();
 
         if (string.IsNullOrWhiteSpace(FeatureClass))
         {
-            return fields;
+            return;
         }
 
         try
         {
-            string gdbPath = Workspace;
-            string datasetName = FeatureClass;
-
-            int idx = FeatureClass.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
-            if (idx >= 0)
-            {
-                int gdbEnd = idx + 4;
-                gdbPath = FeatureClass.Substring(0, gdbEnd);
-                if (FeatureClass.Length > gdbEnd)
-                {
-                    var remainder = FeatureClass.Substring(gdbEnd).TrimStart('\\', '/');
-                    datasetName = (remainder.Contains('\\') || remainder.Contains('/'))
-                        ? remainder.Split('\\', '/').Last()
-                        : remainder;
-                }
-                else
-                {
-                    datasetName = Path.GetFileName(FeatureClass);
-                }
-            }
-            else
-            {
-                // Ruta sin .gdb -> usar Workspace como gdb y último segmento como nombre
-                datasetName = (FeatureClass.Contains('\\') || FeatureClass.Contains('/'))
-                    ? FeatureClass.Split('\\', '/').Last()
-                    : FeatureClass;
-            }
-
-            // Validar GDB
-            if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
-                gdbPath = Workspace;
+            var (gdbPath, datasetName) = ParseFeatureClassPath(FeatureClass, Workspace);
 
             if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath) || string.IsNullOrWhiteSpace(datasetName))
-                return fields;
-
-            // Operaciones sobre datos en el MCT
-            fields = await QueuedTask.Run(() =>
             {
-                var lista = new List<string>();
+                return;
+            }
+
+            FeatureClassFields = await QueuedTask.Run(() =>
+            {
                 var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
-                using (var gdb = new ArcGIS.Core.Data.Geodatabase(connPath))
-                using (var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName))
-                {
-                    var def = fc.GetDefinition();
-                    foreach (var field in def.GetFields())
-                        lista.Add(field.Name);
-                }
-                return lista.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+                using var gdb = new ArcGIS.Core.Data.Geodatabase(connPath);
+                using var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName);
+                var def = fc.GetDefinition();
+                string[] filter = ["objectid", "shape"];
+
+                return def.GetFields().Select(it => it.Name).Where(
+                    it => !filter.Contains(it.ToLower())
+                ).OrderBy(
+                    it => it
+                ).ToList();
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            System.Diagnostics.Debug.WriteLine($"[DrawPolygonViewModel] Error obteniendo campos de '{FeatureClass}': {ex.Message}");
+            return;
+        }
+    }
+
+    private (string gdbPath, string datasetName) ParseFeatureClassPath(string featureClass, string workspace)
+    {
+        var idx = featureClass.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
+
+        if (idx >= 0)
+        {
+            var gdbEnd = idx + 4;
+            var gdbPath = featureClass.Substring(0, gdbEnd);
+            var remainder = featureClass.Length > gdbEnd ? featureClass.Substring(gdbEnd).TrimStart('\\', '/') : string.Empty;
+            var datasetName = string.IsNullOrWhiteSpace(remainder) ? Path.GetFileNameWithoutExtension(gdbPath) : Path.GetFileName(remainder.Contains('\\') || remainder.Contains('/') ? remainder[..^0] : remainder);
+            return (gdbPath, datasetName);
         }
 
-        FeatureClassFields = fields;
-        return fields;
+        var datasetNameNoGdb = Path.GetFileName(featureClass);
+        return (workspace, string.IsNullOrWhiteSpace(datasetNameNoGdb) ? featureClass : datasetNameNoGdb);
     }
 
     #region Properties
@@ -308,12 +294,34 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         }
     }
 
+    private bool _isFeatureClassSelected = false;
+    public bool IsFeatureClassSelected 
+    {
+        get => _isFeatureClassSelected;
+        set
+        {
+            if (_isFeatureClassSelected != value)
+            {
+                _isFeatureClassSelected = value;
+                NotifyPropertyChanged(nameof(IsFeatureClassSelected));
+            }
+        }
+    }
+
     private List<string> _featureClassFields = [];
 
     public List<string> FeatureClassFields
     {
         get => _featureClassFields;
-        private set => SetProperty(ref _featureClassFields, value);
+        private set {
+            if (_featureClassFields != value)
+            {
+                _featureClassFields = value;
+                IsFeatureClassSelected = !value.IsNullOrEmpty();
+                SelectedFeatureClassField = value.FirstOrDefault();
+                NotifyPropertyChanged(nameof(FeatureClassFields));
+            }
+        }
     }
 
     private string? _selectedFeatureClassField = null;
