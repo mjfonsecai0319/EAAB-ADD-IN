@@ -39,6 +39,8 @@
     <Content Include="Images\Settings32.png" />
     <Content Include="Images\SearchPoi16.png" />
     <Content Include="Images\SearchPoi32.png" />
+    <Content Include="Images\ConvexHull16.png" />
+    <Content Include="Images\ConvexHull32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
@@ -47,6 +49,8 @@
     <Content Include="DarkImages\Settings32.png" />
     <Content Include="DarkImages\SearchPoi16.png" />
     <Content Include="DarkImages\SearchPoi32.png" />
+    <Content Include="DarkImages\ConvexHull16.png" />
+    <Content Include="DarkImages\ConvexHull32.png" />
   </ItemGroup>
 
   <ItemGroup>
