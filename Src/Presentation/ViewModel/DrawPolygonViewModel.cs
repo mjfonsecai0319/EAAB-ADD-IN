@@ -41,7 +41,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         FeatureClassCommand = new RelayCommand(OnFeatureClass);
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
-        BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy);
+        BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy && CanBuildPolygons);
     }
 
     private async Task OnBuildPolygons()
@@ -51,7 +51,17 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
         try
         {
-            var result = await GeocodedPolygonsLayerService.GenerateAsync(Workspace);
+            var identifiers = await GetUniqueIdentifiersAsync();
+            
+            if (identifiers == null || identifiers.Count == 0)
+            {
+                StatusMessage = "No se encontraron identificadores en la columna seleccionada.";
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[DrawPolygon] Generando polígonos para {identifiers.Count} identificadores usando campo: {SelectedFeatureClassField}");
+
+            var result = await GeocodedPolygonsLayerService.GenerateAsync(identifiers, Workspace, SelectedFeatureClassField);
             bool allow3 = Module1.Settings?.permitirTresPuntos == true;
             int minPoints = allow3 ? 3 : 4;
 
@@ -78,10 +88,70 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         {
             StatusMessage = "Error construyendo polígonos";
             MessageBox.Show($"Error al construir polígonos: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[DrawPolygon] Error: {ex.Message}\n{ex.StackTrace}");
         }
         finally
         {
             IsBusy = false;
+        }
+    }
+
+
+    private async Task<List<string>?> GetUniqueIdentifiersAsync()
+    {
+        if (string.IsNullOrWhiteSpace(FeatureClass) || string.IsNullOrWhiteSpace(SelectedFeatureClassField))
+            return null;
+
+        try
+        {
+            return await QueuedTask.Run(() =>
+            {
+                var identifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                
+                var (gdbPath, datasetName) = ParseFeatureClassPath(FeatureClass, Workspace);
+
+                if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath) || string.IsNullOrWhiteSpace(datasetName))
+                    return null;
+
+                var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
+                using (var gdb = new ArcGIS.Core.Data.Geodatabase(connPath))
+                using (var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName))
+                {
+                    var def = fc.GetDefinition();
+                    var idField = def.GetFields().FirstOrDefault(f => 
+                        f.Name.Equals(SelectedFeatureClassField, StringComparison.OrdinalIgnoreCase))?.Name;
+
+                    if (idField == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[GetUniqueIdentifiers] Campo '{SelectedFeatureClassField}' no encontrado");
+                        return null;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[GetUniqueIdentifiers] Buscando identificadores únicos en campo: {idField}");
+
+                    using (var cursor = fc.Search(new ArcGIS.Core.Data.QueryFilter 
+                    { 
+                        SubFields = idField 
+                    }, true))
+                    {
+                        while (cursor.MoveNext())
+                        {
+                            using var row = cursor.Current;
+                            var val = row[idField]?.ToString();
+                            if (!string.IsNullOrWhiteSpace(val))
+                                identifiers.Add(val.Trim());
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[GetUniqueIdentifiers] Encontrados {identifiers.Count} identificadores únicos");
+                return identifiers.OrderBy(s => s).ToList();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[GetUniqueIdentifiers] Error: {ex.Message}");
+            return null;
         }
     }
 
@@ -108,7 +178,6 @@ internal class DrawPolygonViewModel : BusyViewModelBase
     private void OnFeatureClass()
     {
         var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_point");
-        // var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_all");
 
         var dlg = new OpenItemDialog
         {
@@ -222,7 +291,13 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         return (workspace, string.IsNullOrWhiteSpace(datasetNameNoGdb) ? featureClass : datasetNameNoGdb);
     }
 
-    #region Properties
+  
+
+    private bool CanBuildPolygons => 
+        !string.IsNullOrWhiteSpace(Workspace) && 
+        !string.IsNullOrWhiteSpace(FeatureClass) && 
+        !string.IsNullOrWhiteSpace(SelectedFeatureClassField);
+
     private string _workspace = Project.Current.DefaultGeodatabasePath;
     public string Workspace
     {
@@ -233,6 +308,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _workspace = value;
                 NotifyPropertyChanged(nameof(Workspace));
+                NotifyPropertyChanged(nameof(CanBuildPolygons));
             }
         }
     }
@@ -247,6 +323,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
+                NotifyPropertyChanged(nameof(CanBuildPolygons));
                 _ = GetFeatureClassFieldNamesAsync();
             }
         }
@@ -334,9 +411,10 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _selectedFeatureClassField = value;
                 NotifyPropertyChanged(nameof(SelectedFeatureClassField));
+                NotifyPropertyChanged(nameof(CanBuildPolygons));
             }
         }
     }
 
-    #endregion
+   
 }

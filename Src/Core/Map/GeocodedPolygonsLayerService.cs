@@ -48,20 +48,20 @@ public static class GeocodedPolygonsLayerService
         return ids;
     }
 
-    public static Task<Dictionary<string,int>> GenerateAsync(string gdbPath)
+    public static Task<Dictionary<string,int>> GenerateAsync(string gdbPath, string identifierFieldName = "Identificador")
     {
-        return QueuedTask.Run(() => _GenerateInternal(gdbPath));
+        return QueuedTask.Run(() => _GenerateInternal(gdbPath, null, identifierFieldName));
     }
 
-    public static Task<Dictionary<string,int>> GenerateAsync(IEnumerable<string> identifiers, string gdbPath = null)
+    public static Task<Dictionary<string,int>> GenerateAsync(IEnumerable<string> identifiers, string gdbPath = null, string identifierFieldName = "Identificador")
     {
         var set = identifiers?.Where(s => !string.IsNullOrWhiteSpace(s))
             .Select(s => s.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>();
-        return QueuedTask.Run(() => _GenerateInternal(gdbPath, set));
+        return QueuedTask.Run(() => _GenerateInternal(gdbPath, set, identifierFieldName));
     }
 
-    private static Dictionary<string,int> _GenerateInternal(string gdbPath, HashSet<string> filterIds = null)
+    private static Dictionary<string,int> _GenerateInternal(string gdbPath, HashSet<string> filterIds = null, string identifierFieldName = "Identificador")
     {
         var result = new Dictionary<string,int>();
         if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
@@ -75,7 +75,7 @@ public static class GeocodedPolygonsLayerService
             gdb?.Dispose();
             return result;
         }
-        // Si la feature class provino de una capa ya cargada, 'gdb' será null. Abrimos la GDB manualmente.
+        
         if (gdb == null)
         {
             try
@@ -86,13 +86,19 @@ public static class GeocodedPolygonsLayerService
             catch
             {
                 pointsFc.Dispose();
-                return result; // no se pudo abrir la geodatabase
+                return result; 
             }
         }
+        
         var pointDef = pointsFc.GetDefinition();
         var oidField = pointDef.GetObjectIDField();
         var shapeField = pointDef.GetShapeField();
-        var identifierField = pointDef.GetFields().FirstOrDefault(f => f.Name.Equals("Identificador", StringComparison.OrdinalIgnoreCase))?.Name ?? "Identificador";
+        
+        var identifierField = pointDef.GetFields().FirstOrDefault(f => 
+            f.Name.Equals(identifierFieldName, StringComparison.OrdinalIgnoreCase))?.Name ?? "Identificador";
+        
+        System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Usando campo identificador: '{identifierField}'");
+        
         EnsurePolygonFeatureClass(gdbPath, gdb, pointDef.GetSpatialReference());
 
         using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
@@ -100,16 +106,13 @@ public static class GeocodedPolygonsLayerService
         var polyIdentifierField = polygonDef.GetFields().FirstOrDefault(f => f.Name.Equals("identificador", StringComparison.OrdinalIgnoreCase))?.Name;
         if (polyIdentifierField == null)
         {
-            // agregar campo identificador si no existe
             var addFieldParams = Geoprocessing.MakeValueArray(Path.Combine(gdbPath, TargetPolygonsClass), "identificador", "TEXT", "", "", 100);
             var _ = Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams, null, CancelableProgressor.None, GPExecuteToolFlags.None).GetAwaiter().GetResult();
             polyIdentifierField = "identificador";
         }
 
-        // Limpiar registros previos (asumimos reemplazo completo)
         DeleteAll(polygonsFc);
 
-        // Agrupar puntos por identificador
         var groups = new Dictionary<string, List<MapPoint>>(StringComparer.OrdinalIgnoreCase);
         using (var cursor = pointsFc.Search(new QueryFilter { SubFields = string.Join(",", new [] { oidField, shapeField, identifierField }) }, false))
         {
@@ -126,7 +129,8 @@ public static class GeocodedPolygonsLayerService
             }
         }
 
-        // Configuración: por defecto exigir >=4; si permitirTresPuntos=true, aceptar también grupos de tamaño 3.
+        System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Encontrados {groups.Count} grupos únicos");
+
         bool allow3 = Module1.Settings?.permitirTresPuntos == true;
         int minPoints = allow3 ? 3 : 4;
         var discarded = new List<string>();
@@ -141,21 +145,28 @@ public static class GeocodedPolygonsLayerService
 
             try
             {
-                // Crear polígono usando algoritmo mejorado que incluye todos los puntos
                 var polygon = CreatePolygonFromAllPoints(kv.Value, kv.Value.First().SpatialReference);
                 
                 if (polygon != null && !polygon.IsEmpty && polygon.Area > 0)
                 {
-                    // Validación adicional antes de insertar
                     if (ValidatePolygonGeometry(polygon))
                     {
                         using var rowBuffer = polygonsFc.CreateRowBuffer();
                         rowBuffer[polygonDef.GetShapeField()] = polygon;
                         rowBuffer[polyIdentifierField] = kv.Key;
-                        using var row = polygonsFc.CreateRow(rowBuffer);
-                        result[kv.Key] = kv.Value.Count;
                         
-                        System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✓ {kv.Key}: Polígono guardado ({kv.Value.Count} puntos, área={polygon.Area:F2})");
+                        try
+                        {
+                            using var row = polygonsFc.CreateRow(rowBuffer);
+                            result[kv.Key] = kv.Value.Count;
+                            
+                            System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✓ {kv.Key}: Polígono guardado ({kv.Value.Count} puntos, área={polygon.Area:F6})");
+                        }
+                        catch (Exception dbEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✗ {kv.Key}: Error al guardar en BD - {dbEx.Message}");
+                            discarded.Add($"{kv.Key}: Error BD - {dbEx.Message}");
+                        }
                     }
                     else
                     {
@@ -165,30 +176,27 @@ public static class GeocodedPolygonsLayerService
                 }
                 else
                 {
-                    discarded.Add($"{kv.Key}: No se pudo generar polígono válido");
-                    System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✗ {kv.Key}: Polígono nulo o vacío");
+                    discarded.Add($"{kv.Key}: No se pudo generar polígono válido (área={polygon?.Area ?? 0})");
+                    System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✗ {kv.Key}: Polígono nulo o vacío (área={polygon?.Area ?? 0})");
                 }
             }
             catch (Exception ex)
             {
                 discarded.Add($"{kv.Key}: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✗ {kv.Key}: Excepción - {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] StackTrace: {ex.StackTrace}");
             }
         }
 
-        // Si no se generó ningún polígono, devolver diagnóstico embebido usando clave especial
         if (result.Count == 0 && discarded.Count > 0)
         {
-            // Guardamos un pseudo-registro con clave vacía para comunicar diagnóstico.
-            result["__DIAGNOSTICO__"] = -1; // consumidor puede interpretar esto y mostrar mensaje detallado
-            // Para no prolongar memoria, truncamos a primeros 12
+            result["__DIAGNOSTICO__"] = -1; 
+            
             var brief = string.Join("; ", discarded.Take(12));
             if (discarded.Count > 12) brief += $" ... (+{discarded.Count - 12})";
-            // Usamos consola debug; la UI puede volver a calcular si desea el texto completo.
             System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Ningún polígono generado. Causas: {brief}");
         }
 
-        // Recargar siempre la capa (evita quedar apuntando a otra geodatabase distinta)
         try
         {
             var mvReload = MapView.Active;
@@ -200,10 +208,10 @@ public static class GeocodedPolygonsLayerService
         }
         catch { }
 
-        AddLayerToMap(gdbPath); // volver a crear / asociar
+        AddLayerToMap(gdbPath);
         polygonLayer?.ClearDisplayCache();
 
-        // Validar realmente cuántos registros quedaron en la feature class
+        
         int actualCount = 0;
         try
         {
@@ -215,7 +223,6 @@ public static class GeocodedPolygonsLayerService
         catch { }
         if (actualCount == 0)
         {
-            // Si el diccionario decía que había resultados pero la tabla quedó vacía, limpiamos para forzar diagnóstico arriba.
             if (result.Keys.Any(k => k != "__DIAGNOSTICO__"))
             {
                 result.Clear();
@@ -224,14 +231,12 @@ public static class GeocodedPolygonsLayerService
             }
         }
 
-        // Intentar seleccionar y hacer zoom al primer polígono creado
         try
         {
             if (polygonLayer != null && result.Keys.Any(k => k != "__DIAGNOSTICO__"))
             {
                 var firstId = result.Keys.First(k => k != "__DIAGNOSTICO__");
                 var oidFieldName = polygonsFc.GetDefinition().GetObjectIDField();
-                // Buscar OID del primer registro con ese identificador
                 var idFieldName = polyIdentifierField;
                 long? oid = null;
                 using (var cursor = polygonsFc.Search(new QueryFilter { WhereClause = $"{idFieldName} = '{firstId.Replace("'","''")}'", SubFields = oidFieldName + "," + idFieldName }, false))
@@ -247,11 +252,9 @@ public static class GeocodedPolygonsLayerService
                     var mv = MapView.Active;
                     if (mv != null)
                     {
-                        // Seleccionar (usando QueryFilter sobre el OID)
                         polygonLayer.ClearSelection();
                         var qfSel = new QueryFilter { WhereClause = $"{oidFieldName} = {oid.Value}" };
                         polygonLayer.Select(qfSel);
-                        // Zoom al shape
                         using var feat = polygonsFc.Search(new QueryFilter { WhereClause = $"{oidFieldName} = {oid.Value}", SubFields = oidFieldName + "," + polygonsFc.GetDefinition().GetShapeField() }, false);
                         if (feat.MoveNext())
                         {
@@ -271,7 +274,6 @@ public static class GeocodedPolygonsLayerService
         gdb.Dispose();
         return result;
     }
-
     private static FeatureClass GetPointsFeatureClass(string gdbPath, out Geodatabase gdb)
     {
         gdb = null;
@@ -352,14 +354,10 @@ public static class GeocodedPolygonsLayerService
         using var gdb = new Geodatabase(gdbConn);
         using var fc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
 
-        // No reutilizamos instancias previas para evitar caches de esquema obsoletos.
         var layerParams = new FeatureLayerCreationParams(fc) { Name = TargetPolygonsClass };
         polygonLayer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
     }
 
-    /// <summary>
-    /// Crea un polígono donde TODOS los puntos son vértices, usando ordenamiento por ángulo polar
-    /// </summary>
     private static Polygon CreatePolygonFromAllPoints(List<MapPoint> points, SpatialReference sr)
     {
         if (points == null || points.Count < 3)
@@ -369,17 +367,14 @@ public static class GeocodedPolygonsLayerService
         {
             System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] Creando polígono con {points.Count} puntos como vértices");
 
-            // 1. Ordenar puntos usando algoritmo que minimice cruces
             var orderedPoints = OrderPointsForSimplePolygon(points);
             
-            // 2. Crear polígono con todos los puntos ordenados
             var coords = new List<Coordinate2D>();
             foreach (var point in orderedPoints)
             {
                 coords.Add(new Coordinate2D(point.X, point.Y));
             }
             
-            // Cerrar el polígono
             if (orderedPoints.Count > 0)
             {
                 coords.Add(new Coordinate2D(orderedPoints[0].X, orderedPoints[0].Y));
@@ -387,7 +382,6 @@ public static class GeocodedPolygonsLayerService
             
             var polygon = PolygonBuilderEx.CreatePolygon(coords, sr);
             
-            // 3. Verificar y corregir auto-intersecciones si las hay
             if (polygon != null && !polygon.IsEmpty)
             {
                 var cleanedPolygon = CleanSelfIntersections(polygon, sr);
@@ -407,9 +401,6 @@ public static class GeocodedPolygonsLayerService
         }
     }
 
-    /// <summary>
-    /// Ordena puntos para crear un polígono simple que minimice auto-intersecciones
-    /// </summary>
     private static List<MapPoint> OrderPointsForSimplePolygon(List<MapPoint> points)
     {
         if (points.Count <= 3)
@@ -417,13 +408,11 @@ public static class GeocodedPolygonsLayerService
 
         try
         {
-            // Calcular centroide
             double centroidX = points.Average(p => p.X);
             double centroidY = points.Average(p => p.Y);
             
             System.Diagnostics.Debug.WriteLine($"[PolarOrdering] Centroide: ({centroidX:F2}, {centroidY:F2})");
             
-            // Ordenar por ángulo polar desde el centroide
             var ordered = points.OrderBy(p => 
             {
                 double angle = Math.Atan2(p.Y - centroidY, p.X - centroidX);
@@ -441,14 +430,11 @@ public static class GeocodedPolygonsLayerService
         }
     }
 
-    /// <summary>
-    /// Limpia auto-intersecciones en el polígono
-    /// </summary>
+
     private static Polygon CleanSelfIntersections(Polygon polygon, SpatialReference sr)
     {
         try
         {
-            // Usar simplificación de ArcGIS para corregir geometrías
             var simplified = GeometryEngine.Instance.SimplifyAsFeature(polygon);
             if (simplified is Polygon simplePoly && !simplePoly.IsEmpty)
             {
@@ -459,21 +445,16 @@ public static class GeocodedPolygonsLayerService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CleanPolygon] Error en simplificación: {ex.Message}");
-            // Si falla la simplificación, intentar reconstruir el polígono
             return RebuildPolygonWithoutIntersections(polygon, sr);
         }
         
         return polygon;
     }
 
-    /// <summary>
-    /// Reconstruye el polígono eliminando segmentos que se auto-intersectan
-    /// </summary>
     private static Polygon RebuildPolygonWithoutIntersections(Polygon polygon, SpatialReference sr)
     {
         try
         {
-            // Extraer todos los puntos del polígono original
             var allPoints = new List<MapPoint>();
             for (int partIndex = 0; partIndex < polygon.PartCount; partIndex++)
             {
@@ -484,7 +465,6 @@ public static class GeocodedPolygonsLayerService
                 }
             }
             
-            // Eliminar duplicados (tolerancia pequeña)
             var uniquePoints = new List<MapPoint>();
             foreach (var point in allPoints)
             {
@@ -498,13 +478,12 @@ public static class GeocodedPolygonsLayerService
             
             System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Reconstruyendo con {uniquePoints.Count} puntos únicos");
             
-            // Recrear polígono con ordenamiento mejorado
             return CreatePolygonFromAllPoints(uniquePoints, sr);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Error: {ex.Message}");
-            return polygon; // Devolver original si falla
+            return polygon; 
         }
     }
 
@@ -519,7 +498,6 @@ public static class GeocodedPolygonsLayerService
             
             System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Procesando {points.Count} puntos");
             
-            // PARA GRUPOS PEQUEÑOS (3-15 puntos): Usar algoritmo que incluye todos los puntos como vértices
             if (points.Count <= 15)
             {
                 System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando algoritmo de todos-los-puntos para {points.Count} puntos");
@@ -529,7 +507,6 @@ public static class GeocodedPolygonsLayerService
                 {
                     System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ✓ Polígono creado con {points.Count} vértices, área={resultPolygon.Area:F2}");
                     
-                    // Verificar que todos los puntos estén incluidos
                     bool allIncluded = VerifyAllPointsIncluded(resultPolygon, points);
                     if (allIncluded)
                     {
@@ -538,11 +515,10 @@ public static class GeocodedPolygonsLayerService
                 }
             }
             
-            // PARA GRUPOS GRANDES (>15 puntos): Usar Concave Hull optimizado
             System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando Concave Hull para {points.Count} puntos");
             try
             {
-                double chiValue = 0.1; // Valor más agresivo para mayor concavidad
+                double chiValue = 0.1; 
                 var concaveHull = new DelaunayConcaveHull(points, chiValue);
                 var resultPolygon = concaveHull.BuildConcaveHull();
                 
@@ -557,7 +533,6 @@ public static class GeocodedPolygonsLayerService
                 System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ⚠ Error en Concave Hull: {exDelaunay.Message}");
             }
             
-            // FALLBACK: Usar algoritmo de todos-los-puntos
             System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando fallback de todos-los-puntos");
             return CreatePolygonFromAllPoints(points, sr);
         }
@@ -568,9 +543,6 @@ public static class GeocodedPolygonsLayerService
         }
     }
 
-    /// <summary>
-    /// Crea un Convex Hull simple como fallback
-    /// </summary>
     private static Polygon CreateConvexHullPolygon(List<MapPoint> points, SpatialReference sr)
     {
         try
@@ -586,9 +558,6 @@ public static class GeocodedPolygonsLayerService
         }
     }
 
-    /// <summary>
-    /// Valida que un polígono tenga geometría correcta y sea utilizable
-    /// </summary>
     private static bool ValidatePolygonGeometry(Polygon polygon)
     {
         if (polygon == null || polygon.IsEmpty)
@@ -596,39 +565,31 @@ public static class GeocodedPolygonsLayerService
         
         try
         {
-            // Validación 1: Área positiva
             if (polygon.Area <= 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Área <= 0");
                 return false;
             }
             
-            // Validación 2: Perímetro válido
             if (polygon.Length <= 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Perímetro <= 0");
                 return false;
             }
             
-            // Validación 3: Tiene al menos un part
             if (polygon.PartCount == 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Sin parts");
                 return false;
             }
             
-            // Validación 4: Extensión válida
             var extent = polygon.Extent;
             if (extent == null || extent.Width <= 0 || extent.Height <= 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Extensión inválida");
                 return false;
             }
-            
-            // RELAJAR validaciones para polígonos que incluyen todos los puntos
-            // No rechazar por relaciones de aspecto extremas o áreas pequeñas
-            // si el polígono representa fielmente la distribución de puntos
-            
+    
             return true;
         }
         catch (Exception ex)
@@ -638,9 +599,7 @@ public static class GeocodedPolygonsLayerService
         }
     }
 
-    /// <summary>
-    /// Verifica que todos los puntos originales estén contenidos en el polígono o muy cerca
-    /// </summary>
+
     private static bool VerifyAllPointsIncluded(Polygon polygon, List<MapPoint> originalPoints)
     {
         if (polygon == null || polygon.IsEmpty || originalPoints == null)
@@ -651,18 +610,16 @@ public static class GeocodedPolygonsLayerService
             int pointsInside = 0;
             int pointsOnBoundary = 0;
             int pointsOutside = 0;
-            double tolerance = 0.01; // 1cm de tolerancia
+            double tolerance = 0.01; 
             
             foreach (var point in originalPoints)
             {
-                // Verificar si está dentro del polígono
                 if (GeometryEngine.Instance.Contains(polygon, point))
                 {
                     pointsInside++;
                 }
                 else
                 {
-                    // Verificar si está en el borde (puede ser que esté EN el vértice)
                     double distanceToBoundary = GeometryEngine.Instance.Distance(polygon, point);
                     if (distanceToBoundary <= tolerance)
                     {
@@ -681,17 +638,15 @@ public static class GeocodedPolygonsLayerService
             
             System.Diagnostics.Debug.WriteLine($"[Verification] Puntos: {totalIncluded}/{originalPoints.Count} incluidos ({inclusionRate:P0}) - Dentro: {pointsInside}, Borde: {pointsOnBoundary}, Fuera: {pointsOutside}");
             
-            // Aceptar si al menos el 95% está incluido (permite pequeños errores de redondeo)
             return inclusionRate >= 0.95;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Verification] Error: {ex.Message}");
-            return true; // En caso de error, no rechazar
+            return true; 
         }
     }
 
-    // Métodos auxiliares existentes (si los necesitas para otras funcionalidades)
     private static double CrossProduct(MapPoint o, MapPoint a, MapPoint b)
     {
         return (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
