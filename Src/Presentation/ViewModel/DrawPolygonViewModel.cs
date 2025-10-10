@@ -43,7 +43,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
         BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy);
-    // RefreshIdentifiersCommand eliminado
+        // RefreshIdentifiersCommand eliminado
     }
 
     private async Task OnBuildPolygons()
@@ -66,8 +66,8 @@ internal class DrawPolygonViewModel : BusyViewModelBase
                 StatusMessage = $"No se generaron polígonos. Ver consola (Debug) para causas (<{minPoints}).";
                 return;
             }
-            var resumen = string.Join(", ", result.Keys.Where(k=>k!="__DIAGNOSTICO__").Take(10));
-            var total = result.Keys.Count(k=>k!="__DIAGNOSTICO__");
+            var resumen = string.Join(", ", result.Keys.Where(k => k != "__DIAGNOSTICO__").Take(10));
+            var total = result.Keys.Count(k => k != "__DIAGNOSTICO__");
             if (total > 10) resumen += $" (+{total - 10} más)";
             StatusMessage = $"Generados {total} polígonos (mínimo {minPoints}). IDs: {resumen}";
         }
@@ -106,7 +106,8 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
     private void OnFeatureClass()
     {
-        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_all");
+        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_point");
+        // var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_all");
 
         var dlg = new OpenItemDialog
         {
