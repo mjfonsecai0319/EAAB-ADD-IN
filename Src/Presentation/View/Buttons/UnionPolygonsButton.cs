@@ -29,13 +29,20 @@ public class UnionPolygonsButton : Button
 
         if (selectedFeature is null)
         {
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show("Could not retrieve the selected feature.");
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                messageText: "No se encontró la entidad seleccionada. Por favor seleccione exactamente una entidad puntual en el mapa y vuelva a intentarlo.",
+                caption: "Error - Selección inválida",
+                button: System.Windows.MessageBoxButton.OK,
+                icon: System.Windows.MessageBoxImage.Warning
+            );
             return;
         }
 
-        var list = await _selectByLocationUseCase.Invoke(
+        var neighborhoods = await _selectByLocationUseCase.Invoke(
             selectedFeature,
-            @"C:\Users\molarte\Documents\Clientes EAAB\BARRIOS_SGO.gdb\BARRIOS_MUNICIPIO"
+            "BARRIOS_MUNICIPIO"
         );
+        
+                
     }
 }
