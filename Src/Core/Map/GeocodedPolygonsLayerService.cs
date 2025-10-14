@@ -50,12 +50,12 @@ public static class GeocodedPolygonsLayerService
         return ids;
     }
 
-    public static Task<Dictionary<string,int>> GenerateAsync(string gdbPath, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
+    public static Task<Dictionary<string, int>> GenerateAsync(string gdbPath, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
     {
         return QueuedTask.Run(() => _GenerateInternal(gdbPath, null, identifierFieldName, neighborhoodsPath, clientsPath, neighborhoodNameField));
     }
 
-    public static Task<Dictionary<string,int>> GenerateAsync(IEnumerable<string> identifiers, string gdbPath = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
+    public static Task<Dictionary<string, int>> GenerateAsync(IEnumerable<string> identifiers, string gdbPath = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
     {
         var set = identifiers?.Where(s => !string.IsNullOrWhiteSpace(s))
             .Select(s => s.Trim())
@@ -63,7 +63,7 @@ public static class GeocodedPolygonsLayerService
         return QueuedTask.Run(() => _GenerateInternal(gdbPath, set, identifierFieldName, neighborhoodsPath, clientsPath, neighborhoodNameField));
     }
 
-    private static Dictionary<string,int> _GenerateInternal(string gdbPath, HashSet<string> filterIds = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
+    private static Dictionary<string, int> _GenerateInternal(string gdbPath, HashSet<string> filterIds = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
     {
         var result = new Dictionary<string, int>();
         if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
@@ -100,19 +100,19 @@ public static class GeocodedPolygonsLayerService
             f.Name.Equals(identifierFieldName, StringComparison.OrdinalIgnoreCase))?.Name ?? "Identificador";
 
         System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Usando campo identificador: '{identifierField}'");
-        
+
         // Quitar la capa del mapa (si existe) ANTES de alterar el esquema para liberar locks
         TryRemovePolygonLayerFromMap();
 
         // Asegurar existencia de la FC y de los campos requeridos antes de abrir la FC
         EnsurePolygonFeatureClass(gdbPath, gdb, pointDef.GetSpatialReference());
-    EnsureFieldExists(gdbPath, TargetPolygonsClass, "identificador", "TEXT", 100);
-    // usar tamaño amplio por defecto para cadenas largas de barrios
-    EnsureFieldExists(gdbPath, TargetPolygonsClass, "barrios", "TEXT", 4096);
-        EnsureFieldExists(gdbPath, TargetPolygonsClass, "clientes", "LONG", 0);
+        EnsureFieldExists(gdbPath, TargetClass, "identificador", "TEXT", 100);
+        // usar tamaño amplio por defecto para cadenas largas de barrios
+        EnsureFieldExists(gdbPath, TargetClass, "barrios", "TEXT", 4096);
+        EnsureFieldExists(gdbPath, TargetClass, "clientes", "LONG", 0);
 
         // Recién ahora abrimos la FC de polígonos con el esquema actualizado
-        using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
+        using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetClass);
         var polygonDef = polygonsFc.GetDefinition();
         var polyIdentifierField = "identificador";
         var polyBarriosField = "barrios";
@@ -129,8 +129,8 @@ public static class GeocodedPolygonsLayerService
 
         DeleteAll(polygonsFc);
 
-    var groups = new Dictionary<string, List<MapPoint>>(StringComparer.OrdinalIgnoreCase);
-        using (var cursor = pointsFc.Search(new QueryFilter { SubFields = string.Join(",", new [] { oidField, shapeField, identifierField }) }, false))
+        var groups = new Dictionary<string, List<MapPoint>>(StringComparer.OrdinalIgnoreCase);
+        using (var cursor = pointsFc.Search(new QueryFilter { SubFields = string.Join(",", new[] { oidField, shapeField, identifierField }) }, false))
         {
             while (cursor.MoveNext())
             {
@@ -212,7 +212,7 @@ public static class GeocodedPolygonsLayerService
                             }
                             catch { /* dejar null */ }
                         }
-                        
+
                         try
                         {
                             using var row = polygonsFc.CreateRow(rowBuffer);
@@ -330,7 +330,7 @@ public static class GeocodedPolygonsLayerService
             var mv = MapView.Active;
             if (mv?.Map == null) return;
             var layers = mv.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
-                .Where(l => l.Name.Equals(TargetPolygonsClass, StringComparison.OrdinalIgnoreCase))
+                .Where(l => l.Name.Equals(TargetClass, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             foreach (var l in layers)
             {
