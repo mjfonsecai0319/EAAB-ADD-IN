@@ -61,7 +61,19 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
             System.Diagnostics.Debug.WriteLine($"[DrawPolygon] Generando polígonos para {identifiers.Count} identificadores usando campo: {SelectedFeatureClassField}");
 
-            var result = await GeocodedPolygonsLayerService.GenerateAsync(identifiers, Workspace, SelectedFeatureClassField);
+            // Pasar Neighborhood (barrios) y ClientsAffected (clientes) si el usuario los cargó; si no, el servicio los dejará en null
+            string? neighborhoodsPath = Neighborhood;
+            string? clientsPath = ClientsAffected;
+            string neighborhoodNameField = "NEIGHBORHOOD_DESC"; // ajustar si tu FC de barrios usa otro nombre
+
+            var result = await GeocodedPolygonsLayerService.GenerateAsync(
+                identifiers,
+                Workspace,
+                SelectedFeatureClassField,
+                neighborhoodsPath,
+                clientsPath,
+                neighborhoodNameField
+            );
             bool allow3 = Module1.Settings?.permitirTresPuntos == true;
             int minPoints = allow3 ? 3 : 4;
 
