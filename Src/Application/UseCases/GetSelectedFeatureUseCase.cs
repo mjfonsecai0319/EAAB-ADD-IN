@@ -22,7 +22,7 @@ public class GetSelectedFeatureUseCase
         return await QueuedTask.Run(() => this.InvokeInternal(mapView));
     }
 
-    public async Task<Feature?> InvokeInternal(MapView mapView)
+    public Feature? InvokeInternal(MapView mapView)
     {
         var selectedFeatures = mapView.Map.GetSelection().ToDictionary();
         var kvp = selectedFeatures.ElementAt(0);
