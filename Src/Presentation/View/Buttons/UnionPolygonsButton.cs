@@ -33,7 +33,7 @@ public class UnionPolygonsButton : Button
             return;
         }
 
-        _selectByLocationUseCase.Invoke(
+        var list = await _selectByLocationUseCase.Invoke(
             selectedFeature,
             @"C:\Users\molarte\Documents\Clientes EAAB\BARRIOS_SGO.gdb\BARRIOS_MUNICIPIO"
         );
