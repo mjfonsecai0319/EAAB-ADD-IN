@@ -15,8 +15,8 @@ namespace EAABAddIn.Src.Core.Map;
 
 public static class GeocodedPolygonsLayerService
 {
-    private const string SourcePointsClass = "GeocodedAddresses";
-    private const string TargetPolygonsClass = "PoligonosGeoCod";
+    public static readonly string SourceClass = "GeocodedAddresses";
+    public static readonly string TargetClass = "PoligonosGeoCod";
     private static FeatureLayer polygonLayer;
     private static FeatureLayer pointsLayer;
 
@@ -102,11 +102,11 @@ public static class GeocodedPolygonsLayerService
         TryRemovePolygonLayerFromMap();
 
         EnsurePolygonFeatureClass(gdbPath, gdb, pointDef.GetSpatialReference());
-    EnsureFieldExists(gdbPath, TargetPolygonsClass, "identificador", "TEXT", 100);
-    EnsureFieldExists(gdbPath, TargetPolygonsClass, "barrios", "TEXT", 4096);
-        EnsureFieldExists(gdbPath, TargetPolygonsClass, "clientes", "LONG", 0);
+    EnsureFieldExists(gdbPath, TargetClass, "identificador", "TEXT", 100);
+    EnsureFieldExists(gdbPath, TargetClass, "barrios", "TEXT", 4096);
+        EnsureFieldExists(gdbPath, TargetClass, "clientes", "LONG", 0);
 
-        using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
+        using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetClass);
         var polygonDef = polygonsFc.GetDefinition();
         var polyIdentifierField = "identificador";
         var polyBarriosField = "barrios";
@@ -318,7 +318,7 @@ public static class GeocodedPolygonsLayerService
             var mv = MapView.Active;
             if (mv?.Map == null) return;
             var layers = mv.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
-                .Where(l => l.Name.Equals(TargetPolygonsClass, StringComparison.OrdinalIgnoreCase))
+                .Where(l => l.Name.Equals(TargetClass, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             foreach (var l in layers)
             {
@@ -409,7 +409,6 @@ public static class GeocodedPolygonsLayerService
     {
         int count = 0;
 
-        // Resolver nombres de campos de manera insensible a mayúsculas/minúsculas
         var def = clientsFc.GetDefinition();
         var fields = def.GetFields();
         string oidFld = def.GetObjectIDField();
@@ -417,7 +416,6 @@ public static class GeocodedPolygonsLayerService
         string tipoServicioFld = fields.FirstOrDefault(f => f.Name.Equals("TIPOSERVICIOAC", StringComparison.OrdinalIgnoreCase))?.Name ?? "TIPOSERVICIOAC";
         string clasificacionFld = fields.FirstOrDefault(f => f.Name.Equals("DOMCLASIFICACIONPREDIO", StringComparison.OrdinalIgnoreCase))?.Name ?? "DOMCLASIFICACIONPREDIO";
 
-        // Determinar si los campos son numéricos para construir el WHERE correctamente sin comillas
         bool tipoServicioEsNumerico = fields.FirstOrDefault(f => f.Name.Equals(tipoServicioFld, StringComparison.OrdinalIgnoreCase))?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
         bool clasificacionEsNumerico = fields.FirstOrDefault(f => f.Name.Equals(clasificacionFld, StringComparison.OrdinalIgnoreCase))?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
 
@@ -450,7 +448,7 @@ public static class GeocodedPolygonsLayerService
         if (mapView?.Map != null)
         {
             var existing = mapView.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
-                .FirstOrDefault(l => l.Name.Equals(SourcePointsClass, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(l => l.Name.Equals(SourceClass, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
                 pointsLayer = existing;
@@ -469,7 +467,7 @@ public static class GeocodedPolygonsLayerService
         try
         {
             gdb = new Geodatabase(gdbConn);
-            return gdb.OpenDataset<FeatureClass>(SourcePointsClass);
+            return gdb.OpenDataset<FeatureClass>(SourceClass);
         }
         catch
         {
@@ -481,11 +479,11 @@ public static class GeocodedPolygonsLayerService
     private static void EnsurePolygonFeatureClass(string gdbPath, Geodatabase gdb, SpatialReference sr)
     {
         var exists = gdb.GetDefinitions<FeatureClassDefinition>()
-            .Any(d => d.GetName().Equals(TargetPolygonsClass, StringComparison.OrdinalIgnoreCase));
+            .Any(d => d.GetName().Equals(TargetClass, StringComparison.OrdinalIgnoreCase));
         if (exists) return;
         var parameters = Geoprocessing.MakeValueArray(
             gdbPath,
-            TargetPolygonsClass,
+            TargetClass,
             "POLYGON",
             "",
             "DISABLED",
@@ -521,9 +519,9 @@ public static class GeocodedPolygonsLayerService
 
         var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
         using var gdb = new Geodatabase(gdbConn);
-        using var fc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
+        using var fc = gdb.OpenDataset<FeatureClass>(TargetClass);
 
-        var layerParams = new FeatureLayerCreationParams(fc) { Name = TargetPolygonsClass };
+        var layerParams = new FeatureLayerCreationParams(fc) { Name = TargetClass };
         polygonLayer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
     }
 
