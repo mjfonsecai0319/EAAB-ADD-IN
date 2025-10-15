@@ -5,6 +5,8 @@ using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Controls;
 
 using EAABAddIn.Src.Presentation.Base;
+using EAABAddIn.Src.Core.Map;
+using System.Windows.Input;
 
 namespace EAABAddIn.Src.Presentation.ViewModel.DockPanes;
 
@@ -15,6 +17,8 @@ internal class GeocoderDockpaneViewModel : DockPane
     private AddressSearchViewModel _paneH1VM;
     private MassiveGeocodeViewModel _paneH2VM;
     private POIsDockpaneViewModel _paneH3VM;
+
+    public ICommand CleanDataCommand { get; }
 
     protected GeocoderDockpaneViewModel()
     {
@@ -38,6 +42,8 @@ internal class GeocoderDockpaneViewModel : DockPane
             Tooltip = _paneH3VM.Tooltip
         });
         CurrentPage = _paneH1VM;
+
+    CleanDataCommand = new EAABAddIn.Src.Presentation.Base.RelayCommand(async () => await OnCleanAsync());
     }
 
     internal static void Show()
@@ -87,6 +93,15 @@ internal class GeocoderDockpaneViewModel : DockPane
         }
     }
     #endregion
+
+    private async System.Threading.Tasks.Task OnCleanAsync()
+    {
+        // Quitar del mapa la capa de polígonos generados
+        GeocodedPolygonsLayerService.TryRemovePolygonLayerFromMap();
+
+        // Quitar del mapa la capa de puntos de resultados (sin borrar del workspace)
+        await ResultsLayerService.RemoveResultsLayerFromMapAsync();
+    }
 }
 
 internal class GeocoderDockpane_ShowButton : Button

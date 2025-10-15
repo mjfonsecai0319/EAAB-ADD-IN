@@ -311,7 +311,7 @@ public static class GeocodedPolygonsLayerService
         return result;
     }
 
-    private static void TryRemovePolygonLayerFromMap()
+    public static void TryRemovePolygonLayerFromMap()
     {
         try
         {

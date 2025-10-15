@@ -290,6 +290,26 @@ namespace EAABAddIn.Src.Core.Map
             }
         }
 
+        /// <summary>
+        /// Remueve del mapa la capa de resultados (GeocodedAddresses) sin borrar entidades del workspace.
+        /// </summary>
+        public static Task RemoveResultsLayerFromMapAsync()
+        {
+            return QueuedTask.Run(() =>
+            {
+                var mv = MapView.Active;
+                if (mv?.Map == null) return;
+                var layers = mv.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
+                    .Where(l => string.Equals(l.Name, FeatureClassName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                foreach (var l in layers)
+                {
+                    mv.Map.RemoveLayer(l);
+                }
+                _addressPointLayer = null;
+            });
+        }
+
         public static void AddPointToMemory(PtAddressGralEntity entidad)
         {
             if (entidad == null) return;

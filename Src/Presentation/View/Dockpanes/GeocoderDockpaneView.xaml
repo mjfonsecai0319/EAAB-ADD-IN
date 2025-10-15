@@ -53,6 +53,16 @@
         SelectedIndex="{Binding SelectedPanelHeaderIndex, Mode=TwoWay}"
         IsSynchronizedWithCurrentItem="True"
       />
+
+      <!-- Botón para limpiar datos (sólo capas en el mapa, no el workspace) -->
+      <Button
+        DockPanel.Dock="Right"
+        Content="Limpiar"
+        ToolTip="Quita las capas temporales del mapa (no borra datos del workspace)"
+        Command="{Binding CleanDataCommand}"
+        Margin="6,0,0,0"
+        Height="24"
+        MinWidth="80" />
     </DockPanel>
 
     <ContentPresenter Grid.Row="1" Content="{Binding CurrentPage}"></ContentPresenter>

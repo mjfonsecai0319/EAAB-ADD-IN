@@ -34,6 +34,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
     public ICommand BuildPolygonsCommand { get; private set; }
+    public ICommand ClearFormCommand { get; private set; }
 
     public DrawPolygonViewModel()
     {
@@ -42,6 +43,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
         BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygons(), () => !IsBusy && CanBuildPolygons);
+        ClearFormCommand = new RelayCommand(OnClearForm);
     }
 
     private async Task OnBuildPolygons()
@@ -61,11 +63,9 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
             System.Diagnostics.Debug.WriteLine($"[DrawPolygon] Generando polígonos para {identifiers.Count} identificadores usando campo: {SelectedFeatureClassField}");
 
-            // Pasar Neighborhood (barrios) y ClientsAffected (clientes) si el usuario los cargó; si no, el servicio los dejará en null
             string? neighborhoodsPath = Neighborhood;
             string? clientsPath = ClientsAffected;
-            string neighborhoodNameField = "NEIGHBORHOOD_DESC"; // ajustar si tu FC de barrios usa otro nombre
-
+            string neighborhoodNameField = "NEIGHBORHOOD_DESC"; 
             var result = await GeocodedPolygonsLayerService.GenerateAsync(
                 identifiers,
                 Workspace,
@@ -106,6 +106,18 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    private void OnClearForm()
+    {
+        FeatureClass = null;
+        FeatureClassFields = new List<string>();
+        SelectedFeatureClassField = null;
+        IsFeatureClassSelected = false;
+        Neighborhood = null;
+        ClientsAffected = null;
+        ClientsAffectedCount = 0;
+        StatusMessage = string.Empty;
     }
 
 
