@@ -111,6 +111,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
         ClientsAffected = null;
         ClientsAffectedCount = 0;
         StatusMessage = string.Empty;
+        // CanClear se recalcula automáticamente por los setters anteriores
     }
 
 
@@ -341,6 +342,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
                 NotifyPropertyChanged(nameof(CanBuildPolygons));
+                NotifyPropertyChanged(nameof(CanClear));
                 _ = GetFeatureClassFieldNamesAsync();
             }
         }
@@ -356,6 +358,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _neighborhood = value;
                 NotifyPropertyChanged(nameof(Neighborhood));
+                NotifyPropertyChanged(nameof(CanClear));
             }
         }
     }
@@ -370,6 +373,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
             {
                 _clientsAffected = value;
                 NotifyPropertyChanged(nameof(ClientsAffected));
+                NotifyPropertyChanged(nameof(CanClear));
             }
         }
     }
@@ -429,7 +433,15 @@ internal class DrawPolygonViewModel : BusyViewModelBase
                 _selectedFeatureClassField = value;
                 NotifyPropertyChanged(nameof(SelectedFeatureClassField));
                 NotifyPropertyChanged(nameof(CanBuildPolygons));
+                NotifyPropertyChanged(nameof(CanClear));
             }
         }
     }   
+
+    // Habilita el botón Limpiar solo si hay datos introducidos (alguno de los campos fue seleccionado)
+    public bool CanClear =>
+        !string.IsNullOrWhiteSpace(FeatureClass) ||
+        !string.IsNullOrWhiteSpace(Neighborhood) ||
+        !string.IsNullOrWhiteSpace(ClientsAffected) ||
+        !string.IsNullOrWhiteSpace(SelectedFeatureClassField);
 }

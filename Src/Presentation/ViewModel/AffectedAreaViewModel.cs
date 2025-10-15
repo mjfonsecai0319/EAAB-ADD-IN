@@ -33,6 +33,8 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand FeatureClassCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
+    public ICommand ClearFormCommand { get; private set; }
+    public ICommand BuildPolygonsCommand { get; private set; }
 
     public AffectedAreaViewModel()
     {
@@ -40,7 +42,16 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         FeatureClassCommand = new RelayCommand(OnFeatureClass);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
+        ClearFormCommand = new RelayCommand(OnClearForm);
+        BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygonsAsync(), () => !IsBusy && CanBuildPolygons);
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
+
+        // Refrescar CanExecute cuando cambie IsBusy
+        this.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(IsBusy))
+                RaiseCanExecuteForBuild();
+        };
     }
 
     private string _workspace = Project.Current.DefaultGeodatabasePath;
@@ -68,6 +79,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
                 _ = GetFeatureClassFieldNamesAsync();
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -82,6 +94,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _neighborhood = value;
                 NotifyPropertyChanged(nameof(Neighborhood));
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -96,6 +109,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _clientsAffected = value;
                 NotifyPropertyChanged(nameof(ClientsAffected));
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -124,6 +138,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _selectedFeatureClassField = value;
                 NotifyPropertyChanged(nameof(SelectedFeatureClassField));
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -139,6 +154,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _selectedFeaturesCount = value;
                 NotifyPropertyChanged(nameof(SelectedFeaturesCount));
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -156,6 +172,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
                 IsFeatureClassSelected = !value.IsNullOrEmpty();
                 SelectedFeatureClassField = value.FirstOrDefault();
                 NotifyPropertyChanged(nameof(FeatureClassFields));
+                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -165,6 +182,39 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     public ObservableCollection<string> SelectedFeatures
     {
         get => _selectedFeatures;
+    }
+
+    public bool CanBuildPolygons =>
+        !string.IsNullOrWhiteSpace(Workspace) &&
+        !string.IsNullOrWhiteSpace(FeatureClass) &&
+        !string.IsNullOrWhiteSpace(SelectedFeatureClassField) &&
+        (!string.IsNullOrWhiteSpace(Neighborhood) || !string.IsNullOrWhiteSpace(ClientsAffected));
+
+    private void OnClearForm()
+    {
+        FeatureClass = null;
+        FeatureClassFields = new List<string>();
+        SelectedFeatureClassField = null;
+        IsFeatureClassSelected = false;
+        Neighborhood = null;
+        ClientsAffected = null;
+        SelectedFeaturesCount = 0;
+        _selectedFeatures.Clear();
+        StatusMessage = string.Empty;
+        RaiseCanExecuteForBuild();
+    }
+
+    private async Task OnBuildPolygonsAsync()
+    {
+
+        await Task.CompletedTask;
+        StatusMessage = "Construyendo polígonos de área afectada...";
+    }
+
+    private void RaiseCanExecuteForBuild()
+    {
+        if (BuildPolygonsCommand is RelayCommand rc)
+            rc.RaiseCanExecuteChanged();
     }
 
 
