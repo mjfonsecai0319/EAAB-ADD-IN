@@ -99,23 +99,18 @@ public static class GeocodedPolygonsLayerService
         
         System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Usando campo identificador: '{identifierField}'");
         
-        // Quitar la capa del mapa (si existe) ANTES de alterar el esquema para liberar locks
         TryRemovePolygonLayerFromMap();
 
-        // Asegurar existencia de la FC y de los campos requeridos antes de abrir la FC
         EnsurePolygonFeatureClass(gdbPath, gdb, pointDef.GetSpatialReference());
     EnsureFieldExists(gdbPath, TargetPolygonsClass, "identificador", "TEXT", 100);
-    // usar tamaño amplio por defecto para cadenas largas de barrios
     EnsureFieldExists(gdbPath, TargetPolygonsClass, "barrios", "TEXT", 4096);
         EnsureFieldExists(gdbPath, TargetPolygonsClass, "clientes", "LONG", 0);
 
-        // Recién ahora abrimos la FC de polígonos con el esquema actualizado
         using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetPolygonsClass);
         var polygonDef = polygonsFc.GetDefinition();
         var polyIdentifierField = "identificador";
         var polyBarriosField = "barrios";
         var polyClientesField = "clientes";
-        // Obtener longitud efectiva del campo 'barrios' para truncar si es necesario
         int barriosMaxLen = 0;
         try
         {
@@ -149,11 +144,9 @@ public static class GeocodedPolygonsLayerService
         int minPoints = allow3 ? 3 : 4;
         var discarded = new List<string>();
 
-        // Abrir datasets opcionales: barrios y clientes
         using var neighborhoodsFc = OpenFeatureClassFromPath(neighborhoodsPath);
         using var clientsFc = OpenFeatureClassFromPath(clientsPath);
 
-        // Determinar campo de nombre de barrio si la FC de barrios existe
         string barrioNameFieldResolved = null;
         if (neighborhoodsFc != null)
         {
@@ -184,7 +177,6 @@ public static class GeocodedPolygonsLayerService
                         rowBuffer[polygonDef.GetShapeField()] = polygon;
                         rowBuffer[polyIdentifierField] = kv.Key;
 
-                        // Calcular BARRIOS (cadena) si hay FC de barrios y campo de nombre
                         if (neighborhoodsFc != null && !string.IsNullOrWhiteSpace(barrioNameFieldResolved))
                         {
                             try
@@ -200,7 +192,6 @@ public static class GeocodedPolygonsLayerService
                             catch { /* dejar null */ }
                         }
 
-                        // Calcular CLIENTES (conteo) si hay FC de clientes
                         if (clientsFc != null)
                         {
                             try
@@ -253,7 +244,6 @@ public static class GeocodedPolygonsLayerService
             System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Ningún polígono generado. Causas: {brief}");
         }
 
-        // Volver a agregar la capa con el esquema actualizado
         AddLayerToMap(gdbPath);
         polygonLayer?.ClearDisplayCache();
 
@@ -344,7 +334,6 @@ public static class GeocodedPolygonsLayerService
         try
         {
             var fcPath = Path.Combine(gdbPath, featureClassName);
-            // Abrir definición actual para comprobar existencia
             var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
             using var gdb = new Geodatabase(gdbConn);
             using var fc = gdb.OpenDataset<FeatureClass>(featureClassName);
@@ -352,11 +341,10 @@ public static class GeocodedPolygonsLayerService
                 .Any(f => f.Name.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
             if (exists) return;
 
-            // Cerrar FC antes de llamar GP (deja using scope)
         }
         catch { }
 
-        // Ejecutar AddField mediante GP
+      
         try
         {
             if (string.Equals(fieldType, "TEXT", StringComparison.OrdinalIgnoreCase))
@@ -389,7 +377,6 @@ public static class GeocodedPolygonsLayerService
             var datasetName = remainder.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).Last();
             var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
             var gdb = new Geodatabase(gdbConn);
-            // Nota: devolvemos FC y dejamos que el caller disponga del Geodatabase cuando se dispose la FC
             return gdb.OpenDataset<FeatureClass>(datasetName);
         }
         catch
@@ -421,12 +408,35 @@ public static class GeocodedPolygonsLayerService
     private static int GetClientsCountForPolygon(FeatureClass clientsFc, Polygon poly)
     {
         int count = 0;
+
+        // Resolver nombres de campos de manera insensible a mayúsculas/minúsculas
+        var def = clientsFc.GetDefinition();
+        var fields = def.GetFields();
+        string oidFld = def.GetObjectIDField();
+
+        string tipoServicioFld = fields.FirstOrDefault(f => f.Name.Equals("TIPOSERVICIOAC", StringComparison.OrdinalIgnoreCase))?.Name ?? "TIPOSERVICIOAC";
+        string clasificacionFld = fields.FirstOrDefault(f => f.Name.Equals("DOMCLASIFICACIONPREDIO", StringComparison.OrdinalIgnoreCase))?.Name ?? "DOMCLASIFICACIONPREDIO";
+
+        // Determinar si los campos son numéricos para construir el WHERE correctamente sin comillas
+        bool tipoServicioEsNumerico = fields.FirstOrDefault(f => f.Name.Equals(tipoServicioFld, StringComparison.OrdinalIgnoreCase))?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
+        bool clasificacionEsNumerico = fields.FirstOrDefault(f => f.Name.Equals(clasificacionFld, StringComparison.OrdinalIgnoreCase))?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
+
+        string whereTipo = tipoServicioEsNumerico ? $"{tipoServicioFld} = 10" : $"{tipoServicioFld} = '10'";
+        string whereClasif;
+        if (clasificacionEsNumerico)
+            whereClasif = $"{clasificacionFld} IN (1,4,6)";
+        else
+            whereClasif = $"{clasificacionFld} IN ('1','4','6')";
+
         var filter = new SpatialQueryFilter
         {
             SpatialRelationship = SpatialRelationship.Intersects,
-            FilterGeometry = poly
+            FilterGeometry = poly,
+            SubFields = oidFld,
+            WhereClause = $"{whereTipo} AND {whereClasif}"
         };
-        using var cursor = clientsFc.Search(filter, false);
+
+        using var cursor = clientsFc.Search(filter, true);
         while (cursor.MoveNext())
         {
             count++;
