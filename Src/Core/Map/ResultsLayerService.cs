@@ -21,8 +21,7 @@ namespace EAABAddIn.Src.Core.Map
     {
         private static FeatureLayer _addressPointLayer;
         private const string FeatureClassName = "GeocodedAddresses";
-    // Eliminado soporte de subcapas de identificadores
-    // private static bool _identifierSublayersAttempted;
+
 
         private static readonly List<PtAddressGralEntity> _pendingEntities = new();
         private static readonly object _pendingLock = new();
@@ -114,13 +113,12 @@ namespace EAABAddIn.Src.Core.Map
 
                 try
                 {
-                    // Nueva detección de duplicados: búsqueda espacial muy pequeña + comparación de dirección
                     if (skipDuplicates)
                     {
                         var addrCandidate = entidad.FullAddressEAAB ?? entidad.FullAddressCadastre ?? entidad.MainStreet ?? string.Empty;
                         if (SpatialFeatureExists(featureClass, mapPoint, addrCandidate))
                         {
-                            await _ZoomSingleAsync(mapView, mapPoint); // garantizar zoom aunque ya exista
+                            await _ZoomSingleAsync(mapView, mapPoint); 
                             return;
                         }
                     }
@@ -157,7 +155,6 @@ namespace EAABAddIn.Src.Core.Map
                     return;
                 }
 
-                // Zoom suave centrado en el punto recién agregado (buffer pequeño)
                 try
                 {
                     var currentSR = mapView.Map.SpatialReference ?? SpatialReferences.WGS84;
@@ -167,8 +164,6 @@ namespace EAABAddIn.Src.Core.Map
                         mpProjected = (MapPoint)GeometryEngine.Instance.Project(mapPoint, currentSR);
                     }
 
-                    // Definir un buffer en metros (aprox) dependiendo de la referencia espacial
-                    // Si el SR es geográfico (WGS84) usamos ~0.00045 grados (~50m). Si es proyectado, 50 metros.
                     Envelope env;
                     if (currentSR.IsGeographic)
                     {
@@ -185,7 +180,6 @@ namespace EAABAddIn.Src.Core.Map
                 }
                 catch
                 {
-                    // Si el zoom personalizado falla, fallback al extent de la capa
                     await mapView.ZoomToAsync(_addressPointLayer.QueryExtent(), TimeSpan.FromSeconds(1));
                 }
             }
@@ -197,7 +191,6 @@ namespace EAABAddIn.Src.Core.Map
                 );
             }
 
-            // (Subcapas de identificadores removidas según requerimiento)
         }
 
         private async static Task<bool> _CreateFeatureClassIfNotExist(string path)
@@ -261,13 +254,13 @@ namespace EAABAddIn.Src.Core.Map
                 if (existing is not null)
                 {
                     _addressPointLayer = existing;
-                    return; // ya existe en el mapa, reutilizar
+                    return; 
                 }
             }
 
             if (_addressPointLayer is not null)
             {
-                return; // ya existe
+                return; 
             }
 
             using (var geodatabase = new Geodatabase(gdbConnectionPath))
@@ -312,18 +305,10 @@ namespace EAABAddIn.Src.Core.Map
         {
             return QueuedTask.Run(() => _CommitPointsInternal(gdbPath, true));
         }
-
-        /// <summary>
-        /// Commit batch de puntos. Permite suprimir el zoom automático al extent de la capa.
-        /// </summary>
         public static Task CommitPointsAsync(string gdbPath, bool zoomExtent)
         {
             return QueuedTask.Run(() => _CommitPointsInternal(gdbPath, zoomExtent));
         }
-
-        /// <summary>
-        /// Elimina todas las entidades de la capa GeocodedAddresses (si existe) y opcionalmente hace refresh visual.
-        /// </summary>
         public static Task ClearLayerAsync(string gdbPath, bool refresh = true)
         {
             return QueuedTask.Run(() => _ClearLayerInternal(gdbPath, refresh));
@@ -421,9 +406,7 @@ namespace EAABAddIn.Src.Core.Map
             {
                 try
                 {
-                    // Variables para envelope de puntos nuevos
                     double? minX = null, minY = null, maxX = null, maxY = null;
-                    // Construir índice de duplicados existentes (posición + dirección EAAB) para evitar insertar repetidos si ya existen
                     var existingSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     try
                     {
@@ -454,7 +437,6 @@ namespace EAABAddIn.Src.Core.Map
                         if (existingSignatures.Contains(signature))
                             continue; // duplicado
                         existingSignatures.Add(signature);
-                        // Expandir bounds
                         if (minX == null || mapPoint.X < minX) minX = mapPoint.X;
                         if (maxX == null || mapPoint.X > maxX) maxX = mapPoint.X;
                         if (minY == null || mapPoint.Y < minY) minY = mapPoint.Y;
@@ -489,13 +471,10 @@ namespace EAABAddIn.Src.Core.Map
                     ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show($"Error en inserción en lote: {ex.Message}");
                     return;
                 }
-                // Eliminado: lógica de creación automática de subcapas de identificadores
                 if (zoomExtent)
                 {
                     try
                     {
-                        // NOTA: las variables de bounds se declararon dentro del try anterior; necesitamos capturarlas aquí.
-                        // Recalculamos rápidamente si fuera necesario (en caso de excepción previa). Si no hubo inserciones, zoomExtent caerá al extent capa.
                         double? locMinX = null, locMinY = null, locMaxX = null, locMaxY = null;
                         if (!_pendingEntities.Any()) // usamos 'toInsert' local para recomputar
                         {
@@ -516,7 +495,6 @@ namespace EAABAddIn.Src.Core.Map
                             var dx = (locMaxX.Value - locMinX.Value) * 0.05;
                             var dy = (locMaxY.Value - locMinY.Value) * 0.05;
                             var env = EnvelopeBuilderEx.CreateEnvelope(locMinX.Value - dx, locMinY.Value - dy, locMaxX.Value + dx, locMaxY.Value + dy, SpatialReferences.WGS84);
-                            // Reproyectar si el mapa está en otro SR
                             if (sr != null && !sr.Equals(SpatialReferences.WGS84))
                             {
                                 var proj = GeometryEngine.Instance.Project(env, sr) as Envelope;
@@ -578,7 +556,6 @@ namespace EAABAddIn.Src.Core.Map
         private static string BuildSignature(double x, double y, string address)
         {
             var addrNorm = (address ?? string.Empty).Trim().ToUpperInvariant();
-            // Redondear coords para agrupar duplicados casi idénticos
             var xr = Math.Round(x, 7); // ~1cm
             var yr = Math.Round(y, 7);
             return xr + "|" + yr + "|" + addrNorm;
@@ -590,7 +567,6 @@ namespace EAABAddIn.Src.Core.Map
             {
                 var def = fc.GetDefinition();
                 var shapeField = def.GetShapeField();
-                // Envelope muy pequeño (aprox 5 cm en grados) para buscar coincidencias cercanas
                 const double delta = 0.0000005; // ~5 cm
                 var env = EnvelopeBuilderEx.CreateEnvelope(point.X - delta, point.Y - delta, point.X + delta, point.Y + delta, point.SpatialReference);
                 var sqf = new SpatialQueryFilter
