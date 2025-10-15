@@ -306,47 +306,18 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
     private void OnMapSelectionChanged(MapSelectionChangedEventArgs args)
     {
-        QueuedTask.Run(() =>
+        QueuedTask.Run(async () =>
         {
-
-            var map = MapView.Active?.Map;
-            if (map == null)
-            {
-                System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
-                {
-                    SelectedFeaturesCount = 0;
-                    _selectedFeatures.Clear();
-                });
-                return;
-            }
-
-            var sel = map.GetSelection();
-            int total = 0;
-            var entries = new List<string>();
-
-            foreach (var kv in sel.ToDictionary())
-            {
-                var layer = kv.Key as FeatureLayer;
-                var name = layer?.Name ?? kv.Key.Name;
-                var objectIDs = kv.Value ?? new List<long>();
-                
-                total += objectIDs.Count;
-
-                if (objectIDs.Count > 0)
-                {
-                    var oidsText = string.Join(", ", objectIDs);
-                    entries.Add($"{name}: {oidsText}");
-                }
-            }
-
+            var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, "BARRIOS_MUNICIPIO");
+    
             System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 _selectedFeatures.Clear();
-                SelectedFeaturesCount = total;
+                SelectedFeaturesCount = selectedFeatures.Count;
 
 
-                foreach (var e in entries)
-                    _selectedFeatures.Add(e);
+                foreach (var e in selectedFeatures)
+                    _selectedFeatures.Add(e.GetTable().GetDefinition().GetName() + " - " + e.GetObjectID().ToString());
             });
         });
     }
