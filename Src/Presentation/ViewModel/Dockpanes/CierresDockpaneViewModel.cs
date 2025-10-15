@@ -14,15 +14,22 @@ internal class CierresDockpaneViewModel : DockPane
     private static string DockPaneID => _dockPaneID;
 
     private DrawPolygonViewModel _paneH1VM;
+    private AffectedAreaViewModel _paneH2VM;
 
     protected CierresDockpaneViewModel()
     {
         _paneH1VM = new DrawPolygonViewModel();
+        _paneH2VM = new AffectedAreaViewModel();
         SelectedPanelHeaderIndex = 0;
         PrimaryMenuList.Add(new TabControl()
         {
             Text = _paneH1VM.DisplayName,
             Tooltip = _paneH1VM.Tooltip
+        });
+        PrimaryMenuList.Add(new TabControl()
+        {
+            Text = _paneH2VM.DisplayName,
+            Tooltip = _paneH2VM.Tooltip
         });
     }
 
@@ -46,8 +53,18 @@ internal class CierresDockpaneViewModel : DockPane
         {
             SetProperty(ref _selectedPanelHeaderIndex, value, () => SelectedPanelHeaderIndex);
 
-            if (_selectedPanelHeaderIndex == 0)
-                CurrentPage = _paneH1VM;
+            switch (_selectedPanelHeaderIndex)
+            {
+                case 0:
+                    CurrentPage = _paneH1VM;
+                    break;
+                case 1:
+                    CurrentPage = _paneH2VM;
+                    break;
+                default:
+                    CurrentPage = _paneH1VM;
+                    break;
+            }
         }
     }
 

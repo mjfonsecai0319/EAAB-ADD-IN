@@ -25,24 +25,22 @@ public class UnionPolygonsButton : Button
 
     protected async Task OnClickAsync(MapView mapView)
     {
-        var selectedFeature = await _getSelectedFeatureUseCase.Invoke(mapView);
+        // var selectedFeature = await _getSelectedFeatureUseCase.Invoke(mapView);
 
-        if (selectedFeature is null)
-        {
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                messageText: "No se encontró la entidad seleccionada. Por favor seleccione exactamente una entidad puntual en el mapa y vuelva a intentarlo.",
-                caption: "Error - Selección inválida",
-                button: System.Windows.MessageBoxButton.OK,
-                icon: System.Windows.MessageBoxImage.Warning
-            );
-            return;
-        }
+        // if (selectedFeature is null)
+        // {
+        //     ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+        //         messageText: "No se encontró la entidad seleccionada. Por favor seleccione exactamente una entidad puntual en el mapa y vuelva a intentarlo.",
+        //         caption: "Error - Selección inválida",
+        //         button: System.Windows.MessageBoxButton.OK,
+        //         icon: System.Windows.MessageBoxImage.Warning
+        //     );
+        //     return;
+        // }
 
-        var neighborhoods = await _selectByLocationUseCase.Invoke(
-            selectedFeature,
-            "BARRIOS_MUNICIPIO"
-        );
-        
-                
+        // var neighborhoods = await _selectByLocationUseCase.Invoke(
+        //     selectedFeature,
+        //     "BARRIOS_MUNICIPIO"
+        // );
     }
 }

@@ -61,7 +61,7 @@
 
         <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1">
           <button refID="EAABAddIn_DrawPolygonButton" size="large" />
-          <button refID="EAABAddIn_UnionPolygonsButton" size="middle" />
+          <button refID="EAABAddIn_AffectedAreaButton" size="large" />
         </group>
       </groups>
 
@@ -112,7 +112,7 @@
           loadOnClick="true"
           smallImage="Images\SearchPoi16.png"
           largeImage="Images\SearchPoi32.png"
-          condition="EAABAddIn_DomainCheck"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B4"
         >
           <tooltip heading="Puntos de interés">Busca y muestra POIs en el mapa.<disabledText /></tooltip>
@@ -124,18 +124,22 @@
           caption="Dibujar Polígono"
           smallImage="Images\ConvexHull16.png"
           largeImage="Images\ConvexHull32.png"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B5"
         >
           <tooltip heading="Dibujar polígono">Dibuja un polígono en el mapa.<disabledText /></tooltip>
         </button>
 
         <button
-          className="EAABAddIn.Src.Presentation.View.Buttons.ImportPolygonButton"
-          id="EAABAddIn_ImportPolygonButton"
-          caption="Importar Polígono"
+          className="EAABAddIn.Src.Presentation.View.Buttons.AffectedAreaButton"
+          id="EAABAddIn_AffectedAreaButton"
+          caption="Calcular Afectación"
+          smallImage="Images\AffectedArea16.png"
+          largeImage="Images\AffectedArea32.png"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B6"
         >
-          <tooltip heading="Importar polígono">Importa un polígono desde una gdb.<disabledText /></tooltip>
+          <tooltip heading="Calcular Afectación">Calcula el área afectada por un polígono.<disabledText /></tooltip>
         </button>
 
         <button
@@ -143,7 +147,6 @@
           id="EAABAddIn_UnionPolygonsButton"
           caption="Unir Polígonos"
           keytip="B7"
-          
         >
           <tooltip heading="Unir polígonos">Une varios polígonos desde una gdb.<disabledText /></tooltip>
         </button>

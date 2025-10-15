@@ -12,21 +12,14 @@ using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Internal.Mapping;
-using EAABAddIn.Src.Application.UseCases;
-using EAABAddIn.Src.Core;
 using EAABAddIn.Src.Core.Map;
-using EAABAddIn.Src.Domain.Repositories;
 using EAABAddIn.Src.Presentation.Base;
-
-using ExcelDataReader;
-
-using Microsoft.Win32;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
 internal class DrawPolygonViewModel : BusyViewModelBase
 {
-    public override string DisplayName => "Crear Cierres";
+    public override string DisplayName => "Nuevo Cierre";
     public override string Tooltip => "Herramienta para crear cierres en el mapa.";
 
     public ICommand WorkspaceCommand { get; private set; }
@@ -209,7 +202,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
     private void OnNeighborhood()
     {
-        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_all");
+        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_polygon");
 
         var dlg = new OpenItemDialog
         {
@@ -229,7 +222,7 @@ internal class DrawPolygonViewModel : BusyViewModelBase
 
     private void OnClientsAffected()
     {
-        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_all");
+        var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses_point");
 
         var dlg = new OpenItemDialog
         {
@@ -426,7 +419,5 @@ internal class DrawPolygonViewModel : BusyViewModelBase
                 NotifyPropertyChanged(nameof(CanBuildPolygons));
             }
         }
-    }
-
-   
+    }   
 }

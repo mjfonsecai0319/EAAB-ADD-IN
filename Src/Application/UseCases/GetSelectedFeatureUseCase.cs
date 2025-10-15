@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -9,58 +10,64 @@ using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Internal.Mapping.Locate;
 using ArcGIS.Desktop.Mapping;
 
-using static EAABAddIn.Src.Core.Map.GeocodedPolygonsLayerService;
-
 namespace EAABAddIn.Src.Application.UseCases;
 
 public class GetSelectedFeatureUseCase
 {
-    public async Task<Feature?> Invoke(MapView? mapView)
+    public async Task<List<Feature>> Invoke(MapView? mapView, string target)
     {
         if (mapView == null)
         {
-            return null;
+            return [];
         }
 
-        return await QueuedTask.Run(() => this.InvokeInternal(mapView));
+        return await QueuedTask.Run(() => this.InvokeInternal(mapView, target));
     }
 
-    public Feature? InvokeInternal(MapView mapView)
+    public List<Feature> InvokeInternal(MapView mapView, string target)
     {
-        var selectedFeatures = mapView.Map.GetSelection().ToDictionary()
-        .Select(
+        // Collect all selected features that belong to the target polygons class
+        var selected = new List<Feature>();
+        var filtered = mapView.Map.GetSelection().ToDictionary().Select(
             it => it
         ).Where(
-            it => it.Key.Name.Equals(TargetClass)
+            it => it.Key.Name.Equals(target, StringComparison.OrdinalIgnoreCase)
         ).ToList();
-        
-        var kvp = selectedFeatures.ElementAt(0);
-        var layer = kvp.Key as FeatureLayer;
 
-        if (layer is not null)
+
+
+        foreach (var kv in filtered)
         {
-            var objectIDs = kvp.Value;
+            FeatureLayer? creationLayer = null;
 
-            if (objectIDs == null || objectIDs.Count < 1)
+            if (kv.Key is FeatureLayer fl)
             {
-                return null;
+                var features = GetSelectedFeatures(fl, kv.Value);
+                if (features != null && features.Count > 0)
+                {
+                    if (creationLayer == null) creationLayer = fl;
+                    selected.AddRange(features);
+                }
             }
-
-            return this.GetSelectedFeature(layer, objectIDs);
         }
-
-        return null;
+        
+        return selected;
     }
 
-    private Feature? GetSelectedFeature(FeatureLayer layer, System.Collections.Generic.List<long> objectIDs)
+    private List<Feature> GetSelectedFeatures(FeatureLayer layer, List<long> objectIDs)
     {
-        using var table = layer.GetTable();
-        using var cursor = table.Search(new QueryFilter { ObjectIDs = objectIDs }, false);
-        if (cursor.MoveNext())
+        var ret = new List<Feature>();
+        try
         {
-            return cursor.Current as Feature;
+            using var table = layer.GetTable();
+            using var cursor = table.Search(new QueryFilter { ObjectIDs = objectIDs }, false);
+            while (cursor.MoveNext())
+            {
+                var f = cursor.Current as Feature;
+                if (f != null) ret.Add(f);
+            }
         }
-
-        return null;
+        catch { }
+        return ret;
     }
 }

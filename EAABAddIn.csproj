@@ -41,6 +41,8 @@
     <Content Include="Images\SearchPoi32.png" />
     <Content Include="Images\ConvexHull16.png" />
     <Content Include="Images\ConvexHull32.png" />
+    <Content Include="Images\AffectedArea16.png" />
+    <Content Include="Images\AffectedArea32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
@@ -156,6 +158,9 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Config.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Src\Application\Utils\" />
   </ItemGroup>
   <Import Project="C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets" Condition="Exists('C:\Program Files\ArcGIS\Pro\bin\Esri.ProApp.SDK.Desktop.targets') AND !Exists('Esri.ArcGISPro.Extensions.targets')" />
 </Project>
