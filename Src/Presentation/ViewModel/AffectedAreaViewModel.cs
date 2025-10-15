@@ -30,6 +30,8 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     private readonly GetSelectedFeatureUseCase _getSelectedFeatureUseCase = new();
     private readonly GetNeighborhoodsUseCase _getNeighborhoodsUseCase = new();
 
+    private readonly GetClientsCountUseCase _getClientsCountUseCase = new();
+
     public ICommand WorkspaceCommand { get; private set; }
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand FeatureClassCommand { get; private set; }
@@ -317,9 +319,18 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         foreach (var f in features)
         {
             var neighborhoods = await _getNeighborhoodsUseCase.Invoke(f, Neighborhood ?? string.Empty);
+            var clientsCount = await _getClientsCountUseCase.Invoke(f, ClientsAffected ?? string.Empty);
+            
             MessageBox.Show(
                 messageText: string.IsNullOrWhiteSpace(neighborhoods) ? "No se encontraron barrios para la entidad seleccionada." : $"Barrios encontrados: {neighborhoods}",
                 caption: "Resultados de Barrios",
+                button: System.Windows.MessageBoxButton.OK,
+                icon: System.Windows.MessageBoxImage.Information
+            );
+
+            MessageBox.Show(
+                messageText: clientsCount == 0 ? "No se encontraron clientes afectados para la entidad seleccionada." : $"Clientes afectados encontrados: {clientsCount}",
+                caption: "Resultados de Clientes Afectados",
                 button: System.Windows.MessageBoxButton.OK,
                 icon: System.Windows.MessageBoxImage.Information
             );
