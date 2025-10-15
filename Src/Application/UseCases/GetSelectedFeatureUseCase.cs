@@ -31,10 +31,9 @@ public class GetSelectedFeatureUseCase
         var filtered = mapView.Map.GetSelection().ToDictionary().Select(
             it => it
         ).Where(
-            it => it.Key.Name.Equals(target, StringComparison.OrdinalIgnoreCase)
-        ).ToList();
-
-
+            it => it.Key.Name.Equals(GetDatasetName(target))
+        ).ToList() ?? [];
+        
 
         foreach (var kv in filtered)
         {
@@ -50,7 +49,7 @@ public class GetSelectedFeatureUseCase
                 }
             }
         }
-        
+
         return selected;
     }
 
@@ -69,5 +68,30 @@ public class GetSelectedFeatureUseCase
         }
         catch { }
         return ret;
+    }
+
+    private string GetDatasetName(string featureClassPath)
+    {
+        if (string.IsNullOrWhiteSpace(featureClassPath))
+        {
+            return featureClassPath;
+        }
+
+        var idx = featureClassPath.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
+
+        if (idx >= 0)
+        {
+            var gdbEnd = idx + 4;
+            var remainder = featureClassPath.Length > gdbEnd ? featureClassPath.Substring(gdbEnd).TrimStart('\\', '/') : string.Empty;
+            if (string.IsNullOrWhiteSpace(remainder))
+            {
+                return System.IO.Path.GetFileNameWithoutExtension(featureClassPath);
+            }
+
+            var parts = remainder.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Last();
+        }
+
+        return System.IO.Path.GetFileName(featureClassPath);
     }
 }

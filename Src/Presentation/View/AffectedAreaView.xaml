@@ -281,7 +281,7 @@
                     <Button
                         Content="Construir polígonos"
                         Style="{StaticResource PrimaryButtonStyle}"
-                        Command="{Binding BuildPolygonsCommand}"
+                        Command="{Binding RunCommand}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
                     />
                 </StackPanel>

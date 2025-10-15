@@ -33,6 +33,8 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand FeatureClassCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
+
+    public ICommand RunCommand { get; private set; }
     public ICommand ClearFormCommand { get; private set; }
     public ICommand BuildPolygonsCommand { get; private set; }
 
@@ -42,9 +44,11 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         FeatureClassCommand = new RelayCommand(OnFeatureClass);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
+        RunCommand = new RelayCommand(OnRun);
         ClearFormCommand = new RelayCommand(OnClearForm);
         BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygonsAsync(), () => !IsBusy && CanBuildPolygons);
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
+        QueuedTask.Run(UpdateSelectedFeatures);
 
         // Refrescar CanExecute cuando cambie IsBusy
         this.PropertyChanged += (s, e) =>
@@ -78,6 +82,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
+                QueuedTask.Run(UpdateSelectedFeatures);
                 _ = GetFeatureClassFieldNamesAsync();
                 RaiseCanExecuteForBuild();
             }
@@ -298,6 +303,22 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         }
     }
 
+    private void OnRun()
+    {
+        QueuedTask.Run(OnRunAsync);
+    }
+    
+    private async void OnRunAsync()
+    {
+        IsBusy = true;
+        var features = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
+
+        foreach (var f in features)
+        {
+            // Process each feature
+        }
+    }
+
     private async Task GetFeatureClassFieldNamesAsync()
     {
         var fields = new List<string>();
@@ -356,19 +377,27 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
     private void OnMapSelectionChanged(MapSelectionChangedEventArgs args)
     {
-        QueuedTask.Run(async () =>
+        _selectedFeatures.Clear();
+        SelectedFeaturesCount = 0;
+
+        QueuedTask.Run(UpdateSelectedFeatures);
+    }
+
+    private async Task UpdateSelectedFeatures()
+    {
+        var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
+
+        foreach (var e in selectedFeatures)
         {
-            var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, "BARRIOS_MUNICIPIO");
-    
+            var name = e.GetTable().GetDefinition().GetName();
+            var oid = e.GetObjectID().ToString();
+
             System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
-                _selectedFeatures.Clear();
-                SelectedFeaturesCount = selectedFeatures.Count;
-
-
-                foreach (var e in selectedFeatures)
-                    _selectedFeatures.Add(e.GetTable().GetDefinition().GetName() + " - " + e.GetObjectID().ToString());
+                _selectedFeatures.Add(name + " - " + oid);
             });
-        });
+        }
+
+        SelectedFeaturesCount = selectedFeatures.Count;
     }
 }

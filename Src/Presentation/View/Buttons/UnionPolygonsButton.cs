@@ -14,7 +14,7 @@ public class UnionPolygonsButton : Button
 {
     private readonly GetSelectedFeatureUseCase _getSelectedFeatureUseCase = new();
 
-    private readonly SelectByLocationUseCase _selectByLocationUseCase = new();
+    // private readonly SelectByLocationUseCase _selectByLocationUseCase = new();
 
     protected override void OnClick()
     {
