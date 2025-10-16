@@ -22,7 +22,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-internal class AffectedAreaViewModel : BusyViewModelBase
+public class AffectedAreaViewModel : BusyViewModelBase
 {
     public override string DisplayName => "Area Afectada";
     public override string Tooltip => "Calcular área afectada a partir de entidades o capas seleccionadas";
@@ -237,9 +237,9 @@ internal class AffectedAreaViewModel : BusyViewModelBase
                 return;
             }
 
-            var (success, message, polygonsCreated) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
+            var (success, message, updatedCount) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
                 selectedFeatures,
-                Workspace,
+                FeatureClass ?? string.Empty,
                 SelectedFeatureClassField ?? "OBJECTID",
                 Neighborhood,
                 ClientsAffected
