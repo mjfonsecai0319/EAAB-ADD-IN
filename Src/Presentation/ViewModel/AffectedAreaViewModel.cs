@@ -22,7 +22,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-public class AffectedAreaViewModel : BusyViewModelBase
+internal class AffectedAreaViewModel : BusyViewModelBase
 {
     public override string DisplayName => "Area Afectada";
     public override string Tooltip => "Calcular área afectada a partir de entidades o capas seleccionadas";
@@ -54,6 +54,7 @@ public class AffectedAreaViewModel : BusyViewModelBase
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         QueuedTask.Run(UpdateSelectedFeatures);
 
+        // Refrescar CanExecute cuando cambie IsBusy
         this.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(IsBusy))
@@ -214,50 +215,9 @@ public class AffectedAreaViewModel : BusyViewModelBase
 
     private async Task OnBuildPolygonsAsync()
     {
-        if (IsBusy) return;
 
-        IsBusy = true;
+        await Task.CompletedTask;
         StatusMessage = "Construyendo polígonos de área afectada...";
-
-        try
-        {
-            var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
-
-            if (selectedFeatures == null || selectedFeatures.Count == 0)
-            {
-                StatusMessage = "Error: No hay polígonos seleccionados";
-                IsBusy = false;
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Neighborhood) && string.IsNullOrWhiteSpace(ClientsAffected))
-            {
-                StatusMessage = "Error: Debe seleccionar al menos Barrios o Clientes Afectados";
-                IsBusy = false;
-                return;
-            }
-
-            var (success, message, updatedCount) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
-                selectedFeatures,
-                FeatureClass ?? string.Empty,
-                SelectedFeatureClassField ?? "OBJECTID",
-                Neighborhood,
-                ClientsAffected
-            );
-
-            StatusMessage = success 
-                ? $"✓ {message}" 
-                : $"✗ {message}";
-
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"✗ Error inesperado: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
     }
 
     private void RaiseCanExecuteForBuild()
@@ -349,10 +309,48 @@ public class AffectedAreaViewModel : BusyViewModelBase
 
     private void OnRun()
     {
-        QueuedTask.Run(OnBuildPolygonsAsync);
+        QueuedTask.Run(OnRunAsync);
     }
     
-    
+    private async void OnRunAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "Calculando y actualizando área afectada...";
+
+            if (string.IsNullOrWhiteSpace(FeatureClass) || string.IsNullOrWhiteSpace(SelectedFeatureClassField))
+            {
+                StatusMessage = "Selecciona una Feature Class y un campo identificador.";
+                return;
+            }
+
+            var features = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass);
+            if (features.Count == 0)
+            {
+                StatusMessage = "No hay entidades seleccionadas.";
+                return;
+            }
+
+            var (ok, msg, updated) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
+                features,
+                FeatureClass,
+                SelectedFeatureClassField,
+                string.IsNullOrWhiteSpace(Neighborhood) ? null : Neighborhood,
+                string.IsNullOrWhiteSpace(ClientsAffected) ? null : ClientsAffected
+            );
+
+            StatusMessage = msg;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     private async Task GetFeatureClassFieldNamesAsync()
     {
