@@ -31,6 +31,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     private readonly GetNeighborhoodsUseCase _getNeighborhoodsUseCase = new();
 
     private readonly GetClientsCountUseCase _getClientsCountUseCase = new();
+    private readonly BuildAffectedAreaPolygonsUseCase _buildAffectedAreaPolygonsUseCase = new();
 
     public ICommand WorkspaceCommand { get; private set; }
     public ICommand NeighborhoodCommand { get; private set; }
@@ -53,7 +54,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         QueuedTask.Run(UpdateSelectedFeatures);
 
-        // Refrescar CanExecute cuando cambie IsBusy
         this.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(IsBusy))
@@ -214,9 +214,50 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
     private async Task OnBuildPolygonsAsync()
     {
+        if (IsBusy) return;
 
-        await Task.CompletedTask;
+        IsBusy = true;
         StatusMessage = "Construyendo polígonos de área afectada...";
+
+        try
+        {
+            var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
+
+            if (selectedFeatures == null || selectedFeatures.Count == 0)
+            {
+                StatusMessage = "Error: No hay polígonos seleccionados";
+                IsBusy = false;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Neighborhood) && string.IsNullOrWhiteSpace(ClientsAffected))
+            {
+                StatusMessage = "Error: Debe seleccionar al menos Barrios o Clientes Afectados";
+                IsBusy = false;
+                return;
+            }
+
+            var (success, message, polygonsCreated) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
+                selectedFeatures,
+                Workspace,
+                SelectedFeatureClassField ?? "OBJECTID",
+                Neighborhood,
+                ClientsAffected
+            );
+
+            StatusMessage = success 
+                ? $"✓ {message}" 
+                : $"✗ {message}";
+
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void RaiseCanExecuteForBuild()
@@ -308,35 +349,10 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
     private void OnRun()
     {
-        QueuedTask.Run(OnRunAsync);
+        QueuedTask.Run(OnBuildPolygonsAsync);
     }
     
-    private async void OnRunAsync()
-    {
-        IsBusy = true;
-        var features = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
-
-        foreach (var f in features)
-        {
-            var neighborhoods = await _getNeighborhoodsUseCase.Invoke(f, Neighborhood ?? string.Empty);
-            var clientsCount = await _getClientsCountUseCase.Invoke(f, ClientsAffected ?? string.Empty);
-            
-            MessageBox.Show(
-                messageText: string.IsNullOrWhiteSpace(neighborhoods) ? "No se encontraron barrios para la entidad seleccionada." : $"Barrios encontrados: {neighborhoods}",
-                caption: "Resultados de Barrios",
-                button: System.Windows.MessageBoxButton.OK,
-                icon: System.Windows.MessageBoxImage.Information
-            );
-
-            MessageBox.Show(
-                messageText: clientsCount == 0 ? "No se encontraron clientes afectados para la entidad seleccionada." : $"Clientes afectados encontrados: {clientsCount}",
-                caption: "Resultados de Clientes Afectados",
-                button: System.Windows.MessageBoxButton.OK,
-                icon: System.Windows.MessageBoxImage.Information
-            );
-        }
-        IsBusy = false;
-    }
+    
 
     private async Task GetFeatureClassFieldNamesAsync()
     {
