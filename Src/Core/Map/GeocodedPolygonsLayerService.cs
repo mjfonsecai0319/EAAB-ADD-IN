@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Core;
-using ArcGIS.Desktop.Mapping;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using EAABAddIn.Core.Geometry;
+using ArcGIS.Desktop.Mapping;
 
 namespace EAABAddIn.Src.Core.Map;
 
@@ -20,90 +19,65 @@ public static class GeocodedPolygonsLayerService
     private static FeatureLayer polygonLayer;
     private static FeatureLayer pointsLayer;
 
-    public static Task<List<string>> ListIdentifiersAsync(string gdbPath = null)
+    public static Task<Dictionary<string, int>> GenerateAsync(
+        IEnumerable<string> identifiers,
+        string gdbPath,
+        string rootClassPath,
+        string rootClassField,
+        string classPathA,
+        string classPathB,
+        string field = "NEIGHBORHOOD_DESC"
+    )
     {
-        return QueuedTask.Run(() => _ListIdentifiersInternal(gdbPath));
-    }
+        var filterIds = identifiers.Where(
+            it => !string.IsNullOrWhiteSpace(it)
+        ).Select(
+            it => it.Trim()
+        ).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-    private static List<string> _ListIdentifiersInternal(string gdbPath)
-    {
-        var ids = new List<string>();
-        FeatureClass pointsFc = GetPointsFeatureClass(gdbPath, out Geodatabase gdbLocal);
-        if (pointsFc == null) return ids;
-        using (gdbLocal)
-        using (pointsFc)
+        return QueuedTask.Run(() =>
         {
-            var def = pointsFc.GetDefinition();
-            var idField = def.GetFields().FirstOrDefault(f => f.Name.Equals("Identificador", StringComparison.OrdinalIgnoreCase))?.Name ?? "Identificador";
-            using var cursor = pointsFc.Search(new QueryFilter { SubFields = idField }, true);
-            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            while (cursor.MoveNext())
-            {
-                using var row = cursor.Current;
-                var val = row[idField]?.ToString();
-                if (!string.IsNullOrWhiteSpace(val)) set.Add(val);
-            }
-            ids = set.OrderBy(s => s).ToList();
-        }
-        return ids;
+            return _GenerateInternal(
+                filterIds,
+                gdbPath,
+                rootClassPath,
+                rootClassField,
+                classPathA,
+                classPathB,
+                field
+            );
+        });
     }
 
-    public static Task<Dictionary<string,int>> GenerateAsync(string gdbPath, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
+    private static Dictionary<string, int> _GenerateInternal(
+        HashSet<string> filterIds,
+        string gdbPath,
+        string rootClassPath,
+        string rootClassField,
+        string classPathA,
+        string classPathB,
+        string field
+    )
     {
-        return QueuedTask.Run(() => _GenerateInternal(gdbPath, null, identifierFieldName, neighborhoodsPath, clientsPath, neighborhoodNameField));
-    }
-
-    public static Task<Dictionary<string,int>> GenerateAsync(IEnumerable<string> identifiers, string gdbPath = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
-    {
-        var set = identifiers?.Where(s => !string.IsNullOrWhiteSpace(s))
-            .Select(s => s.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>();
-        return QueuedTask.Run(() => _GenerateInternal(gdbPath, set, identifierFieldName, neighborhoodsPath, clientsPath, neighborhoodNameField));
-    }
-
-    private static Dictionary<string,int> _GenerateInternal(string gdbPath, HashSet<string> filterIds = null, string identifierFieldName = "Identificador", string neighborhoodsPath = null, string clientsPath = null, string neighborhoodNameField = "NEIGHBORHOOD_DESC")
-    {
-        var result = new Dictionary<string,int>();
-        if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
-            gdbPath = Project.Current.DefaultGeodatabasePath;
-        if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
-            return result;
-
-        FeatureClass pointsFc = GetPointsFeatureClass(gdbPath, out Geodatabase gdb);
-        if (pointsFc == null)
-        {
-            gdb?.Dispose();
-            return result;
-        }
-        
-        if (gdb == null)
-        {
-            try
-            {
-                var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-                gdb = new Geodatabase(gdbConn);
-            }
-            catch
-            {
-                pointsFc.Dispose();
-                return result; 
-            }
-        }
-        
+        var result = new Dictionary<string, int>();
+        var pointsFc = OpenFeatureClassFromPath(rootClassPath);
+        var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
+        var gdb = new Geodatabase(gdbConn);
         var pointDef = pointsFc.GetDefinition();
         var oidField = pointDef.GetObjectIDField();
         var shapeField = pointDef.GetShapeField();
-        
-        var identifierField = pointDef.GetFields().FirstOrDefault(f => 
-            f.Name.Equals(identifierFieldName, StringComparison.OrdinalIgnoreCase))?.Name ?? "Identificador";
-        
+
+        var identifierField = pointDef.GetFields().FirstOrDefault(
+            f => f.Name.Equals(rootClassField, StringComparison.OrdinalIgnoreCase)
+        )?.Name;
+
         System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Usando campo identificador: '{identifierField}'");
-        
+
         TryRemovePolygonLayerFromMap();
 
         EnsurePolygonFeatureClass(gdbPath, gdb, pointDef.GetSpatialReference());
-    EnsureFieldExists(gdbPath, TargetClass, "identificador", "TEXT", 100);
-    EnsureFieldExists(gdbPath, TargetClass, "barrios", "TEXT", 4096);
+        EnsureFieldExists(gdbPath, TargetClass, "identificador", "TEXT", 100);
+        EnsureFieldExists(gdbPath, TargetClass, "barrios", "TEXT", 4096);
         EnsureFieldExists(gdbPath, TargetClass, "clientes", "LONG", 0);
 
         using var polygonsFc = gdb.OpenDataset<FeatureClass>(TargetClass);
@@ -122,8 +96,8 @@ public static class GeocodedPolygonsLayerService
 
         DeleteAll(polygonsFc);
 
-    var groups = new Dictionary<string, List<MapPoint>>(StringComparer.OrdinalIgnoreCase);
-        using (var cursor = pointsFc.Search(new QueryFilter { SubFields = string.Join(",", new [] { oidField, shapeField, identifierField }) }, false))
+        var groups = new Dictionary<string, List<MapPoint>>(StringComparer.OrdinalIgnoreCase);
+        using (var cursor = pointsFc.Search(new QueryFilter { SubFields = string.Join(",", new[] { oidField, shapeField, identifierField }) }, false))
         {
             while (cursor.MoveNext())
             {
@@ -144,14 +118,14 @@ public static class GeocodedPolygonsLayerService
         int minPoints = allow3 ? 3 : 4;
         var discarded = new List<string>();
 
-        using var neighborhoodsFc = OpenFeatureClassFromPath(neighborhoodsPath);
-        using var clientsFc = OpenFeatureClassFromPath(clientsPath);
+        using var neighborhoodsFc = OpenFeatureClassFromPath(classPathA);
+        using var clientsFc = OpenFeatureClassFromPath(classPathB);
 
         string barrioNameFieldResolved = null;
         if (neighborhoodsFc != null)
         {
             var ndef = neighborhoodsFc.GetDefinition();
-            var nameCandidates = new[] { neighborhoodNameField, "NEIGHBORHOOD", "NEIGHBORHOOD_DESC", "BARRIO", "BARRIOS", "NOMBRE", "NOMBRE_BARRIO" };
+            var nameCandidates = new[] { field, "NEIGHBORHOOD", "NEIGHBORHOOD_DESC", "BARRIO", "BARRIOS", "NOMBRE", "NOMBRE_BARRIO" };
             barrioNameFieldResolved = ndef.GetFields()
                 .Select(f => f.Name)
                 .FirstOrDefault(n => nameCandidates.Any(c => c.Equals(n, StringComparison.OrdinalIgnoreCase)));
@@ -168,7 +142,7 @@ public static class GeocodedPolygonsLayerService
             try
             {
                 var polygon = CreatePolygonFromAllPoints(kv.Value, kv.Value.First().SpatialReference);
-                
+
                 if (polygon != null && !polygon.IsEmpty && polygon.Area > 0)
                 {
                     if (ValidatePolygonGeometry(polygon))
@@ -201,12 +175,12 @@ public static class GeocodedPolygonsLayerService
                             }
                             catch { /* dejar null */ }
                         }
-                        
+
                         try
                         {
                             using var row = polygonsFc.CreateRow(rowBuffer);
                             result[kv.Key] = kv.Value.Count;
-                            
+
                             System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] ✓ {kv.Key}: Polígono guardado ({kv.Value.Count} puntos, área={polygon.Area:F6})");
                         }
                         catch (Exception dbEx)
@@ -237,8 +211,8 @@ public static class GeocodedPolygonsLayerService
 
         if (result.Count == 0 && discarded.Count > 0)
         {
-            result["__DIAGNOSTICO__"] = -1; 
-            
+            result["__DIAGNOSTICO__"] = -1;
+
             var brief = string.Join("; ", discarded.Take(12));
             if (discarded.Count > 12) brief += $" ... (+{discarded.Count - 12})";
             System.Diagnostics.Debug.WriteLine($"[GeocodedPolygons] Ningún polígono generado. Causas: {brief}");
@@ -247,7 +221,7 @@ public static class GeocodedPolygonsLayerService
         AddLayerToMap(gdbPath);
         polygonLayer?.ClearDisplayCache();
 
-        
+
         int actualCount = 0;
         try
         {
@@ -275,7 +249,7 @@ public static class GeocodedPolygonsLayerService
                 var oidFieldName = polygonsFc.GetDefinition().GetObjectIDField();
                 var idFieldName = polyIdentifierField;
                 long? oid = null;
-                using (var cursor = polygonsFc.Search(new QueryFilter { WhereClause = $"{idFieldName} = '{firstId.Replace("'","''")}'", SubFields = oidFieldName + "," + idFieldName }, false))
+                using (var cursor = polygonsFc.Search(new QueryFilter { WhereClause = $"{idFieldName} = '{firstId.Replace("'", "''")}'", SubFields = oidFieldName + "," + idFieldName }, false))
                 {
                     if (cursor.MoveNext())
                     {
@@ -298,7 +272,7 @@ public static class GeocodedPolygonsLayerService
                             if (r?.GetShape() is Geometry g && !g.IsEmpty)
                             {
                                 var env = g.Extent;
-                                mv.ZoomTo(env, new TimeSpan(0,0,0,0,600));
+                                mv.ZoomTo(env, new TimeSpan(0, 0, 0, 0, 600));
                             }
                         }
                     }
@@ -344,7 +318,7 @@ public static class GeocodedPolygonsLayerService
         }
         catch { }
 
-      
+
         try
         {
             if (string.Equals(fieldType, "TEXT", StringComparison.OrdinalIgnoreCase))
@@ -374,7 +348,7 @@ public static class GeocodedPolygonsLayerService
             var gdbPath = featureClassPath.Substring(0, gdbEnd);
             var remainder = featureClassPath.Length > gdbEnd ? featureClassPath.Substring(gdbEnd).TrimStart('\\', '/') : string.Empty;
             if (string.IsNullOrWhiteSpace(remainder)) return null;
-            var datasetName = remainder.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).Last();
+            var datasetName = remainder.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries).Last();
             var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
             var gdb = new Geodatabase(gdbConn);
             return gdb.OpenDataset<FeatureClass>(datasetName);
@@ -441,40 +415,6 @@ public static class GeocodedPolygonsLayerService
         }
         return count;
     }
-    private static FeatureClass GetPointsFeatureClass(string gdbPath, out Geodatabase gdb)
-    {
-        gdb = null;
-        var mapView = MapView.Active;
-        if (mapView?.Map != null)
-        {
-            var existing = mapView.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
-                .FirstOrDefault(l => l.Name.Equals(SourceClass, StringComparison.OrdinalIgnoreCase));
-            if (existing != null)
-            {
-                pointsLayer = existing;
-                try
-                {
-                    var fc = pointsLayer.GetTable() as FeatureClass;
-                    if (fc != null) return fc;
-                }
-                catch { }
-            }
-        }
-        if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath))
-            gdbPath = Project.Current.DefaultGeodatabasePath;
-        if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath)) return null;
-        var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-        try
-        {
-            gdb = new Geodatabase(gdbConn);
-            return gdb.OpenDataset<FeatureClass>(SourceClass);
-        }
-        catch
-        {
-            gdb?.Dispose();
-            return null;
-        }
-    }
 
     private static void EnsurePolygonFeatureClass(string gdbPath, Geodatabase gdb, SpatialReference sr)
     {
@@ -535,20 +475,20 @@ public static class GeocodedPolygonsLayerService
             System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] Creando polígono con {points.Count} puntos como vértices");
 
             var orderedPoints = OrderPointsForSimplePolygon(points);
-            
+
             var coords = new List<Coordinate2D>();
             foreach (var point in orderedPoints)
             {
                 coords.Add(new Coordinate2D(point.X, point.Y));
             }
-            
+
             if (orderedPoints.Count > 0)
             {
                 coords.Add(new Coordinate2D(orderedPoints[0].X, orderedPoints[0].Y));
             }
-            
+
             var polygon = PolygonBuilderEx.CreatePolygon(coords, sr);
-            
+
             if (polygon != null && !polygon.IsEmpty)
             {
                 var cleanedPolygon = CleanSelfIntersections(polygon, sr);
@@ -557,7 +497,7 @@ public static class GeocodedPolygonsLayerService
                     polygon = cleanedPolygon;
                 }
             }
-            
+
             System.Diagnostics.Debug.WriteLine($"[AllPointsPolygon] ✓ Polígono creado con {orderedPoints.Count} vértices, área={polygon?.Area:F2}");
             return polygon;
         }
@@ -577,17 +517,17 @@ public static class GeocodedPolygonsLayerService
         {
             double centroidX = points.Average(p => p.X);
             double centroidY = points.Average(p => p.Y);
-            
+
             System.Diagnostics.Debug.WriteLine($"[PolarOrdering] Centroide: ({centroidX:F2}, {centroidY:F2})");
-            
-            var ordered = points.OrderBy(p => 
+
+            var ordered = points.OrderBy(p =>
             {
                 double angle = Math.Atan2(p.Y - centroidY, p.X - centroidX);
                 return angle < 0 ? angle + 2 * Math.PI : angle;
             }).ToList();
-            
+
             System.Diagnostics.Debug.WriteLine($"[PolarOrdering] ✓ {ordered.Count} puntos ordenados por ángulo polar");
-            
+
             return ordered;
         }
         catch (Exception ex)
@@ -596,7 +536,6 @@ public static class GeocodedPolygonsLayerService
             return points.ToList();
         }
     }
-
 
     private static Polygon CleanSelfIntersections(Polygon polygon, SpatialReference sr)
     {
@@ -614,7 +553,7 @@ public static class GeocodedPolygonsLayerService
             System.Diagnostics.Debug.WriteLine($"[CleanPolygon] Error en simplificación: {ex.Message}");
             return RebuildPolygonWithoutIntersections(polygon, sr);
         }
-        
+
         return polygon;
     }
 
@@ -631,82 +570,26 @@ public static class GeocodedPolygonsLayerService
                     allPoints.Add(segment.StartPoint);
                 }
             }
-            
+
             var uniquePoints = new List<MapPoint>();
             foreach (var point in allPoints)
             {
-                if (!uniquePoints.Any(p => 
-                    Math.Abs(p.X - point.X) < 0.001 && 
+                if (!uniquePoints.Any(p =>
+                    Math.Abs(p.X - point.X) < 0.001 &&
                     Math.Abs(p.Y - point.Y) < 0.001))
                 {
                     uniquePoints.Add(point);
                 }
             }
-            
+
             System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Reconstruyendo con {uniquePoints.Count} puntos únicos");
-            
+
             return CreatePolygonFromAllPoints(uniquePoints, sr);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[RebuildPolygon] Error: {ex.Message}");
-            return polygon; 
-        }
-    }
-
-    private static Polygon CreateConcaveHull(List<MapPoint> points, string gdbPath, Geodatabase gdb)
-    {
-        if (points == null || points.Count < 3)
-            return null;
-
-        try
-        {
-            var sr = points.First().SpatialReference;
-            
-            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Procesando {points.Count} puntos");
-            
-            if (points.Count <= 15)
-            {
-                System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando algoritmo de todos-los-puntos para {points.Count} puntos");
-                var resultPolygon = CreatePolygonFromAllPoints(points, sr);
-                
-                if (resultPolygon != null && !resultPolygon.IsEmpty && resultPolygon.Area > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ✓ Polígono creado con {points.Count} vértices, área={resultPolygon.Area:F2}");
-                    
-                    bool allIncluded = VerifyAllPointsIncluded(resultPolygon, points);
-                    if (allIncluded)
-                    {
-                        return resultPolygon;
-                    }
-                }
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando Concave Hull para {points.Count} puntos");
-            try
-            {
-                double chiValue = 0.1; 
-                var concaveHull = new DelaunayConcaveHull(points, chiValue);
-                var resultPolygon = concaveHull.BuildConcaveHull();
-                
-                if (resultPolygon != null && !resultPolygon.IsEmpty && resultPolygon.Area > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ✓ Concave Hull completado, vértices={resultPolygon.PointCount}, área={resultPolygon.Area:F2}");
-                    return resultPolygon;
-                }
-            }
-            catch (Exception exDelaunay)
-            {
-                System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] ⚠ Error en Concave Hull: {exDelaunay.Message}");
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Usando fallback de todos-los-puntos");
-            return CreatePolygonFromAllPoints(points, sr);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[PolygonAlgorithm] Excepción: {ex.Message}");
-            return CreateConvexHullPolygon(points, points.First().SpatialReference);
+            return polygon;
         }
     }
 
@@ -729,7 +612,7 @@ public static class GeocodedPolygonsLayerService
     {
         if (polygon == null || polygon.IsEmpty)
             return false;
-        
+
         try
         {
             if (polygon.Area <= 0)
@@ -737,26 +620,26 @@ public static class GeocodedPolygonsLayerService
                 System.Diagnostics.Debug.WriteLine("[Validation] Área <= 0");
                 return false;
             }
-            
+
             if (polygon.Length <= 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Perímetro <= 0");
                 return false;
             }
-            
+
             if (polygon.PartCount == 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Sin parts");
                 return false;
             }
-            
+
             var extent = polygon.Extent;
             if (extent == null || extent.Width <= 0 || extent.Height <= 0)
             {
                 System.Diagnostics.Debug.WriteLine("[Validation] Extensión inválida");
                 return false;
             }
-    
+
             return true;
         }
         catch (Exception ex)
@@ -764,83 +647,5 @@ public static class GeocodedPolygonsLayerService
             System.Diagnostics.Debug.WriteLine($"[Validation] Excepción: {ex.Message}");
             return false;
         }
-    }
-
-
-    private static bool VerifyAllPointsIncluded(Polygon polygon, List<MapPoint> originalPoints)
-    {
-        if (polygon == null || polygon.IsEmpty || originalPoints == null)
-            return false;
-        
-        try
-        {
-            int pointsInside = 0;
-            int pointsOnBoundary = 0;
-            int pointsOutside = 0;
-            double tolerance = 0.01; 
-            
-            foreach (var point in originalPoints)
-            {
-                if (GeometryEngine.Instance.Contains(polygon, point))
-                {
-                    pointsInside++;
-                }
-                else
-                {
-                    double distanceToBoundary = GeometryEngine.Instance.Distance(polygon, point);
-                    if (distanceToBoundary <= tolerance)
-                    {
-                        pointsOnBoundary++;
-                    }
-                    else
-                    {
-                        pointsOutside++;
-                        System.Diagnostics.Debug.WriteLine($"[Verification] Punto fuera del polígono: ({point.X:F2}, {point.Y:F2})");
-                    }
-                }
-            }
-            
-            int totalIncluded = pointsInside + pointsOnBoundary;
-            double inclusionRate = (double)totalIncluded / originalPoints.Count;
-            
-            System.Diagnostics.Debug.WriteLine($"[Verification] Puntos: {totalIncluded}/{originalPoints.Count} incluidos ({inclusionRate:P0}) - Dentro: {pointsInside}, Borde: {pointsOnBoundary}, Fuera: {pointsOutside}");
-            
-            return inclusionRate >= 0.95;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Verification] Error: {ex.Message}");
-            return true; 
-        }
-    }
-
-    private static double CrossProduct(MapPoint o, MapPoint a, MapPoint b)
-    {
-        return (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
-    }
-    
-    private static double Distance(MapPoint p1, MapPoint p2)
-    {
-        double dx = p2.X - p1.X;
-        double dy = p2.Y - p1.Y;
-        return Math.Sqrt(dx * dx + dy * dy);
-    }
-    
-    private static double DistanceToSegment(MapPoint p, MapPoint a, MapPoint b)
-    {
-        double dx = b.X - a.X;
-        double dy = b.Y - a.Y;
-        double lengthSquared = dx * dx + dy * dy;
-        
-        if (lengthSquared < 0.0001) return Distance(p, a);
-        
-        double t = Math.Max(0, Math.Min(1, ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared));
-        double projX = a.X + t * dx;
-        double projY = a.Y + t * dy;
-        
-        double distX = p.X - projX;
-        double distY = p.Y - projY;
-        
-        return Math.Sqrt(distX * distX + distY * distY);
     }
 }

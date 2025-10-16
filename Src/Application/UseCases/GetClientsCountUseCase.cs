@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ArcGIS.Core.Data;
-using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 
@@ -29,10 +28,9 @@ public class GetClientsCountUseCase
         var map = MapView.Active?.Map;
         if (map == null) return 0;
 
-        var geo = feature.GetShape() as Geometry;
+        var geo = feature.GetShape();
         if (geo == null) return 0;
 
-        // Open the feature class directly from the provided path instead of searching map layers
         using var clientsFc = FeatureClassUtils.OpenFeatureClass(classPath);
         if (clientsFc == null) return 0;
 
@@ -75,13 +73,9 @@ public class GetClientsCountUseCase
         }
         catch
         {
-            // ignore errors when querying the feature class
+            return totalCount;
         }
 
         return totalCount;
     }
-
-
-
-    // OpenFeatureClass moved to Application.Utils.FeatureClassUtils
 }

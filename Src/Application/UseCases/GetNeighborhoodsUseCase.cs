@@ -6,10 +6,11 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ArcGIS.Core.Data;
-using EAABAddIn.Src.Application.Utils;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
+
+using EAABAddIn.Src.Application.Utils;
 
 namespace EAABAddIn.Src.Application.UseCases;
 
@@ -25,7 +26,6 @@ public class GetNeighborhoodsUseCase
         if (feature == null || string.IsNullOrWhiteSpace(classPath))
             return string.Empty;
 
-        // Do geometry and table access on the QueuedTask
         var result = await QueuedTask.Run(() => InvokeInternal(feature, classPath));
         return result ?? string.Empty;
     }
@@ -36,11 +36,11 @@ public class GetNeighborhoodsUseCase
         if (map == null)
             return string.Empty;
 
-        var geo = feature.GetShape() as Geometry;
+        var geo = feature.GetShape();
+        
         if (geo == null)
             return string.Empty;
 
-        // Open the feature class directly from the provided path
         using var fc = FeatureClassUtils.OpenFeatureClass(classPath);
         if (fc == null) return string.Empty;
 
@@ -50,10 +50,8 @@ public class GetNeighborhoodsUseCase
         {
             var def = fc.GetDefinition();
 
-            // try to find NEIGHBORHOOD_DESC field (case-insensitive)
             var nameField = def.GetFields().FirstOrDefault(f => f.Name.Equals("NEIGHBORHOOD_DESC", StringComparison.OrdinalIgnoreCase))?.Name;
 
-            // if not found, fallback to first string field (excluding object id/shape)
             if (string.IsNullOrWhiteSpace(nameField))
             {
                 var fallback = def.GetFields().FirstOrDefault(f => f.FieldType == FieldType.String && !f.Name.Equals(def.GetObjectIDField(), StringComparison.OrdinalIgnoreCase));
@@ -82,7 +80,7 @@ public class GetNeighborhoodsUseCase
                     }
                     catch
                     {
-                        // ignore problematic rows
+                        continue;
                     }
                 }
             }
@@ -95,9 +93,5 @@ public class GetNeighborhoodsUseCase
         var ordered = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
         return string.Join(", ", ordered);
     }
-
-
 }
-
-
 
