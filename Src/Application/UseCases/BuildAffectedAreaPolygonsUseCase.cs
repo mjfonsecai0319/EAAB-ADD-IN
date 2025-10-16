@@ -7,20 +7,19 @@ using System.Linq;
 using System.Threading.Tasks;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
+using ArcGIS.Desktop.Editing;
 
 namespace EAABAddIn.Src.Application.UseCases;
 
 public class BuildAffectedAreaPolygonsUseCase
 {
-    private const string OUTPUT_FEATURE_CLASS = "AreaAfectada";
-
-    public async Task<(bool success, string message, int polygonsCreated)> InvokeAsync(
+    // Actualiza atributos en la misma Feature Class seleccionada (FileGDB)
+    public async Task<(bool success, string message, int updatedCount)> InvokeAsync(
         List<Feature> selectedFeatures,
-        string workspace,
+        string targetFeatureClassPath,
         string identifierField,
         string? neighborhoodsPath,
         string? clientsPath)
@@ -28,23 +27,29 @@ public class BuildAffectedAreaPolygonsUseCase
         if (selectedFeatures == null || selectedFeatures.Count == 0)
             return (false, "No hay features seleccionadas", 0);
 
-        if (string.IsNullOrWhiteSpace(workspace))
-            workspace = Project.Current.DefaultGeodatabasePath;
+        if (string.IsNullOrWhiteSpace(targetFeatureClassPath))
+            return (false, "Ruta de Feature Class inválida", 0);
 
-        if (string.IsNullOrWhiteSpace(workspace) || !Directory.Exists(workspace))
-            return (false, "Workspace inválido", 0);
+        var (gdbPath, datasetName) = ParseFeatureClassPath(targetFeatureClassPath);
+        if (string.IsNullOrWhiteSpace(gdbPath) || string.IsNullOrWhiteSpace(datasetName))
+            return (false, "Ruta de Feature Class inválida. Se espera una ruta tipo C:/.../Base.gdb/FeatureClass", 0);
 
-        return await QueuedTask.Run(() => GeneratePolygonsInternal(
+        if (!Directory.Exists(gdbPath))
+            return (false, $"La geodatabase no existe: {gdbPath}", 0);
+
+        return await QueuedTask.Run(() => GenerateInternal(
             selectedFeatures,
-            workspace,
+            gdbPath,
+            datasetName,
             identifierField,
             neighborhoodsPath,
             clientsPath));
     }
 
-    private (bool success, string message, int polygonsCreated) GeneratePolygonsInternal(
+    private (bool success, string message, int updatedCount) GenerateInternal(
         List<Feature> selectedFeatures,
-        string workspace,
+        string gdbPath,
+        string datasetName,
         string identifierField,
         string? neighborhoodsPath,
         string? clientsPath)
@@ -54,40 +59,43 @@ public class BuildAffectedAreaPolygonsUseCase
             bool includeNeighborhoods = !string.IsNullOrWhiteSpace(neighborhoodsPath);
             bool includeClients = !string.IsNullOrWhiteSpace(clientsPath);
 
-            var firstFeature = selectedFeatures.First();
-            var spatialRef = firstFeature.GetShape()?.SpatialReference;
-            if (spatialRef == null)
-                return (false, "No se pudo obtener la referencia espacial", 0);
+            using var gdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(gdbPath)));
+            using var targetFc = gdb.OpenDataset<FeatureClass>(datasetName);
 
-            var gdbConn = new FileGeodatabaseConnectionPath(new Uri(workspace));
-            using var gdb = new Geodatabase(gdbConn);
-
-            EnsureOutputFeatureClass(workspace, gdb, spatialRef);
-            
-            EnsureFieldExists(workspace, OUTPUT_FEATURE_CLASS, "identificador", "TEXT", 255);
-            
+            // Asegurar campos
+            EnsureFieldExists(gdbPath, datasetName, "identificador", "TEXT", 255);
             if (includeNeighborhoods)
-                EnsureFieldExists(workspace, OUTPUT_FEATURE_CLASS, "barrios", "TEXT", 4096);
-            
+                EnsureFieldExists(gdbPath, datasetName, "barrios", "TEXT", 4096);
             if (includeClients)
-                EnsureFieldExists(workspace, OUTPUT_FEATURE_CLASS, "clientes_afectados", "LONG", 0);
+                EnsureFieldExists(gdbPath, datasetName, "clientes", "LONG", 0);
 
-            using var neighborhoodsFc = includeNeighborhoods ? OpenFeatureClassFromPath(neighborhoodsPath!) : null;
-            using var clientsFc = includeClients ? OpenFeatureClassFromPath(clientsPath!) : null;
+            // Abrir FC auxiliares
+            using var neighborhoodsFc = includeNeighborhoods && neighborhoodsPath != null ? OpenFeatureClassFromPath(neighborhoodsPath) : null;
+            using var clientsFc = includeClients && clientsPath != null ? OpenFeatureClassFromPath(clientsPath) : null;
 
+            // Resolver campo de nombre de barrio
             string? barrioNameField = null;
             if (neighborhoodsFc != null)
-            {
                 barrioNameField = ResolveNeighborhoodNameField(neighborhoodsFc);
-            }
 
-            using var outputFc = gdb.OpenDataset<FeatureClass>(OUTPUT_FEATURE_CLASS);
-            var outputDef = outputFc.GetDefinition();
-            
-            DeleteAllFeatures(outputFc);
+            var targetDef = targetFc.GetDefinition();
+            if (targetDef.GetShapeType() != GeometryType.Polygon)
+                return (false, "La Feature Class objetivo no es de tipo polígono.", 0);
 
             int successCount = 0;
             var errors = new List<string>();
+
+            // Obtener definiciones reales de los campos para respetar longitud y tipos
+            var fields = targetDef.GetFields();
+            var idFieldDef = fields.FirstOrDefault(f => f.Name.Equals("identificador", StringComparison.OrdinalIgnoreCase));
+            var barriosFieldDef = fields.FirstOrDefault(f => f.Name.Equals("barrios", StringComparison.OrdinalIgnoreCase));
+            var clientesFieldDef = fields.FirstOrDefault(f => f.Name.Equals("clientes", StringComparison.OrdinalIgnoreCase));
+
+            int idMaxLen = idFieldDef?.FieldType == FieldType.String ? idFieldDef.Length : 255;
+            int barriosMaxLen = barriosFieldDef?.FieldType == FieldType.String ? barriosFieldDef.Length : 4096;
+            bool clientesIsNumeric = clientesFieldDef?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
+
+            // Se realizarán cambios directos con row.Store() dentro del hilo de QueuedTask
 
             foreach (var feature in selectedFeatures)
             {
@@ -96,32 +104,30 @@ public class BuildAffectedAreaPolygonsUseCase
                     var geometry = feature.GetShape() as Polygon;
                     if (geometry == null || geometry.IsEmpty)
                     {
-                        errors.Add($"Feature {feature.GetObjectID()}: geometría inválida");
+                        errors.Add($"Feature {feature.GetObjectID()}: geometría inválida o no es polígono");
                         continue;
                     }
 
                     string identifierValue = GetIdentifierValue(feature, identifierField);
 
-                    using var rowBuffer = outputFc.CreateRowBuffer();
-                    rowBuffer[outputDef.GetShapeField()] = geometry;
-                    rowBuffer["identificador"] = identifierValue;
+                    // Buscar fila destino por OID
+                    var oid = feature.GetObjectID();
+                    var oidFld = targetDef.GetObjectIDField();
+                    // Precalcular valores con truncamiento/compatibilidad de tipos
+                    string idToWrite = SafeTruncate(identifierValue ?? string.Empty, idMaxLen);
+                    string barriosToWrite = string.Empty;
+                    object? clientesToWrite = null;
 
                     if (includeNeighborhoods && neighborhoodsFc != null && !string.IsNullOrWhiteSpace(barrioNameField))
                     {
                         try
                         {
                             var neighborhoods = GetNeighborhoodsForPolygon(neighborhoodsFc, barrioNameField, geometry);
-                            if (!string.IsNullOrWhiteSpace(neighborhoods))
-                            {
-                                if (neighborhoods.Length > 4096)
-                                    neighborhoods = neighborhoods.Substring(0, 4095);
-                                
-                                rowBuffer["barrios"] = neighborhoods;
-                            }
+                            barriosToWrite = SafeTruncate(neighborhoods ?? string.Empty, barriosMaxLen);
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error obteniendo barrios para {identifierValue}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error barrios OID {oid}: {ex.Message}");
                         }
                     }
 
@@ -130,16 +136,31 @@ public class BuildAffectedAreaPolygonsUseCase
                         try
                         {
                             var clientsCount = GetClientsCountForPolygon(clientsFc, geometry);
-                            rowBuffer["clientes_afectados"] = clientsCount;
+                            clientesToWrite = clientesIsNumeric ? clientsCount : clientsCount.ToString();
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error obteniendo clientes para {identifierValue}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error clientes OID {oid}: {ex.Message}");
                         }
                     }
 
-                    using var newRow = outputFc.CreateRow(rowBuffer);
-                    successCount++;
+                    using (Row? row = SearchRowByOid(targetFc, oidFld, oid))
+                    {
+                        if (row == null)
+                        {
+                            errors.Add($"OID {oid}: no encontrado en FC destino");
+                        }
+                        else
+                        {
+                            row["identificador"] = idToWrite;
+                            if (includeNeighborhoods && barriosFieldDef != null)
+                                row["barrios"] = barriosToWrite ?? string.Empty;
+                            if (includeClients && clientesFieldDef != null)
+                                row["clientes"] = clientesToWrite ?? (clientesIsNumeric ? 0 : "0");
+                            row.Store();
+                            successCount++;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -147,9 +168,12 @@ public class BuildAffectedAreaPolygonsUseCase
                 }
             }
 
-            AddLayerToMap(workspace, OUTPUT_FEATURE_CLASS);
+            // No se requiere EditOperation; las ediciones se han hecho directamente
 
-            string message = $"Se crearon {successCount} polígono(s) de área afectada";
+            // Refrescar capa
+            UpdateOrAddLayerInMap(gdbPath, datasetName);
+
+            string message = $"Se actualizaron {successCount} registro(s) en {datasetName}";
             if (errors.Any())
                 message += $"\nErrores: {string.Join("; ", errors.Take(3))}";
 
@@ -157,7 +181,7 @@ public class BuildAffectedAreaPolygonsUseCase
         }
         catch (Exception ex)
         {
-            return (false, $"Error al generar polígonos: {ex.Message}", 0);
+            return (false, $"Error al actualizar la Feature Class: {ex.Message}", 0);
         }
     }
 
@@ -166,9 +190,7 @@ public class BuildAffectedAreaPolygonsUseCase
         try
         {
             var def = feature.GetTable().GetDefinition();
-            var field = def.GetFields().FirstOrDefault(f => 
-                f.Name.Equals(identifierField, StringComparison.OrdinalIgnoreCase));
-            
+            var field = def.GetFields().FirstOrDefault(f => f.Name.Equals(identifierField, StringComparison.OrdinalIgnoreCase));
             if (field != null)
             {
                 var value = feature[field.Name]?.ToString();
@@ -181,48 +203,29 @@ public class BuildAffectedAreaPolygonsUseCase
         return $"FID_{feature.GetObjectID()}";
     }
 
-    private void EnsureOutputFeatureClass(string gdbPath, Geodatabase gdb, SpatialReference sr)
+    private (string gdbPath, string datasetName) ParseFeatureClassPath(string featureClassPath)
     {
-        var exists = gdb.GetDefinitions<FeatureClassDefinition>()
-            .Any(d => d.GetName().Equals(OUTPUT_FEATURE_CLASS, StringComparison.OrdinalIgnoreCase));
-        
-        if (exists)
-        {
-            try
-            {
-                var parameters = Geoprocessing.MakeValueArray(Path.Combine(gdbPath, OUTPUT_FEATURE_CLASS));
-                Geoprocessing.ExecuteToolAsync("management.Delete", parameters, null, 
-                    CancelableProgressor.None, GPExecuteToolFlags.None).GetAwaiter().GetResult();
-            }
-            catch { }
-        }
+        var idx = featureClassPath.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return (string.Empty, string.Empty);
 
-        // Crear feature class
-        var createParams = Geoprocessing.MakeValueArray(
-            gdbPath,
-            OUTPUT_FEATURE_CLASS,
-            "POLYGON",
-            "",
-            "DISABLED",
-            "DISABLED",
-            sr.Wkid > 0 ? sr.Wkid : 4326
-        );
-        
-        Geoprocessing.ExecuteToolAsync("management.CreateFeatureclass", createParams, null, 
-            CancelableProgressor.None, GPExecuteToolFlags.AddToHistory).GetAwaiter().GetResult();
+        var gdbEnd = idx + 4;
+        var gdbPath = featureClassPath.Substring(0, gdbEnd);
+        var remainder = featureClassPath.Length > gdbEnd ? featureClassPath.Substring(gdbEnd).TrimStart('\\', '/') : string.Empty;
+        if (string.IsNullOrWhiteSpace(remainder))
+            return (gdbPath, string.Empty);
+
+        var datasetName = remainder.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).Last();
+        return (gdbPath, datasetName);
     }
 
     private void EnsureFieldExists(string gdbPath, string featureClassName, string fieldName, string fieldType, int length)
     {
         try
         {
-            var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            using var gdb = new Geodatabase(gdbConn);
+            using var gdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(gdbPath)));
             using var fc = gdb.OpenDataset<FeatureClass>(featureClassName);
-            
-            var exists = fc.GetDefinition().GetFields()
-                .Any(f => f.Name.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
-            
+            var exists = fc.GetDefinition().GetFields().Any(f => f.Name.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
             if (exists) return;
         }
         catch { }
@@ -230,19 +233,15 @@ public class BuildAffectedAreaPolygonsUseCase
         try
         {
             var fcPath = Path.Combine(gdbPath, featureClassName);
-            
             if (string.Equals(fieldType, "TEXT", StringComparison.OrdinalIgnoreCase))
             {
-                var addFieldParams = Geoprocessing.MakeValueArray(
-                    fcPath, fieldName, fieldType, "", "", length > 0 ? length : 255);
-                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams, null, 
-                    CancelableProgressor.None, GPExecuteToolFlags.None).GetAwaiter().GetResult();
+                var addFieldParams = Geoprocessing.MakeValueArray(fcPath, fieldName, fieldType, "", "", length > 0 ? length : 255);
+                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams).GetAwaiter().GetResult();
             }
             else
             {
                 var addFieldParams = Geoprocessing.MakeValueArray(fcPath, fieldName, fieldType);
-                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams, null, 
-                    CancelableProgressor.None, GPExecuteToolFlags.None).GetAwaiter().GetResult();
+                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams).GetAwaiter().GetResult();
             }
         }
         catch { }
@@ -252,23 +251,9 @@ public class BuildAffectedAreaPolygonsUseCase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(featureClassPath)) return null;
-            
-            var idx = featureClassPath.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
-            if (idx < 0) return null;
-            
-            var gdbEnd = idx + 4;
-            var gdbPath = featureClassPath.Substring(0, gdbEnd);
-            var remainder = featureClassPath.Length > gdbEnd 
-                ? featureClassPath.Substring(gdbEnd).TrimStart('\\', '/') 
-                : string.Empty;
-            
-            if (string.IsNullOrWhiteSpace(remainder)) return null;
-            
-            var datasetName = remainder.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).Last();
-            
-            var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            var gdb = new Geodatabase(gdbConn);
+            var (gdbPath, datasetName) = ParseFeatureClassPath(featureClassPath);
+            if (string.IsNullOrWhiteSpace(gdbPath) || string.IsNullOrWhiteSpace(datasetName)) return null;
+            var gdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(gdbPath)));
             return gdb.OpenDataset<FeatureClass>(datasetName);
         }
         catch
@@ -280,22 +265,13 @@ public class BuildAffectedAreaPolygonsUseCase
     private string? ResolveNeighborhoodNameField(FeatureClass neighborhoodsFc)
     {
         var def = neighborhoodsFc.GetDefinition();
-        var nameCandidates = new[] 
-        { 
-            "NEIGHBORHOOD_DESC", "NEIGHBORHOOD", "BARRIO", "BARRIOS", 
-            "NOMBRE", "NOMBRE_BARRIO", "NAME", "DESCRIPCION" 
-        };
-        
-        return def.GetFields()
-            .Select(f => f.Name)
-            .FirstOrDefault(n => nameCandidates.Any(c => 
-                c.Equals(n, StringComparison.OrdinalIgnoreCase)));
+        var nameCandidates = new[] { "NEIGHBORHOOD_DESC", "NEIGHBORHOOD", "BARRIO", "BARRIOS", "NOMBRE", "NOMBRE_BARRIO", "NAME", "DESCRIPCION" };
+        return def.GetFields().Select(f => f.Name).FirstOrDefault(n => nameCandidates.Any(c => c.Equals(n, StringComparison.OrdinalIgnoreCase)));
     }
 
     private string GetNeighborhoodsForPolygon(FeatureClass neighborhoodsFc, string nameField, Polygon poly)
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        
         var filter = new SpatialQueryFilter
         {
             WhereClause = "1=1",
@@ -303,118 +279,183 @@ public class BuildAffectedAreaPolygonsUseCase
             SpatialRelationship = SpatialRelationship.Intersects,
             FilterGeometry = poly
         };
-        
         using var cursor = neighborhoodsFc.Search(filter, false);
         while (cursor.MoveNext())
         {
             using var row = cursor.Current;
             var val = row[nameField]?.ToString();
-            if (!string.IsNullOrWhiteSpace(val))
-                names.Add(val.Trim());
+            if (!string.IsNullOrWhiteSpace(val)) names.Add(val.Trim());
         }
-        
         return string.Join(", ", names.OrderBy(n => n));
     }
 
     private int GetClientsCountForPolygon(FeatureClass clientsFc, Polygon poly)
     {
         int count = 0;
-        
         var def = clientsFc.GetDefinition();
         var fields = def.GetFields();
-        string oidFld = def.GetObjectIDField();
-        
-        string tipoServicioFld = fields.FirstOrDefault(f => 
-            f.Name.Equals("TIPOSERVICIOAC", StringComparison.OrdinalIgnoreCase))?.Name ?? "TIPOSERVICIOAC";
-        string clasificacionFld = fields.FirstOrDefault(f => 
-            f.Name.Equals("DOMCLASIFICACIONPREDIO", StringComparison.OrdinalIgnoreCase))?.Name ?? "DOMCLASIFICACIONPREDIO";
-        
-        bool tipoServicioEsNumerico = fields.FirstOrDefault(f => 
-            f.Name.Equals(tipoServicioFld, StringComparison.OrdinalIgnoreCase))?.FieldType 
-            is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
-        
-        bool clasificacionEsNumerico = fields.FirstOrDefault(f => 
-            f.Name.Equals(clasificacionFld, StringComparison.OrdinalIgnoreCase))?.FieldType 
-            is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
-        
-        string whereTipo = tipoServicioEsNumerico 
-            ? $"{tipoServicioFld} = 10" 
-            : $"{tipoServicioFld} = '10'";
-        
-        string whereClasif = clasificacionEsNumerico
-            ? $"{clasificacionFld} IN (1,4,6)"
-            : $"{clasificacionFld} IN ('1','4','6')";
-        
+
+        // Detectar campos candidatos
+        string? tipoServicioFld = fields.Select(f => f.Name).FirstOrDefault(n =>
+            new[] { "TIPOSERVICIOAC", "TIPO_SERVICIO", "TIPO_SERV", "TIPOSERVICIO", "SERVICE_TYPE" }
+            .Any(c => c.Equals(n, StringComparison.OrdinalIgnoreCase)));
+
+        string? clasificacionFld = fields.Select(f => f.Name).FirstOrDefault(n =>
+            new[] { "DOMCLASIFICACIONPREDIO", "CLASIFICACION", "CLASIF", "CATEGORIA" }
+            .Any(c => c.Equals(n, StringComparison.OrdinalIgnoreCase)));
+
+        bool filtroTieneTipo = !string.IsNullOrWhiteSpace(tipoServicioFld);
+        bool filtroTieneClas = !string.IsNullOrWhiteSpace(clasificacionFld);
+
+        var tipoFieldDef = filtroTieneTipo ? fields.First(f => f.Name.Equals(tipoServicioFld, StringComparison.OrdinalIgnoreCase)) : null;
+        var clasFieldDef = filtroTieneClas ? fields.First(f => f.Name.Equals(clasificacionFld, StringComparison.OrdinalIgnoreCase)) : null;
+
+        bool tipoServicioEsNumerico = tipoFieldDef?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
+        bool clasificacionEsNumerico = clasFieldDef?.FieldType is FieldType.Integer or FieldType.SmallInteger or FieldType.BigInteger;
+
+        // Construir SubFields para leer en memoria
+        var neededFields = new List<string> { def.GetObjectIDField() };
+        if (filtroTieneTipo && tipoFieldDef != null) neededFields.Add(tipoFieldDef.Name);
+        if (filtroTieneClas && clasFieldDef != null) neededFields.Add(clasFieldDef.Name);
+        string subFields = string.Join(",", neededFields.Distinct(StringComparer.OrdinalIgnoreCase));
+
         var filter = new SpatialQueryFilter
         {
             SpatialRelationship = SpatialRelationship.Intersects,
             FilterGeometry = poly,
-            SubFields = oidFld,
-            WhereClause = $"{whereTipo} AND {whereClasif}"
+            SubFields = subFields
         };
-        
+
         using var cursor = clientsFc.Search(filter, true);
         while (cursor.MoveNext())
         {
-            count++;
+            using var row = cursor.Current;
+
+            bool pasaTipo = true;
+            bool pasaClas = true;
+
+            if (filtroTieneTipo && tipoFieldDef != null)
+            {
+                var val = row[tipoFieldDef.Name];
+                if (val == null || val is DBNull)
+                {
+                    pasaTipo = false;
+                }
+                else if (tipoServicioEsNumerico)
+                {
+                    long? v = ConvertToLong(val);
+                    pasaTipo = v.HasValue && v.Value == 10;
+                }
+                else
+                {
+                    var s = val.ToString()?.Trim();
+                    pasaTipo = string.Equals(s, "10", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            if (filtroTieneClas && clasFieldDef != null)
+            {
+                var val = row[clasFieldDef.Name];
+                if (val == null || val is DBNull)
+                {
+                    pasaClas = false;
+                }
+                else if (clasificacionEsNumerico)
+                {
+                    long? v = ConvertToLong(val);
+                    pasaClas = v.HasValue && (v.Value == 1 || v.Value == 4 || v.Value == 6);
+                }
+                else
+                {
+                    var s = val.ToString()?.Trim();
+                    pasaClas = s == "1" || s == "4" || s == "6";
+                }
+            }
+
+            // Reglas: si no existe un campo, no se filtra por él; si existen ambos, deben cumplirse ambos
+            if (pasaTipo && pasaClas)
+                count++;
         }
-        
+
+        // Si no se encontraron ninguno de los campos de filtro, contar todos los puntos que intersectan
+        if (!filtroTieneTipo && !filtroTieneClas)
+        {
+            count = 0;
+            var f2 = new SpatialQueryFilter
+            {
+                SpatialRelationship = SpatialRelationship.Intersects,
+                FilterGeometry = poly,
+                SubFields = def.GetObjectIDField()
+            };
+            using var cur2 = clientsFc.Search(f2, true);
+            while (cur2.MoveNext()) count++;
+        }
+
         return count;
     }
 
-    private void DeleteAllFeatures(FeatureClass fc)
+    private static long? ConvertToLong(object? val)
     {
-        var oidField = fc.GetDefinition().GetObjectIDField();
-        var toDelete = new List<Row>();
-        
-        using (var cursor = fc.Search(new QueryFilter { SubFields = oidField }, false))
+        try
         {
-            while (cursor.MoveNext())
-            {
-                if (cursor.Current is Row row)
-                    toDelete.Add(row);
-            }
+            if (val == null || val is DBNull) return null;
+            if (val is long l) return l;
+            if (val is int i) return i;
+            if (val is short s) return s;
+            if (long.TryParse(val.ToString(), out var parsed)) return parsed;
+            return null;
         }
-        
-        foreach (var row in toDelete)
-        {
-            try { row.Delete(); } 
-            catch { }
-            row.Dispose();
-        }
+        catch { return null; }
     }
 
-    private void AddLayerToMap(string gdbPath, string featureClassName)
+    private Row? SearchRowByOid(FeatureClass fc, string oidFieldName, long oid)
+    {
+        var qf = new QueryFilter { WhereClause = $"{oidFieldName} = {oid}", SubFields = "*" };
+        using var cursor = fc.Search(qf, false);
+        if (cursor.MoveNext()) return cursor.Current;
+        return null;
+    }
+
+    private static string SafeTruncate(string value, int maxLen)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        if (maxLen <= 0) return value;
+        return value.Length <= maxLen ? value : value.Substring(0, maxLen);
+    }
+
+    private void UpdateOrAddLayerInMap(string gdbPath, string featureClassName)
     {
         try
         {
             var mapView = MapView.Active;
             if (mapView?.Map == null) return;
-            
-            var existing = mapView.Map.GetLayersAsFlattenedList()
-                .OfType<FeatureLayer>()
-                .FirstOrDefault(l => l.Name.Equals(featureClassName, StringComparison.OrdinalIgnoreCase));
-            
+
+            var existing = mapView.Map.GetLayersAsFlattenedList().OfType<FeatureLayer>().FirstOrDefault(l => l.Name.Equals(featureClassName, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
-                mapView.Map.RemoveLayer(existing);
-            
-            var gdbConn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            using var gdb = new Geodatabase(gdbConn);
-            using var fc = gdb.OpenDataset<FeatureClass>(featureClassName);
-            
-            var layerParams = new FeatureLayerCreationParams(fc) { Name = featureClassName };
-            var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
-            
-            if (layer != null)
             {
-                var extent = layer.QueryExtent();
+                existing.ClearDisplayCache();
+                existing.SetVisibility(true);
+                var ext = existing.QueryExtent();
+                if (ext != null && !ext.IsEmpty)
+                    mapView.ZoomTo(ext, new TimeSpan(0, 0, 0, 0, 600));
+                return;
+            }
+
+            using var gdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(gdbPath)));
+            using var fc = gdb.OpenDataset<FeatureClass>(featureClassName);
+            var layerParams = new FeatureLayerCreationParams(fc) { Name = featureClassName };
+            var newLayer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, mapView.Map);
+            if (newLayer != null)
+            {
+                var extent = newLayer.QueryExtent();
                 if (extent != null && !extent.IsEmpty)
                     mapView.ZoomTo(extent, new TimeSpan(0, 0, 0, 0, 600));
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error agregando capa al mapa: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Error al refrescar la capa: {ex.Message}");
         }
     }
 }
+
