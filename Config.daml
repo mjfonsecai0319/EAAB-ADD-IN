@@ -62,6 +62,7 @@
         <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1">
           <button refID="EAABAddIn_DrawPolygonButton" size="large" />
           <button refID="EAABAddIn_AffectedAreaButton" size="large" />
+          <button refID="EAABAddIn_UnionPolygonsButton" size="large" />
         </group>
       </groups>
 
@@ -121,7 +122,7 @@
         <button
           className="EAABAddIn.Src.Presentation.View.Buttons.DrawPolygonButton"
           id="EAABAddIn_DrawPolygonButton"
-          caption="Dibujar Polígono"
+          caption="Crear Cierre"
           smallImage="Images\ConvexHull16.png"
           largeImage="Images\ConvexHull32.png"
           condition="EAABAddIn_DomainCheckWithMapPane"
