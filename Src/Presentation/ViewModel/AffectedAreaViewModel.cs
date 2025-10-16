@@ -22,7 +22,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-public class AffectedAreaViewModel : BusyViewModelBase
+internal class AffectedAreaViewModel : BusyViewModelBase
 {
     public override string DisplayName => "Area Afectada";
     public override string Tooltip => "Calcular área afectada a partir de entidades o capas seleccionadas";

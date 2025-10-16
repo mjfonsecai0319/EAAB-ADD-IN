@@ -53,6 +53,8 @@
     <Content Include="DarkImages\SearchPoi32.png" />
     <Content Include="DarkImages\ConvexHull16.png" />
     <Content Include="DarkImages\ConvexHull32.png" />
+    <Content Include="DarkImages\AffectedArea16.png" />
+    <Content Include="DarkImages\AffectedArea32.png" />
   </ItemGroup>
 
   <ItemGroup>
