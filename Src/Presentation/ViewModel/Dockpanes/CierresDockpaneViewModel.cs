@@ -15,11 +15,13 @@ internal class CierresDockpaneViewModel : DockPane
 
     private DrawPolygonViewModel _paneH1VM;
     private AffectedAreaViewModel _paneH2VM;
+    private UnionPolygonsViewModel _paneH3VM;
 
     protected CierresDockpaneViewModel()
     {
-        _paneH1VM = new DrawPolygonViewModel();
-        _paneH2VM = new AffectedAreaViewModel();
+        _paneH1VM = new();
+        _paneH2VM = new();
+        _paneH3VM = new();
         SelectedPanelHeaderIndex = 0;
         PrimaryMenuList.Add(new TabControl()
         {
@@ -30,6 +32,11 @@ internal class CierresDockpaneViewModel : DockPane
         {
             Text = _paneH2VM.DisplayName,
             Tooltip = _paneH2VM.Tooltip
+        });
+        PrimaryMenuList.Add(new TabControl()
+        {
+            Text = _paneH3VM.DisplayName,
+            Tooltip = _paneH3VM.Tooltip
         });
     }
 
@@ -60,6 +67,9 @@ internal class CierresDockpaneViewModel : DockPane
                     break;
                 case 1:
                     CurrentPage = _paneH2VM;
+                    break;
+                case 2:
+                    CurrentPage = _paneH3VM;
                     break;
                 default:
                     CurrentPage = _paneH1VM;

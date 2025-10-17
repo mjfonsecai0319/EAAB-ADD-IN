@@ -1,0 +1,283 @@
+<UserControl
+    x:Class="EAABAddIn.Src.Presentation.View.UnionPolygonsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:EAABAddIn.Src.Presentation.View"
+    xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
+    mc:Ignorable="d"
+    d:DesignHeight="400"
+    d:DesignWidth="350"
+>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <conv:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+
+            <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="Margin" Value="0,0,0,5" />
+            </Style>
+
+            <Style x:Key="BrowseButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray155}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Margin" Value="0,0,0,15" />
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <TextBlock
+                    Text="Workspace *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding Workspace, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding WorkspaceCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    Text="Feature Class *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding FeatureClass, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding FeatureClassCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    Text="Identificador *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <ComboBox
+                    Style="{StaticResource ThemedComboBoxStyle}"
+                    ItemsSource="{Binding FeatureClassFields}"
+                    SelectedItem="{Binding SelectedFeatureClassField}"
+                    IsEnabled="{Binding IsFeatureClassSelected}"
+                >
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                            <Setter Property="Padding" Value="8,4" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                </ComboBox>
+
+                <TextBlock
+                    Text="Barrios"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding Neighborhood, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding NeighborhoodCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    Text="Clientes Barrios"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding ClientsAffected, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding ClientsAffectedCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    Text="Poligono Seleccionado *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,15"
+                />
+
+                <DataGrid
+                    Style="{DynamicResource Esri_DataGrid}"
+                    ScrollViewer.CanContentScroll="True"
+                    AutoGenerateColumns="False"
+                    HorizontalAlignment="Stretch"
+                    HeadersVisibility="Column"
+                    Margin="0,0,0,5"
+                    ItemsSource="{Binding SelectedFeatures, Mode=OneWay}"
+                >
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Selected" Binding="{Binding}" Width="*" MinWidth="80" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock
+                    Text="* Utiliza la herramienta de selección para elegir uno o varios polígonos."
+                    Style="{DynamicResource Esri_TextBlockRegular}"
+                    Margin="0,0,0,15"
+                    TextWrapping="Wrap"
+                />
+            </StackPanel>
+
+            <StackPanel Grid.Row="3">
+                <TextBlock
+                    Text="{Binding StatusMessage}"
+                    Margin="0,0,0,8"
+                    TextWrapping="Wrap"
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                />
+                <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button
+                        Content="Limpiar"
+                        Style="{StaticResource Esri_Button}"
+                        Margin="0,0,10,0"
+                        Command="{Binding ClearFormCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
+                    />
+                    <Button
+                        Content="Construir polígonos"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding RunCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
+                    />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

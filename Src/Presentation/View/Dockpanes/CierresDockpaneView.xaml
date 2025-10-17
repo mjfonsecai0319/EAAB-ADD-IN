@@ -26,6 +26,10 @@
             <DataTemplate DataType="{x:Type viewModel:AffectedAreaViewModel}">
                 <view:AffectedAreaView />
             </DataTemplate>
+
+            <DataTemplate DataType="{x:Type viewModel:UnionPolygonsViewModel}">
+                <view:UnionPolygonsView />
+            </DataTemplate>
         </ResourceDictionary>
     </UserControl.Resources>
 

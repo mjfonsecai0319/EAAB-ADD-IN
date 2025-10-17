@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
+using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
@@ -15,49 +16,34 @@ using ArcGIS.Desktop.Internal.Mapping;
 using ArcGIS.Desktop.Mapping;
 using ArcGIS.Desktop.Mapping.Events;
 
-using EAABAddIn.Src.Application.UseCases;
 using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-internal class AffectedAreaViewModel : BusyViewModelBase
+internal class UnionPolygonsViewModel : BusyViewModelBase
 {
-    public override string DisplayName => "Area Afectada";
-    public override string Tooltip => "Calcular área afectada a partir de entidades o capas seleccionadas";
-
-    private readonly GetSelectedFeatureUseCase _getSelectedFeatureUseCase = new();
-    private readonly GetNeighborhoodsUseCase _getNeighborhoodsUseCase = new();
-
-    private readonly GetClientsCountUseCase _getClientsCountUseCase = new();
-    private readonly BuildAffectedAreaPolygonsUseCase _buildAffectedAreaPolygonsUseCase = new();
+    public override string DisplayName => "Unir Polígonos";
+    public override string Tooltip => "Crear polígonos unidos a partir de entidades seleccionadas";
 
     public ICommand WorkspaceCommand { get; private set; }
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand FeatureClassCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
 
-    public ICommand RunCommand { get; private set; }
+    // public ICommand RunCommand { get; private set; }
     public ICommand ClearFormCommand { get; private set; }
-    public ICommand BuildPolygonsCommand { get; private set; }
 
-    public AffectedAreaViewModel()
+    public UnionPolygonsViewModel()
     {
         WorkspaceCommand = new RelayCommand(OnWorkspace);
         NeighborhoodCommand = new RelayCommand(OnNeighborhood);
         FeatureClassCommand = new RelayCommand(OnFeatureClass);
         ClientsAffectedCommand = new RelayCommand(OnClientsAffected);
-        RunCommand = new RelayCommand(OnRun);
+        
         ClearFormCommand = new RelayCommand(OnClearForm);
-        BuildPolygonsCommand = new RelayCommand(async () => await OnBuildPolygonsAsync(), () => !IsBusy && CanBuildPolygons);
+        
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         QueuedTask.Run(UpdateSelectedFeatures);
-
-        // Refrescar CanExecute cuando cambie IsBusy
-        this.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(IsBusy))
-                RaiseCanExecuteForBuild();
-        };
     }
 
     private string _workspace = Project.Current.DefaultGeodatabasePath;
@@ -86,7 +72,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
                 NotifyPropertyChanged(nameof(FeatureClass));
                 QueuedTask.Run(UpdateSelectedFeatures);
                 _ = GetFeatureClassFieldNamesAsync();
-                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -101,7 +86,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _neighborhood = value;
                 NotifyPropertyChanged(nameof(Neighborhood));
-                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -116,7 +100,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _clientsAffected = value;
                 NotifyPropertyChanged(nameof(ClientsAffected));
-                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -145,7 +128,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _selectedFeatureClassField = value;
                 NotifyPropertyChanged(nameof(SelectedFeatureClassField));
-                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -161,7 +143,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _selectedFeaturesCount = value;
                 NotifyPropertyChanged(nameof(SelectedFeaturesCount));
-                RaiseCanExecuteForBuild();
             }
         }
     }
@@ -179,17 +160,13 @@ internal class AffectedAreaViewModel : BusyViewModelBase
                 IsFeatureClassSelected = !value.IsNullOrEmpty();
                 SelectedFeatureClassField = value.FirstOrDefault();
                 NotifyPropertyChanged(nameof(FeatureClassFields));
-                RaiseCanExecuteForBuild();
             }
         }
     }
 
     private readonly ObservableCollection<string> _selectedFeatures = new();
 
-    public ObservableCollection<string> SelectedFeatures
-    {
-        get => _selectedFeatures;
-    }
+    public ObservableCollection<string> SelectedFeatures => _selectedFeatures;
 
     public bool CanBuildPolygons =>
         !string.IsNullOrWhiteSpace(Workspace) &&
@@ -208,22 +185,7 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         SelectedFeaturesCount = 0;
         _selectedFeatures.Clear();
         StatusMessage = string.Empty;
-        RaiseCanExecuteForBuild();
     }
-
-    private async Task OnBuildPolygonsAsync()
-    {
-
-        await Task.CompletedTask;
-        StatusMessage = "Construyendo polígonos de área afectada...";
-    }
-
-    private void RaiseCanExecuteForBuild()
-    {
-        if (BuildPolygonsCommand is RelayCommand rc)
-            rc.RaiseCanExecuteChanged();
-    }
-
 
     private void OnWorkspace()
     {
@@ -305,51 +267,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         }
     }
 
-    private void OnRun()
-    {
-        QueuedTask.Run(OnRunAsync);
-    }
-    
-    private async void OnRunAsync()
-    {
-        try
-        {
-            IsBusy = true;
-            StatusMessage = "Calculando y actualizando área afectada...";
-
-            if (string.IsNullOrWhiteSpace(FeatureClass) || string.IsNullOrWhiteSpace(SelectedFeatureClassField))
-            {
-                StatusMessage = "Selecciona una Feature Class y un campo identificador.";
-                return;
-            }
-
-            var features = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass);
-            if (features.Count == 0)
-            {
-                StatusMessage = "No hay entidades seleccionadas.";
-                return;
-            }
-
-            var (ok, msg, updated) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
-                features,
-                FeatureClass,
-                SelectedFeatureClassField,
-                string.IsNullOrWhiteSpace(Neighborhood) ? null : Neighborhood,
-                string.IsNullOrWhiteSpace(ClientsAffected) ? null : ClientsAffected
-            );
-
-            StatusMessage = msg;
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
     private async Task GetFeatureClassFieldNamesAsync()
     {
         var fields = new List<string>();
@@ -416,19 +333,19 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
     private async Task UpdateSelectedFeatures()
     {
-        var selectedFeatures = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass ?? string.Empty);
+        // Reuse existing selection helper later; for now retrieve selected features from active map
+        var selectedFeatures = new List<Feature>();
 
-        foreach (var e in selectedFeatures)
+        try
         {
-            var name = e.GetTable().GetDefinition().GetName();
-            var oid = e.GetObjectID().ToString();
+            var mv = MapView.Active;
+            if (mv?.Map == null) return;
 
-            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
-            {
-                _selectedFeatures.Add(name + " - " + oid);
-            });
+            // This is a placeholder: calling GetSelectedFeatureUseCase could be added later
         }
+        catch { }
 
-        SelectedFeaturesCount = selectedFeatures.Count;
+        // Update UI collection (empty by default)
+        SelectedFeaturesCount = _selectedFeatures.Count;
     }
 }
