@@ -14,7 +14,7 @@ namespace EAABAddIn.Src.Application.UseCases;
 
 public class GetClientsCountUseCase
 {
-    public async Task<int> Invoke(Feature feature, string classPath)
+    public async Task<int> Invoke(Feature feature, string? classPath)
     {
         if (feature == null || string.IsNullOrWhiteSpace(classPath))
             return 0;

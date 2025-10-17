@@ -143,6 +143,7 @@ namespace EAABAddIn
             if (ValidateDomain.Invoke())
             {
                 FrameworkApplication.State.Activate("EAABAddIn_InCompanyDomain");
+                UnpinDockPanes();
                 return;
             }
 
@@ -161,8 +162,7 @@ namespace EAABAddIn
 
             try
             {
-                var dockPane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_AddressGeocoder");
-                dockPane?.UnPin();
+                UnpinDockPanes();
             }
             catch
             {
@@ -173,6 +173,14 @@ namespace EAABAddIn
             {
                 _ = QueuedTask.Run(_geodatabaseService.DisposeConnectionAsync);
             }
+        }
+
+        private static void UnpinDockPanes()
+        {
+            var dockPane1 = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_AddressGeocoder");
+            var dockPane2 = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_Cierres");
+            dockPane1?.UnPin();
+            dockPane2?.UnPin();
         }
     }
 }

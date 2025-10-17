@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Internal.Mapping.Locate;
 using ArcGIS.Desktop.Mapping;
 
 namespace EAABAddIn.Src.Application.UseCases;

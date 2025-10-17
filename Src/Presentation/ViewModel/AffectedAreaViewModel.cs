@@ -1,9 +1,7 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -11,7 +9,6 @@ using System.Windows.Input;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Internal.Mapping;
 using ArcGIS.Desktop.Mapping;
 using ArcGIS.Desktop.Mapping.Events;
 
@@ -35,7 +32,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     public ICommand NeighborhoodCommand { get; private set; }
     public ICommand FeatureClassCommand { get; private set; }
     public ICommand ClientsAffectedCommand { get; private set; }
-
     public ICommand RunCommand { get; private set; }
     public ICommand ClearFormCommand { get; private set; }
     public ICommand BuildPolygonsCommand { get; private set; }
@@ -52,7 +48,6 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         QueuedTask.Run(UpdateSelectedFeatures);
 
-        // Refrescar CanExecute cuando cambie IsBusy
         this.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(IsBusy))
@@ -84,9 +79,8 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             {
                 _featureClass = value;
                 NotifyPropertyChanged(nameof(FeatureClass));
-                QueuedTask.Run(UpdateSelectedFeatures);
-                _ = GetFeatureClassFieldNamesAsync();
                 RaiseCanExecuteForBuild();
+                QueuedTask.Run(UpdateSelectedFeatures);
             }
         }
     }
@@ -135,16 +129,16 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         }
     }
 
-    private string? _selectedFeatureClassField = null;
-    public string? SelectedFeatureClassField
+    private string? _classID = null;
+    public string? ClassID
     {
-        get => _selectedFeatureClassField;
+        get => _classID;
         set
         {
-            if (_selectedFeatureClassField != value)
+            if (_classID != value)
             {
-                _selectedFeatureClassField = value;
-                NotifyPropertyChanged(nameof(SelectedFeatureClassField));
+                _classID = value;
+                NotifyPropertyChanged(nameof(ClassID));
                 RaiseCanExecuteForBuild();
             }
         }
@@ -166,27 +160,9 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         }
     }
 
-    private List<string> _featureClassFields = [];
+    private readonly ObservableCollection<SelectedFeatureInfo> _selectedFeatures = new();
 
-    public List<string> FeatureClassFields
-    {
-        get => _featureClassFields;
-        private set
-        {
-            if (_featureClassFields != value)
-            {
-                _featureClassFields = value;
-                IsFeatureClassSelected = !value.IsNullOrEmpty();
-                SelectedFeatureClassField = value.FirstOrDefault();
-                NotifyPropertyChanged(nameof(FeatureClassFields));
-                RaiseCanExecuteForBuild();
-            }
-        }
-    }
-
-    private readonly ObservableCollection<string> _selectedFeatures = new();
-
-    public ObservableCollection<string> SelectedFeatures
+    public ObservableCollection<SelectedFeatureInfo> SelectedFeatures
     {
         get => _selectedFeatures;
     }
@@ -194,14 +170,13 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     public bool CanBuildPolygons =>
         !string.IsNullOrWhiteSpace(Workspace) &&
         !string.IsNullOrWhiteSpace(FeatureClass) &&
-        !string.IsNullOrWhiteSpace(SelectedFeatureClassField) &&
+        !string.IsNullOrWhiteSpace(ClassID) &&
         (!string.IsNullOrWhiteSpace(Neighborhood) || !string.IsNullOrWhiteSpace(ClientsAffected));
 
     private void OnClearForm()
     {
         FeatureClass = null;
-        FeatureClassFields = new List<string>();
-        SelectedFeatureClassField = null;
+        ClassID = null;
         IsFeatureClassSelected = false;
         Neighborhood = null;
         ClientsAffected = null;
@@ -309,36 +284,42 @@ internal class AffectedAreaViewModel : BusyViewModelBase
     {
         QueuedTask.Run(OnRunAsync);
     }
-    
-    private async void OnRunAsync()
+
+    private async Task OnRunAsync()
     {
+        IsBusy = true;
+        StatusMessage = "Calculando y actualizando área afectada...";
+
         try
         {
-            IsBusy = true;
-            StatusMessage = "Calculando y actualizando área afectada...";
-
-            if (string.IsNullOrWhiteSpace(FeatureClass) || string.IsNullOrWhiteSpace(SelectedFeatureClassField))
+            if (string.IsNullOrWhiteSpace(FeatureClass) || string.IsNullOrWhiteSpace(ClassID))
             {
                 StatusMessage = "Selecciona una Feature Class y un campo identificador.";
                 return;
             }
 
             var features = await _getSelectedFeatureUseCase.Invoke(MapView.Active, FeatureClass);
+
             if (features.Count == 0)
             {
                 StatusMessage = "No hay entidades seleccionadas.";
                 return;
             }
 
-            var (ok, msg, updated) = await _buildAffectedAreaPolygonsUseCase.InvokeAsync(
-                features,
-                FeatureClass,
-                SelectedFeatureClassField,
-                string.IsNullOrWhiteSpace(Neighborhood) ? null : Neighborhood,
-                string.IsNullOrWhiteSpace(ClientsAffected) ? null : ClientsAffected
-            );
+            foreach (var f in features)
+            {
+                var neighborhoods = await _getNeighborhoodsUseCase.Invoke(f, Neighborhood);
+                var clientsCount = await _getClientsCountUseCase.Invoke(f, ClientsAffected);
+                var (success, message, _) = await _buildAffectedAreaPolygonsUseCase.Invoke(
+                    feature: f,
+                    neighborhoods: neighborhoods,
+                    clientsCount: clientsCount,
+                    classID: ClassID!
+                );
+                f.Dispose();
+            }
 
-            StatusMessage = msg;
+            StatusMessage = "Proceso completado.";
         }
         catch (Exception ex)
         {
@@ -347,63 +328,14 @@ internal class AffectedAreaViewModel : BusyViewModelBase
         finally
         {
             IsBusy = false;
-        }
-    }
-
-    private async Task GetFeatureClassFieldNamesAsync()
-    {
-        var fields = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(FeatureClass))
-        {
-            return;
-        }
-
-        try
-        {
-            var (gdbPath, datasetName) = ParseFeatureClassPath(FeatureClass, Workspace);
-
-            if (string.IsNullOrWhiteSpace(gdbPath) || !Directory.Exists(gdbPath) || string.IsNullOrWhiteSpace(datasetName))
+            _ = Task.Delay(3000).ContinueWith(_ =>
             {
-                return;
-            }
-
-            FeatureClassFields = await QueuedTask.Run(() =>
-            {
-                var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
-                using var gdb = new ArcGIS.Core.Data.Geodatabase(connPath);
-                using var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName);
-                var def = fc.GetDefinition();
-                string[] filter = ["objectid", "shape"];
-
-                return def.GetFields().Select(it => it.Name).Where(
-                    it => !filter.Contains(it.ToLower())
-                ).OrderBy(
-                    it => it
-                ).ToList();
+                System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                {
+                    StatusMessage = string.Empty;
+                });
             });
         }
-        catch (Exception)
-        {
-            return;
-        }
-    }
-
-    private (string gdbPath, string datasetName) ParseFeatureClassPath(string featureClass, string workspace)
-    {
-        var idx = featureClass.IndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
-
-        if (idx >= 0)
-        {
-            var gdbEnd = idx + 4;
-            var gdbPath = featureClass.Substring(0, gdbEnd);
-            var remainder = featureClass.Length > gdbEnd ? featureClass.Substring(gdbEnd).TrimStart('\\', '/') : string.Empty;
-            var datasetName = string.IsNullOrWhiteSpace(remainder) ? Path.GetFileNameWithoutExtension(gdbPath) : Path.GetFileName(remainder.Contains('\\') || remainder.Contains('/') ? remainder[..^0] : remainder);
-            return (gdbPath, datasetName);
-        }
-
-        var datasetNameNoGdb = Path.GetFileName(featureClass);
-        return (workspace, string.IsNullOrWhiteSpace(datasetNameNoGdb) ? featureClass : datasetNameNoGdb);
     }
 
     private void OnMapSelectionChanged(MapSelectionChangedEventArgs args)
@@ -425,10 +357,22 @@ internal class AffectedAreaViewModel : BusyViewModelBase
 
             System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
-                _selectedFeatures.Add(name + " - " + oid);
+                _selectedFeatures.Add(new SelectedFeatureInfo(name, long.Parse(oid)));
             });
         }
 
         SelectedFeaturesCount = selectedFeatures.Count;
+    }
+
+    internal struct SelectedFeatureInfo
+    {
+        public string LayerName { get; set; }
+        public long ObjectID { get; set; }
+
+        public SelectedFeatureInfo(string layerName, long objectID)
+        {
+            LayerName = layerName;
+            ObjectID = objectID;
+        }
     }
 }

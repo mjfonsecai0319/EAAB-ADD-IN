@@ -149,20 +149,13 @@
                     Margin="0,0,0,10"
                 />
 
-                <ComboBox
-                    Style="{StaticResource ThemedComboBoxStyle}"
-                    ItemsSource="{Binding FeatureClassFields}"
-                    SelectedItem="{Binding SelectedFeatureClassField}"
-                    IsEnabled="{Binding IsFeatureClassSelected}"
-                >
-                    <ComboBox.ItemContainerStyle>
-                        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                            <Setter Property="Padding" Value="8,4" />
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
-                        </Style>
-                    </ComboBox.ItemContainerStyle>
-                </ComboBox>
+                <TextBox
+                    Grid.Column="0"
+                    Text="{Binding ClassID, Mode=TwoWay}"
+                    IsReadOnly="False"
+                    Height="28"
+                    Margin="0,0,0,15"
+                />
 
                 <TextBlock
                     Text="Barrios (opcional)"
@@ -196,7 +189,7 @@
                 </Grid>
 
                 <TextBlock
-                    Text="Clientes Barrios (opcional)"
+                    Text="Clientes (opcional)"
                     Style="{StaticResource HeaderTextStyle}"
                     Margin="0,0,0,10"
                 />
@@ -247,9 +240,11 @@
                     HeadersVisibility="Column"
                     Margin="0,0,0,5"
                     ItemsSource="{Binding SelectedFeatures, Mode=OneWay}"
+                    IsReadOnly="True"
                 >
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Selected" Binding="{Binding}" Width="*" MinWidth="80" />
+                        <DataGridTextColumn Header="ID" Binding="{Binding ObjectID}" Width="Auto" />
+                        <DataGridTextColumn Header="Nombre" Binding="{Binding LayerName}" Width="*" MinWidth="80" />
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -266,7 +261,7 @@
                     Text="{Binding StatusMessage}"
                     Margin="0,0,0,8"
                     TextWrapping="Wrap"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                    Style="{DynamicResource Esri_TextBlockRegular}"
                 />
                 <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 

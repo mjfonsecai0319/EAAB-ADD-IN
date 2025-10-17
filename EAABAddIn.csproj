@@ -43,6 +43,9 @@
     <Content Include="Images\ConvexHull32.png" />
     <Content Include="Images\AffectedArea16.png" />
     <Content Include="Images\AffectedArea32.png" />
+    <Content Include="Images\Union16.png" />
+    <Content Include="Images\Union32.png" />
+
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
@@ -55,6 +58,8 @@
     <Content Include="DarkImages\ConvexHull32.png" />
     <Content Include="DarkImages\AffectedArea16.png" />
     <Content Include="DarkImages\AffectedArea32.png" />
+    <Content Include="DarkImages\Union16.png" />
+    <Content Include="DarkImages\Union32.png" />
   </ItemGroup>
 
   <ItemGroup>
