@@ -2,7 +2,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.Base
 {
-    internal abstract class BusyViewModelBase : PanelViewModelBase
+    public abstract class BusyViewModelBase : PanelViewModelBase
     {
         private bool _isBusy;
         public bool IsBusy

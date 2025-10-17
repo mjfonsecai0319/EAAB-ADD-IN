@@ -22,7 +22,7 @@ using Microsoft.Win32;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    internal class MassiveGeocodeViewModel : BusyViewModelBase
+    public class MassiveGeocodeViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Geocodificación Masiva";
         public override string Tooltip => "Buscar múltiples direcciones a la vez desde un archivo .xlsx o .xls";

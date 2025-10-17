@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ArcGIS.Core.Data;
+using ArcGIS.Core.CIM;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Internal.Mapping.Locate;
 using ArcGIS.Desktop.Mapping;
@@ -28,11 +29,44 @@ public class GetSelectedFeatureUseCase
     {
         // Collect all selected features that belong to the target polygons class
         var selected = new List<Feature>();
-        var filtered = mapView.Map.GetSelection().ToDictionary().Select(
-            it => it
-        ).Where(
-            it => it.Key.Name.Equals(GetDatasetName(target))
-        ).ToList() ?? [];
+        var selectionDict = mapView.Map.GetSelection().ToDictionary();
+
+        // If no explicit target provided, include ALL selected polygon layers
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            foreach (var kv in selectionDict)
+            {
+                if (kv.Key is FeatureLayer fl && fl.ShapeType == esriGeometryType.esriGeometryPolygon)
+                {
+                    var features = GetSelectedFeatures(fl, kv.Value);
+                    if (features != null && features.Count > 0)
+                        selected.AddRange(features);
+                }
+            }
+            return selected;
+        }
+
+        var targetDatasetName = GetDatasetName(target);
+
+        var filtered = selectionDict.Where(kv =>
+        {
+            if (kv.Key is FeatureLayer fl)
+            {
+                // Match either by layer name or by underlying dataset name
+                if (fl.Name.Equals(targetDatasetName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                try
+                {
+                    using var table = fl.GetTable();
+                    var def = table?.GetDefinition();
+                    var dsName = def?.GetName();
+                    if (!string.IsNullOrWhiteSpace(dsName) && dsName.Equals(targetDatasetName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                catch { }
+            }
+            return false;
+        }).ToList();
         
 
         foreach (var kv in filtered)

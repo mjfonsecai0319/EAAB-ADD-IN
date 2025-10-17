@@ -2,7 +2,7 @@ using ArcGIS.Desktop.Framework.Contracts;
 
 namespace EAABAddIn.Src.Presentation.Base;
 
-internal abstract class PanelViewModelBase : PropertyChangedBase
+public abstract class PanelViewModelBase : PropertyChangedBase
 {
     public abstract string DisplayName { get; }
 

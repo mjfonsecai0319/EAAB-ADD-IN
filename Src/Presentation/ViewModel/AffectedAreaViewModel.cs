@@ -176,8 +176,8 @@ internal class AffectedAreaViewModel : BusyViewModelBase
             if (_featureClassFields != value)
             {
                 _featureClassFields = value;
-                IsFeatureClassSelected = !value.IsNullOrEmpty();
-                SelectedFeatureClassField = value.FirstOrDefault();
+                IsFeatureClassSelected = value != null && value.Count > 0;
+                SelectedFeatureClassField = value?.FirstOrDefault();
                 NotifyPropertyChanged(nameof(FeatureClassFields));
                 RaiseCanExecuteForBuild();
             }

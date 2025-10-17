@@ -22,7 +22,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    internal class AddressSearchViewModel : BusyViewModelBase
+    public class AddressSearchViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Buscar Dirección";
         public override string Tooltip => "Buscar una dirección específica en el mapa";
