@@ -793,6 +793,7 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             using var outFc = activeGdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(outputName);
             using var outDef = outFc.GetDefinition();
 
+            // 1) Intentar con EditOperation (cuando la edición está habilitada)
             var editOp = new EditOperation
             {
                 Name = "Insertar polígono unido",
@@ -803,33 +804,31 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             {
                 using (var rowBuffer = outFc.CreateRowBuffer())
                 {
-                    // Asignar geometría
                     rowBuffer[outDef.GetShapeField()] = geometry;
 
-                    // Asignar atributos
                     if (!string.IsNullOrWhiteSpace(SelectedFeatureClassField))
                     {
                         try
                         {
-                            var outFieldIndex = outDef.FindField(SelectedFeatureClassField);
+                            var outFieldIndex = outDef.FindField(SelectedFeatureClassField!);
                             if (outFieldIndex >= 0)
                             {
                                 var outField = outDef.GetFields()[outFieldIndex];
                                 var value = IdentifierText;
-                                if (string.IsNullOrWhiteSpace(value) && attributes.TryGetValue(SelectedFeatureClassField, out var v) && v != null)
+                                if (string.IsNullOrWhiteSpace(value) && !string.IsNullOrWhiteSpace(SelectedFeatureClassField) && attributes.TryGetValue(SelectedFeatureClassField!, out var v) && v != null)
                                 {
-                                    rowBuffer[SelectedFeatureClassField] = v;
+                                    rowBuffer[SelectedFeatureClassField!] = v;
                                 }
                                 else if (!string.IsNullOrWhiteSpace(value))
                                 {
                                     if (TryConvertForField(outField, value!, out var converted))
-                                        rowBuffer[SelectedFeatureClassField] = converted;
+                                        rowBuffer[SelectedFeatureClassField!] = converted;
                                     else if (outField.FieldType == FieldType.String)
-                                        rowBuffer[SelectedFeatureClassField] = value!; // fallback si es string
+                                        rowBuffer[SelectedFeatureClassField!] = value!;
                                 }
                             }
                         }
-                        catch { /* ignorar si no se puede asignar */ }
+                        catch { }
                     }
 
                     using (var newFeature = outFc.CreateRow(rowBuffer))
@@ -845,6 +844,24 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 var err = editOp.ErrorMessage;
                 System.Diagnostics.Debug.WriteLine($"EditOperation failed creating unioned feature in '{outputName}'. Error: {err}");
                 _lastSaveError = err;
+                // 2) Si falló por edición no habilitada, intentar inserción directa
+                if (!string.IsNullOrWhiteSpace(err) && err.IndexOf("not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    try
+                    {
+                        if (geometry != null && attributes != null)
+                        {
+                            var directOk2 = InsertUnionFeatureDirect(outFc, outDef, geometry, attributes);
+                            if (directOk2)
+                                return (true, outputName, gdbPath);
+                        }
+                    }
+                    catch (Exception dirEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Direct insert (fallback) failed: {dirEx.Message}");
+                        _lastSaveError = dirEx.Message;
+                    }
+                }
             }
             return (ok, outputName, gdbPath);
         }
@@ -971,6 +988,49 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         }
         catch { }
         return false;
+    }
+
+    // Inserción directa sin EditOperation: funciona cuando la edición de la aplicación está deshabilitada
+    private bool InsertUnionFeatureDirect(ArcGIS.Core.Data.FeatureClass outFc, FeatureClassDefinition outDef, Geometry geometry, Dictionary<string, object> attributes)
+    {
+        if (geometry == null) return false;
+        if (attributes == null) attributes = new Dictionary<string, object>();
+        using (var rowBuffer = outFc.CreateRowBuffer())
+        {
+            rowBuffer[outDef.GetShapeField()] = geometry;
+
+            if (!string.IsNullOrWhiteSpace(SelectedFeatureClassField))
+            {
+                try
+                {
+                    var outFieldIndex = outDef.FindField(SelectedFeatureClassField);
+                    if (outFieldIndex >= 0)
+                    {
+                        var outField = outDef.GetFields()[outFieldIndex];
+                        var value = IdentifierText;
+                        if (string.IsNullOrWhiteSpace(value) && !string.IsNullOrWhiteSpace(SelectedFeatureClassField) && attributes.TryGetValue(SelectedFeatureClassField!, out var v) && v != null)
+                        {
+                            rowBuffer[SelectedFeatureClassField!] = v;
+                        }
+                        else if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            if (TryConvertForField(outField, value!, out var converted))
+                                rowBuffer[SelectedFeatureClassField!] = converted;
+                            else if (outField.FieldType == FieldType.String)
+                                rowBuffer[SelectedFeatureClassField!] = value!;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            using (var newFeature = outFc.CreateRow(rowBuffer))
+            {
+                // Inserción directa, no se requiere context.Invalidate
+            }
+        }
+
+        return true;
     }
 
     private async Task ProcessNeighborhoodIntersection(Geometry unionGeometry, Dictionary<string, object> attributes)
