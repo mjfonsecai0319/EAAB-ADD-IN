@@ -40,6 +40,7 @@ public class UnionPolygonsViewModel : BusyViewModelBase
     public ICommand RefreshSelectionCommand { get; private set; }
 
     private readonly GetSelectedFeatureUseCase _getSelectedFeatureUseCase = new();
+    private string? _lastSaveError = null;
 
     public UnionPolygonsViewModel()
     {
@@ -52,7 +53,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         RefreshSelectionCommand = new AsyncRelayCommand(OnRefreshSelectionAsync);
         
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
-        
         // Inicializar después de que la UI esté lista
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
@@ -94,7 +94,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             }
         }
     }
-
     private string? _neighborhood = null;
     public string? Neighborhood
     {
@@ -337,6 +336,14 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             return;
         }
 
+        // Validar Workspace (debe ser una geodatabase .gdb)
+        if (string.IsNullOrWhiteSpace(Workspace) || !Workspace.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(Workspace))
+        {
+            MessageBox.Show("Seleccione una geodatabase (.gdb) válida en 'Workspace'.",
+                "Workspace inválido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         try
         {
             IsBusy = true;
@@ -373,27 +380,56 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 var combinedAttributes = CombineAttributes(selectedPolygons);
 
                 // 4. Guardar en Feature Class de destino
-                var (saved, outputName) = await SaveUnionedPolygon(unionedGeometry, combinedAttributes);
+                var (saved, outputName, outGdbPath) = await SaveUnionedPolygon(unionedGeometry, combinedAttributes);
 
                 if (saved)
                 {
+                    // Agregar la nueva capa al mapa y hacer zoom
+                    try
+                    {
+                        var mvActive = MapView.Active;
+                        var map = mvActive?.Map;
+                        if (map != null)
+                        {
+                            // Evitar duplicados
+                            var exists = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Any(l => l.Name.Equals(outputName, StringComparison.OrdinalIgnoreCase));
+                            if (!exists)
+                            {
+                                var fcPath = System.IO.Path.Combine(outGdbPath, outputName);
+                                var fcUri = new Uri(fcPath);
+                                var lyr = LayerFactory.Instance.CreateLayer(fcUri, map) as FeatureLayer;
+                                if (lyr != null && !string.IsNullOrEmpty(outputName))
+                                    lyr.SetName(outputName);
+                            }
+                            // Zoom a la geometría unida
+                            if (mvActive != null && unionedGeometry?.Extent != null)
+                                mvActive.ZoomTo(unionedGeometry.Extent, new TimeSpan(0,0,0,0,400));
+                        }
+                    }
+                    catch (Exception addEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"No se pudo agregar la capa al mapa: {addEx.Message}");
+                    }
                     // 5. Si hay capa de barrios, hacer intersección
-                    if (!string.IsNullOrWhiteSpace(Neighborhood))
+                    if (unionedGeometry != null && !string.IsNullOrWhiteSpace(Neighborhood))
                     {
                         await ProcessNeighborhoodIntersection(unionedGeometry, combinedAttributes);
                     }
 
                     // 6. Si hay capa de clientes, contar afectados
-                    if (!string.IsNullOrWhiteSpace(ClientsAffected))
+                    if (unionedGeometry != null && !string.IsNullOrWhiteSpace(ClientsAffected))
                     {
                         await ProcessClientsAffected(unionedGeometry, combinedAttributes);
                     }
 
-                    StatusMessage = $"✓ Unión completada: {selectedPolygons.Count} polígonos unidos -> {outputName}";
+                    var note = !string.IsNullOrWhiteSpace(Workspace) && !Workspace.Equals(outGdbPath, StringComparison.OrdinalIgnoreCase)
+                        ? $" (creado en gdb alternativa: {System.IO.Path.GetFileName(outGdbPath)})" : string.Empty;
+                    StatusMessage = $"✓ Unión completada: {selectedPolygons.Count} polígonos unidos -> {outputName} (capa agregada){note}";
                 }
                 else
                 {
-                    StatusMessage = "✗ Error al guardar el polígono unido";
+                    var detail = string.IsNullOrWhiteSpace(_lastSaveError) ? string.Empty : $" Detalle: {_lastSaveError}";
+                    StatusMessage = $"✗ Error al guardar el polígono unido.{detail}";
                 }
             });
         }
@@ -589,31 +625,57 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         return combined;
     }
 
-    private async Task<(bool Saved, string OutputDatasetName)> SaveUnionedPolygon(Geometry geometry, Dictionary<string, object> attributes)
+    private async Task<(bool Saved, string OutputDatasetName, string OutputGdbPath)> SaveUnionedPolygon(Geometry geometry, Dictionary<string, object> attributes)
     {
         try
         {
             // Siempre usar el Workspace como gdb de salida. El datasetName base se toma de la FC si existe
             string? datasetNameBase = null;
             string gdbPath = Workspace;
-            string? datasetName = null;
+            // Info de la FC origen (para replicar SR/campo)
+            string? srcGdbPath = null;
+            string? srcDatasetName = null;
             if (!string.IsNullOrWhiteSpace(FeatureClass))
             {
                 var parsed = ParseFeatureClassPath(FeatureClass!, Workspace);
-                gdbPath = parsed.gdbPath;
                 datasetNameBase = parsed.datasetName;
+                srcGdbPath = parsed.gdbPath;
+                srcDatasetName = parsed.datasetName;
             }
 
             if (string.IsNullOrWhiteSpace(gdbPath))
-                return (false, string.Empty);
+                return (false, string.Empty, string.Empty);
+
+            // Validar que el workspace sea una geodatabase
+            if (string.IsNullOrWhiteSpace(gdbPath) || !gdbPath.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(gdbPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"Workspace inválido para salida: '{gdbPath}'");
+                // Intentar con la geodatabase por defecto del proyecto
+                var projGdb = Project.Current?.DefaultGeodatabasePath;
+                if (!string.IsNullOrWhiteSpace(projGdb) && projGdb.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) && Directory.Exists(projGdb))
+                {
+                    gdbPath = projGdb;
+                }
+                else
+                {
+                    return (false, string.Empty, string.Empty);
+                }
+            }
 
             var connPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
-            using var gdb = new Geodatabase(connPath);
+            using var gdbInitial = new Geodatabase(connPath);
+            // Usar 'activeGdb' para permitir fallback sin reasignar la variable 'using'
+            Geodatabase activeGdb = gdbInitial;
             FeatureClassDefinition? srcDef = null;
             try
             {
-                using var trySrc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName);
-                srcDef = trySrc?.GetDefinition();
+                if (!string.IsNullOrWhiteSpace(srcGdbPath) && !string.IsNullOrWhiteSpace(srcDatasetName) && Directory.Exists(srcGdbPath))
+                {
+                    var srcConn = new FileGeodatabaseConnectionPath(new Uri(srcGdbPath));
+                    using var srcGdb = new Geodatabase(srcConn);
+                    using var trySrc = srcGdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(srcDatasetName);
+                    srcDef = trySrc?.GetDefinition();
+                }
             }
             catch { /* Puede no existir; tolerar */ }
 
@@ -629,18 +691,14 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 datasetNameBase = string.IsNullOrWhiteSpace(firstPolyLayerName) ? "UnionOutput" : firstPolyLayerName;
             }
             var baseOutputName = $"{datasetNameBase}_UNION_{idPart}";
-            var outputName = GetUniqueDatasetName(gdb, baseOutputName);
+            var outputName = GetUniqueDatasetName(activeGdb, baseOutputName);
 
-            // Crear FC de salida si no existe
-            if (!DatasetExists(gdb, outputName))
+            // Crear FC de salida si no existe; con fallback a gdb por defecto si hay bloqueo por edición
+            if (!DatasetExists(activeGdb, outputName))
             {
-                var sr = geometry?.SpatialReference ?? srcDef?.GetSpatialReference();
+                var sr = geometry?.SpatialReference ?? srcDef?.GetSpatialReference() ?? MapView.Active?.Map?.SpatialReference;
                 if (sr == null)
-                {
-                    // Último recurso: usar SR del primer layer de polígonos activo
-                    var mv = MapView.Active;
-                    sr = mv?.Map?.SpatialReference;
-                }
+                    return (false, string.Empty, gdbPath);
                 var shapeDesc = new ArcGIS.Core.Data.DDL.ShapeDescription(GeometryType.Polygon, sr);
 
                 // Crear solo el campo identificador seleccionado, con el mismo tipo que en la FC origen
@@ -678,17 +736,61 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     }
                 }
 
-                var fcDesc = new FeatureClassDescription(outputName, fields, shapeDesc);
-                var sb = new SchemaBuilder(gdb);
-                sb.Create(fcDesc);
-                var built = sb.Build();
-                if (!built)
+                bool created = false;
+                string? fallbackGdb = null;
+                try
                 {
-                    return (false, outputName);
+                    var fcDesc = new FeatureClassDescription(outputName, fields, shapeDesc);
+                    var sb = new SchemaBuilder(activeGdb);
+                    sb.Create(fcDesc);
+                    created = sb.Build();
+                }
+                catch (Exception ex)
+                {
+                    _lastSaveError = ex.Message;
+                    created = false;
+                }
+
+                if (!created)
+                {
+                    // intentar fallback a la gdb por defecto del proyecto
+                    var projGdb = Project.Current?.DefaultGeodatabasePath;
+                    if (!string.IsNullOrWhiteSpace(projGdb) && projGdb.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) && Directory.Exists(projGdb))
+                    {
+                        try
+                        {
+                            var fbConn = new FileGeodatabaseConnectionPath(new Uri(projGdb));
+                            var fbGdb = new Geodatabase(fbConn);
+                            fallbackGdb = projGdb;
+                            // Recalcular nombre único en gdb fallback
+                            outputName = GetUniqueDatasetName(fbGdb, baseOutputName);
+                            var fcDesc = new FeatureClassDescription(outputName, fields, shapeDesc);
+                            var sb2 = new SchemaBuilder(fbGdb);
+                            sb2.Create(fcDesc);
+                            created = sb2.Build();
+                            if (created)
+                            {
+                                // Cambiar gdb de trabajo a la fallback
+                                gdbPath = projGdb;
+                                // Usar fallback como gdb activa para las siguientes operaciones
+                                activeGdb = fbGdb;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _lastSaveError = string.IsNullOrWhiteSpace(_lastSaveError) ? ex.Message : _lastSaveError + "; " + ex.Message;
+                            created = false;
+                        }
+                    }
+                }
+
+                if (!created)
+                {
+                    return (false, outputName, gdbPath);
                 }
             }
 
-            using var outFc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(outputName);
+            using var outFc = activeGdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(outputName);
             using var outDef = outFc.GetDefinition();
 
             var editOp = new EditOperation
@@ -740,15 +842,49 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             var ok = await editOp.ExecuteAsync();
             if (!ok)
             {
-                System.Diagnostics.Debug.WriteLine($"EditOperation failed creating unioned feature in '{outputName}'.");
+                var err = editOp.ErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"EditOperation failed creating unioned feature in '{outputName}'. Error: {err}");
+                _lastSaveError = err;
             }
-            return (ok, outputName);
+            return (ok, outputName, gdbPath);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error al guardar: {ex.Message}");
-            return (false, string.Empty);
+            _lastSaveError = ex.Message;
+            return (false, string.Empty, string.Empty);
         }
+    }
+
+    private async Task AddOutputLayerAndZoomAsync(string gdbPath, string datasetName, Geometry unionGeometry)
+    {
+        await QueuedTask.Run(() =>
+        {
+            try
+            {
+                var uri = new Uri(Path.Combine(gdbPath, datasetName));
+                var map = MapView.Active?.Map;
+                if (map == null) return;
+                var lyr = LayerFactory.Instance.CreateLayer(uri, map) as FeatureLayer;
+                if (lyr != null)
+                {
+                    lyr.SetName(datasetName);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"No se pudo agregar la capa de salida: {ex.Message}");
+            }
+        });
+
+        try
+        {
+            if (unionGeometry != null)
+            {
+                await MapView.Active.ZoomToAsync(unionGeometry.Extent, new TimeSpan(0,0,0,0,250));
+            }
+        }
+        catch { }
     }
 
     private static string SanitizeName(string input)
