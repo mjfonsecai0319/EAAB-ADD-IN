@@ -48,9 +48,9 @@ public class BuildAffectedAreaPolygonsUseCase
         }
         try
         {
-            EnsureFieldExists(featureClass.GetPath().ToString(), "identificador", "TEXT", 255);
-            EnsureFieldExists(featureClass.GetPath().ToString(), "barrios", "TEXT", 4096);
-            EnsureFieldExists(featureClass.GetPath().ToString(), "clientes", "LONG", 0);
+            await EnsureFieldExists(featureClass.GetPath().LocalPath, "identificador", "TEXT", 255);
+            await EnsureFieldExists(featureClass.GetPath().LocalPath, "barrios", "TEXT", 4096);
+            await EnsureFieldExists(featureClass.GetPath().LocalPath, "clientes", "LONG", 0);
         }
         catch (Exception)
         {
@@ -103,10 +103,10 @@ public class BuildAffectedAreaPolygonsUseCase
             {
                 var addFieldParams = Geoprocessing.MakeValueArray(featureClassPath, fieldName, fieldType, "", "", length > 0 ? length : 255);
                 var a = await Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams);
-                //log a
+                
                 foreach (var msg in a.Messages)
                 {
-                    System.Diagnostics.Debug.WriteLine(msg.ToString());
+                    System.Diagnostics.Debug.WriteLine($"AddField {fieldName}: {msg}");
                 }
             }
             else
