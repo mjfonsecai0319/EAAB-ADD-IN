@@ -1,21 +1,21 @@
-# nullable enable
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 
-using EAABAddIn.Src.Presentation.ViewModel.DockPanes;
-
-namespace EAABAddIn.Src.Presentation.View.Buttons;
-
-public class UnionPolygonsButton : Button
+namespace EAABAddIn.Presentation.View.Buttons
 {
-    protected override void OnClick()
+    internal class UnionPolygonsButton : Button
     {
-        CierresDockpaneViewModel.Show();
-
-        var pane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_Cierres") as CierresDockpaneViewModel;
-        if (pane != null)
+        protected override void OnClick()
         {
-            pane.SelectedPanelHeaderIndex = 2;
+            var pane = FrameworkApplication.DockPaneManager.Find("EAABAddIn_UnionPolygonsDockpane");
+            
+            if (pane == null)
+            {
+                System.Diagnostics.Debug.WriteLine("No se pudo encontrar el DockPane UnionPolygons");
+                return;
+            }
+
+            pane.Activate();
         }
     }
 }

@@ -42,6 +42,7 @@ public class BuildAffectedAreaPolygonsUseCase
         var featureClass = f.GetTable();
 
         if (featureClass is null)
+        if (featureClass is null)
         {
             return (false, "La Feature Class no es válida.", 0);
         }
@@ -79,7 +80,7 @@ public class BuildAffectedAreaPolygonsUseCase
         return (true, "Registro actualizado correctamente.", 1);
     }
 
-    private void EnsureFieldExists(string featureClassPath, string fieldName, string fieldType, int length)
+    private async Task EnsureFieldExists(string featureClassPath, string fieldName, string fieldType, int length)
     {
         try
         {
@@ -101,12 +102,17 @@ public class BuildAffectedAreaPolygonsUseCase
             if (string.Equals(fieldType, "TEXT", StringComparison.OrdinalIgnoreCase))
             {
                 var addFieldParams = Geoprocessing.MakeValueArray(featureClassPath, fieldName, fieldType, "", "", length > 0 ? length : 255);
-                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams).GetAwaiter().GetResult();
+                var a = await Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams);
+                //log a
+                foreach (var msg in a.Messages)
+                {
+                    System.Diagnostics.Debug.WriteLine(msg.ToString());
+                }
             }
             else
             {
                 var addFieldParams = Geoprocessing.MakeValueArray(featureClassPath, fieldName, fieldType);
-                Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams).GetAwaiter().GetResult();
+                await Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams);
             }
         }
         catch (Exception ex)
@@ -125,8 +131,15 @@ public class BuildAffectedAreaPolygonsUseCase
 
     private (string neighborhoods, int clientsCount) GetExistingValues(Row row)
     {
-        string neighborhoods = row["barrios"]?.ToString() ?? string.Empty;
-        int clientsCount = Convert.ToInt32(row["clientes"] ?? 0);
-        return (neighborhoods, clientsCount);
+        try
+        {
+            string neighborhoods = row["barrios"]?.ToString() ?? string.Empty;
+            int clientsCount = Convert.ToInt32(row["clientes"] ?? 0);
+            return (neighborhoods, clientsCount);
+        }
+        catch
+        {
+            return (string.Empty, 0);
+        }
     }
 }
