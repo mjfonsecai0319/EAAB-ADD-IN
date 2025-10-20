@@ -5,7 +5,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd"
 >
-  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="1.9.2" desktopVersion="3.4.55405">
+  <AddInInfo id="{029c63e5-59b2-4c79-bd21-03597976c162}" version="2.0.0" desktopVersion="3.4.55405">
     <Name>EAAB Add-In</Name>
     <Description>EAABAddIn description</Description>
     <Image>Images\AddinDesktop32.png</Image>
@@ -52,14 +52,14 @@
       </tabs>
 
       <groups>
-        <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1">
+        <group id="EAABAddIn_Group1" caption="Geocoder" appearsOnAddInTab="false" keytip="G1" smallImage="Images\Geocoder_Local.png">
           <button refID="EAABAddIn_AddressSearchButton" size="large" />
           <button refID="EAABAddIn_MassiveGeocodeButton" size="large" />
           <button refID="EAABAddIn_POIsButton" size="large" />
           <button refID="EAABAddIn_SettingsButton" size="middle" />
         </group>
 
-        <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1">
+        <group id="EAABAddIn_Group_DrawingTools" caption="Cierres" appearsOnAddInTab="false" keytip="D1" smallImage="Images\ConvexHull32.png">
           <button refID="EAABAddIn_DrawPolygonButton" size="large" />
           <button refID="EAABAddIn_AffectedAreaButton" size="large" />
           <button refID="EAABAddIn_UnionPolygonsButton" size="large" />
@@ -147,6 +147,9 @@
           className="EAABAddIn.Src.Presentation.View.Buttons.UnionPolygonsButton"
           id="EAABAddIn_UnionPolygonsButton"
           caption="Unir Polígonos"
+          smallImage="Images\Union16.png"
+          largeImage="Images\Union32.png"
+          condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B7"
         >
           <tooltip heading="Unir polígonos">Une varios polígonos desde una gdb.<disabledText /></tooltip>

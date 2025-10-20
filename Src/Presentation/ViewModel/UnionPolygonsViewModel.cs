@@ -26,7 +26,7 @@ using EAABAddIn.Src.Application.UseCases;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-public class UnionPolygonsViewModel : BusyViewModelBase
+internal class UnionPolygonsViewModel : BusyViewModelBase
 {
     public override string DisplayName => "Unir Polígonos";
     public override string Tooltip => "Crear polígonos unidos a partir de entidades seleccionadas";

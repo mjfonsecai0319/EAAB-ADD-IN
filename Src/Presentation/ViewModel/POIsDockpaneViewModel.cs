@@ -14,7 +14,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-public class POIsDockpaneViewModel : BusyViewModelBase
+internal class POIsDockpaneViewModel : BusyViewModelBase
 {
     public override string DisplayName => "POIs EAAB";
 

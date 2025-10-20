@@ -21,7 +21,7 @@ public class GetNeighborhoodsUseCase
     /// matching the dataset name that intersect the input feature and returns a CSV of neighborhood names.
     /// It attempts to read the field "NEIGHBORHOOD_DESC" (case-insensitive) and falls back to the first string field.
     /// </summary>
-    public async Task<string> Invoke(Feature feature, string classPath)
+    public async Task<string> Invoke(Feature feature, string? classPath)
     {
         if (feature == null || string.IsNullOrWhiteSpace(classPath))
             return string.Empty;
