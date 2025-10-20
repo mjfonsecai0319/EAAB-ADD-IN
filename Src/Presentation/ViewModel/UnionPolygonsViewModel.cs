@@ -53,10 +53,9 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         RefreshSelectionCommand = new AsyncRelayCommand(OnRefreshSelectionAsync);
         
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
-        // Inicializar después de que la UI esté lista
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
-            await Task.Delay(500); // Pequeño delay para asegurar que la UI esté lista
+            await Task.Delay(500); 
             await OnRefreshSelectionAsync();
         }));
     }
@@ -150,7 +149,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 NotifyPropertyChanged(nameof(SelectedFeatureClassField));
                 NotifyPropertyChanged(nameof(CanBuildPolygons));
                 RaiseRunCanExecuteChanged();
-                // Ya no usamos valores desde la selección; el usuario ingresa el identificador manualmente
             }
         }
     }
@@ -189,9 +187,7 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         }
     }
 
-    // Eliminado el flujo de identificador desde la selección: usamos entrada manual
 
-    // Permite ingresar manualmente el identificador deseado
     private string? _identifierText = null;
     public string? IdentifierText
     {
@@ -222,7 +218,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         FeatureClass = null;
         FeatureClassFields = new List<string>();
         SelectedFeatureClassField = null;
-        // Limpiar identificador manual
         IdentifierText = null;
         IsFeatureClassSelected = false;
         Neighborhood = null;
@@ -336,7 +331,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             return;
         }
 
-        // Validar Workspace (debe ser una geodatabase .gdb)
         if (string.IsNullOrWhiteSpace(Workspace) || !Workspace.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(Workspace))
         {
             MessageBox.Show("Seleccione una geodatabase (.gdb) válida en 'Workspace'.",
@@ -358,7 +352,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     return;
                 }
 
-                // 1. Obtener polígonos seleccionados
                 var selectedPolygons = await GetSelectedPolygonsAsync();
                 
                 if (selectedPolygons.Count < 2)
@@ -367,7 +360,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     return;
                 }
 
-                // 2. Unir geometrías
                 var unionedGeometry = UnionGeometries(selectedPolygons.Select(p => p.Geometry).ToList());
                 
                 if (unionedGeometry == null)
@@ -376,22 +368,18 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     return;
                 }
 
-                // 3. Combinar atributos
                 var combinedAttributes = CombineAttributes(selectedPolygons);
 
-                // 4. Guardar en Feature Class de destino
                 var (saved, outputName, outGdbPath) = await SaveUnionedPolygon(unionedGeometry, combinedAttributes);
 
                 if (saved)
                 {
-                    // Agregar la nueva capa al mapa y hacer zoom
                     try
                     {
                         var mvActive = MapView.Active;
                         var map = mvActive?.Map;
                         if (map != null)
                         {
-                            // Evitar duplicados
                             var exists = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Any(l => l.Name.Equals(outputName, StringComparison.OrdinalIgnoreCase));
                             if (!exists)
                             {
@@ -401,7 +389,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                                 if (lyr != null && !string.IsNullOrEmpty(outputName))
                                     lyr.SetName(outputName);
                             }
-                            // Zoom a la geometría unida
                             if (mvActive != null && unionedGeometry?.Extent != null)
                                 mvActive.ZoomTo(unionedGeometry.Extent, new TimeSpan(0,0,0,0,400));
                         }
@@ -410,13 +397,11 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     {
                         System.Diagnostics.Debug.WriteLine($"No se pudo agregar la capa al mapa: {addEx.Message}");
                     }
-                    // 5. Si hay capa de barrios, hacer intersección
                     if (unionedGeometry != null && !string.IsNullOrWhiteSpace(Neighborhood))
                     {
                         await ProcessNeighborhoodIntersection(unionedGeometry, combinedAttributes);
                     }
 
-                    // 6. Si hay capa de clientes, contar afectados
                     if (unionedGeometry != null && !string.IsNullOrWhiteSpace(ClientsAffected))
                     {
                         await ProcessClientsAffected(unionedGeometry, combinedAttributes);
@@ -456,7 +441,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             if (mv?.Map == null)
                 return result;
 
-            // Obtener todas las capas de polígonos en el mapa
             var polygonLayers = mv.Map.GetLayersAsFlattenedList()
                 .OfType<FeatureLayer>()
                 .Where(layer => layer.ShapeType == ArcGIS.Core.CIM.esriGeometryType.esriGeometryPolygon)
@@ -464,7 +448,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
             foreach (var layer in polygonLayers)
             {
-                // Verificar si la capa coincide con la Feature Class seleccionada comparando el nombre del dataset
                 bool layerMatches = true;
                 if (!string.IsNullOrWhiteSpace(FeatureClass))
                 {
@@ -488,7 +471,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 if (!layerMatches)
                     continue;
 
-                // Obtener features seleccionadas en esta capa
                 var selection = layer.GetSelection();
                 if (selection.GetCount() == 0)
                     continue;
@@ -576,16 +558,13 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             var fieldName = attr.Key;
             var fieldValue = attr.Value;
 
-            // Si es el campo seleccionado, concatenar valores únicos
             if (fieldName.Equals(SelectedFeatureClassField, StringComparison.OrdinalIgnoreCase))
             {
-                // Usar el identificador manual si está disponible
                 if (!string.IsNullOrWhiteSpace(IdentifierText))
                     combined[fieldName] = IdentifierText!;
                 else
                     combined[fieldName] = fieldValue;
             }
-            // Para campos numéricos, sumar
             else if (fieldValue is int || fieldValue is long || fieldValue is double || 
                      fieldValue is float || fieldValue is decimal)
             {
@@ -603,7 +582,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 }
                 combined[fieldName] = sum;
             }
-            // Para campos de texto, tomar el primer valor no nulo
             else if (fieldValue is string)
             {
                 var firstNonEmpty = features
@@ -629,10 +607,8 @@ public class UnionPolygonsViewModel : BusyViewModelBase
     {
         try
         {
-            // Siempre usar el Workspace como gdb de salida. El datasetName base se toma de la FC si existe
             string? datasetNameBase = null;
             string gdbPath = Workspace;
-            // Info de la FC origen (para replicar SR/campo)
             string? srcGdbPath = null;
             string? srcDatasetName = null;
             if (!string.IsNullOrWhiteSpace(FeatureClass))
@@ -646,11 +622,9 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             if (string.IsNullOrWhiteSpace(gdbPath))
                 return (false, string.Empty, string.Empty);
 
-            // Validar que el workspace sea una geodatabase
             if (string.IsNullOrWhiteSpace(gdbPath) || !gdbPath.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(gdbPath))
             {
                 System.Diagnostics.Debug.WriteLine($"Workspace inválido para salida: '{gdbPath}'");
-                // Intentar con la geodatabase por defecto del proyecto
                 var projGdb = Project.Current?.DefaultGeodatabasePath;
                 if (!string.IsNullOrWhiteSpace(projGdb) && projGdb.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) && Directory.Exists(projGdb))
                 {
@@ -664,7 +638,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
             var connPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
             using var gdbInitial = new Geodatabase(connPath);
-            // Usar 'activeGdb' para permitir fallback sin reasignar la variable 'using'
             Geodatabase activeGdb = gdbInitial;
             FeatureClassDefinition? srcDef = null;
             try
@@ -679,12 +652,10 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             }
             catch { /* Puede no existir; tolerar */ }
 
-            // Determinar nombre de salida basado en dataset origen e identificador seleccionado
             var idPreferred = IdentifierText;
             var idPart = SanitizeName(idPreferred ?? "UNION");
             if (string.IsNullOrWhiteSpace(datasetNameBase))
             {
-                // Sin FC definida: intenta tomar nombre de la primera capa de polígonos seleccionada
                 var mv = MapView.Active;
                 var firstPolyLayerName = mv?.Map?.GetLayersAsFlattenedList()?.OfType<FeatureLayer>()
                     .FirstOrDefault(l => l.ShapeType == ArcGIS.Core.CIM.esriGeometryType.esriGeometryPolygon)?.Name;
@@ -693,7 +664,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             var baseOutputName = $"{datasetNameBase}_UNION_{idPart}";
             var outputName = GetUniqueDatasetName(activeGdb, baseOutputName);
 
-            // Crear FC de salida si no existe; con fallback a gdb por defecto si hay bloqueo por edición
             if (!DatasetExists(activeGdb, outputName))
             {
                 var sr = geometry?.SpatialReference ?? srcDef?.GetSpatialReference() ?? MapView.Active?.Map?.SpatialReference;
@@ -701,7 +671,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     return (false, string.Empty, gdbPath);
                 var shapeDesc = new ArcGIS.Core.Data.DDL.ShapeDescription(GeometryType.Polygon, sr);
 
-                // Crear solo el campo identificador seleccionado, con el mismo tipo que en la FC origen
                 var idFieldName = SelectedFeatureClassField;
                 Field? srcIdField = null;
                 if (!string.IsNullOrWhiteSpace(idFieldName) && srcDef != null)
@@ -727,7 +696,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     }
                     else
                     {
-                        // Fallback: crear campo string
                         var fd = new ArcGIS.Core.Data.DDL.FieldDescription(idFieldName, FieldType.String)
                         {
                             Length = 255
@@ -753,7 +721,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
                 if (!created)
                 {
-                    // intentar fallback a la gdb por defecto del proyecto
                     var projGdb = Project.Current?.DefaultGeodatabasePath;
                     if (!string.IsNullOrWhiteSpace(projGdb) && projGdb.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) && Directory.Exists(projGdb))
                     {
@@ -762,7 +729,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                             var fbConn = new FileGeodatabaseConnectionPath(new Uri(projGdb));
                             var fbGdb = new Geodatabase(fbConn);
                             fallbackGdb = projGdb;
-                            // Recalcular nombre único en gdb fallback
                             outputName = GetUniqueDatasetName(fbGdb, baseOutputName);
                             var fcDesc = new FeatureClassDescription(outputName, fields, shapeDesc);
                             var sb2 = new SchemaBuilder(fbGdb);
@@ -770,9 +736,7 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                             created = sb2.Build();
                             if (created)
                             {
-                                // Cambiar gdb de trabajo a la fallback
                                 gdbPath = projGdb;
-                                // Usar fallback como gdb activa para las siguientes operaciones
                                 activeGdb = fbGdb;
                             }
                         }
@@ -793,7 +757,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             using var outFc = activeGdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(outputName);
             using var outDef = outFc.GetDefinition();
 
-            // 1) Intentar con EditOperation (cuando la edición está habilitada)
             var editOp = new EditOperation
             {
                 Name = "Insertar polígono unido",
@@ -844,7 +807,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 var err = editOp.ErrorMessage;
                 System.Diagnostics.Debug.WriteLine($"EditOperation failed creating unioned feature in '{outputName}'. Error: {err}");
                 _lastSaveError = err;
-                // 2) Si falló por edición no habilitada, intentar inserción directa
                 if (!string.IsNullOrWhiteSpace(err) && err.IndexOf("not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     try
@@ -910,10 +872,8 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         // Reemplazar caracteres no válidos por guión bajo y limitar longitud
         var invalid = System.IO.Path.GetInvalidFileNameChars();
         var cleaned = new string(input.Select(c => invalid.Contains(c) || char.IsWhiteSpace(c) ? '_' : c).ToArray());
-        // Evitar comenzar con número
         if (cleaned.Length > 0 && char.IsDigit(cleaned[0]))
             cleaned = "_" + cleaned;
-        // Limitar a 50 caracteres para nombres de FC
         return cleaned.Length > 50 ? cleaned.Substring(0, 50) : cleaned;
     }
 
@@ -990,7 +950,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
         return false;
     }
 
-    // Inserción directa sin EditOperation: funciona cuando la edición de la aplicación está deshabilitada
     private bool InsertUnionFeatureDirect(ArcGIS.Core.Data.FeatureClass outFc, FeatureClassDefinition outDef, Geometry geometry, Dictionary<string, object> attributes)
     {
         if (geometry == null) return false;
@@ -1026,7 +985,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
             using (var newFeature = outFc.CreateRow(rowBuffer))
             {
-                // Inserción directa, no se requiere context.Invalidate
             }
         }
 
@@ -1062,7 +1020,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                     {
                         if (feature != null)
                         {
-                            // Buscar campo de nombre de barrio (ajustar según tu esquema)
                             var nameField = FindNameField(fc.GetDefinition());
                             if (nameField != null)
                             {
@@ -1166,7 +1123,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 var def = fc.GetDefinition();
                 string[] filter = ["objectid", "shape", "globalid"];
 
-                // Aceptar campos de texto y numéricos como posibles identificadores
                 var allowed = new[] { FieldType.String, FieldType.Integer, FieldType.SmallInteger, FieldType.Double, FieldType.Single };
                 return def.GetFields()
                     .Where(f => !filter.Contains(f.Name.ToLower()) && allowed.Contains(f.FieldType))
@@ -1224,7 +1180,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
                 SelectedFeaturesCount = selectedPolygons.Count;
 
-                // Actualizar UI en el hilo principal
                 NotifyPropertyChanged(nameof(SelectedFeatures));
             });
         }
@@ -1242,7 +1197,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
             var mv = MapView.Active;
             if (mv?.Map == null) return;
 
-            // Obtener la selección actual del mapa
             var selectionSet = mv.Map.GetSelection();
             if (selectionSet.Count == 0) return;
 
@@ -1254,7 +1208,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
                 if (layer is FeatureLayer featureLayer && 
                     featureLayer.ShapeType == ArcGIS.Core.CIM.esriGeometryType.esriGeometryPolygon)
                 {
-                    // Ya no filtramos por FeatureClass; tomamos todas las capas de polígonos seleccionadas
 
                     var queryFilter = new QueryFilter
                     {
@@ -1286,7 +1239,6 @@ public class UnionPolygonsViewModel : BusyViewModelBase
 
         return result;
     }
-    // Eliminado: ya no se recolectan valores de identificador desde la selección
 
     #region Helper Classes
 
