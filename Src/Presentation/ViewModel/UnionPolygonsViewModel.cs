@@ -41,6 +41,8 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
 
     private readonly GetSelectedFeatureUseCase _getSelectedFeatureUseCase = new();
     private string? _lastSaveError = null;
+    private string _cachedBarriosJoined = string.Empty;
+    private int _cachedClientesCount = 0;
 
     public UnionPolygonsViewModel()
     {
@@ -370,6 +372,14 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
 
                 var combinedAttributes = CombineAttributes(selectedPolygons);
 
+                // Calcular BARRIOS/CLIENTES desde la selección (simple: unir textos y sumar numéricos)
+                var barriosFromSel = ComputeBarriosFromSelection(selectedPolygons);
+                var clientesFromSel = ComputeClientesFromSelection(selectedPolygons);
+                if (!string.IsNullOrWhiteSpace(barriosFromSel))
+                    combinedAttributes["BARRIOS"] = barriosFromSel!;
+                if (clientesFromSel.HasValue)
+                    combinedAttributes["CLIENTES"] = clientesFromSel.Value;
+
                 var (saved, outputName, outGdbPath) = await SaveUnionedPolygon(unionedGeometry, combinedAttributes);
 
                 if (saved)
@@ -603,6 +613,46 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
         return combined;
     }
 
+    private string? ComputeBarriosFromSelection(List<PolygonFeature> features)
+    {
+        if (features == null || features.Count == 0) return null;
+        // Detectar un campo de nombre tipo barrio en atributos (heurística)
+        var candidate = features.SelectMany(f => f.Attributes.Keys).FirstOrDefault(k =>
+            k.Contains("NOMBRE", StringComparison.OrdinalIgnoreCase) ||
+            k.Contains("NAME", StringComparison.OrdinalIgnoreCase) ||
+            k.Contains("BARRIO", StringComparison.OrdinalIgnoreCase) ||
+            k.Contains("NEIGHBORHOOD", StringComparison.OrdinalIgnoreCase) ||
+            k.Contains("NOM_BARRIO", StringComparison.OrdinalIgnoreCase)
+        );
+        if (string.IsNullOrWhiteSpace(candidate)) return null;
+        var names = features
+            .Select(f => f.Attributes.TryGetValue(candidate!, out var v) ? v?.ToString() : null)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s)
+            .ToList();
+        return names.Count > 0 ? string.Join(", ", names) : null;
+    }
+
+    private int? ComputeClientesFromSelection(List<PolygonFeature> features)
+    {
+        if (features == null || features.Count == 0) return null;
+        var possible = new[] { "CLIENTES", "NUM_CLIENTES", "CANT_CLIENTES", "CLIENTS" };
+        var candidate = features.SelectMany(f => f.Attributes.Keys)
+            .FirstOrDefault(k => possible.Any(p => string.Equals(k, p, StringComparison.OrdinalIgnoreCase)));
+        if (string.IsNullOrWhiteSpace(candidate)) return null;
+        double sum = 0;
+        foreach (var f in features)
+        {
+            if (f.Attributes.TryGetValue(candidate!, out var v) && v != null)
+            {
+                if (double.TryParse(v.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var dv))
+                    sum += dv;
+            }
+        }
+        return (int)Math.Round(sum);
+    }
+
     private async Task<(bool Saved, string OutputDatasetName, string OutputGdbPath)> SaveUnionedPolygon(Geometry geometry, Dictionary<string, object> attributes)
     {
         try
@@ -704,6 +754,9 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
                     }
                 }
 
+                fields.Add(new ArcGIS.Core.Data.DDL.FieldDescription("BARRIOS", FieldType.String) { Length = 1024 });
+                fields.Add(new ArcGIS.Core.Data.DDL.FieldDescription("CLIENTES", FieldType.Integer));
+
                 bool created = false;
                 string? fallbackGdb = null;
                 try
@@ -757,6 +810,51 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
             using var outFc = activeGdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(outputName);
             using var outDef = outFc.GetDefinition();
 
+            string barriosJoined = string.Empty;
+            int clientesCount = 0;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(Neighborhood) && geometry != null)
+                {
+                    barriosJoined = ComputeNeighborhoodNamesSync(geometry!) ?? string.Empty;
+                }
+            }
+            catch (Exception exB)
+            {
+                System.Diagnostics.Debug.WriteLine($"ComputeNeighborhoodNamesSync error: {exB.Message}");
+            }
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(ClientsAffected) && geometry != null)
+                {
+                    clientesCount = ComputeClientsCountSync(geometry!);
+                }
+            }
+            catch (Exception exC)
+            {
+                System.Diagnostics.Debug.WriteLine($"ComputeClientsCountSync error: {exC.Message}");
+            }
+
+            try
+            {
+                if (attributes != null)
+                {
+                    if (attributes.TryGetValue("BARRIOS", out var bVal) && bVal is string bStr && !string.IsNullOrWhiteSpace(bStr))
+                        barriosJoined = bStr;
+                    if (attributes.TryGetValue("CLIENTES", out var cVal))
+                    {
+                        if (cVal is int ci) clientesCount = ci;
+                        else if (cVal is long cl) clientesCount = (int)cl;
+                        else if (cVal is double cd) clientesCount = (int)Math.Round(cd);
+                        else if (cVal is string cs && int.TryParse(cs, out var civ)) clientesCount = civ;
+                    }
+                }
+            }
+            catch { }
+
+            _cachedBarriosJoined = barriosJoined ?? string.Empty;
+            _cachedClientesCount = clientesCount;
+
             var editOp = new EditOperation
             {
                 Name = "Insertar polígono unido",
@@ -778,7 +876,7 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
                             {
                                 var outField = outDef.GetFields()[outFieldIndex];
                                 var value = IdentifierText;
-                                if (string.IsNullOrWhiteSpace(value) && !string.IsNullOrWhiteSpace(SelectedFeatureClassField) && attributes.TryGetValue(SelectedFeatureClassField!, out var v) && v != null)
+                                if (string.IsNullOrWhiteSpace(value) && attributes != null && !string.IsNullOrWhiteSpace(SelectedFeatureClassField) && attributes.TryGetValue(SelectedFeatureClassField!, out var v) && v != null)
                                 {
                                     rowBuffer[SelectedFeatureClassField!] = v;
                                 }
@@ -793,6 +891,28 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
                         }
                         catch { }
                     }
+
+                    // Asignar campos extra
+                    try
+                    {
+                        var barriosIdx = outDef.FindField("BARRIOS");
+                        if (barriosIdx >= 0)
+                        {
+                            var barriosField = outDef.GetFields()[barriosIdx];
+                            var maxLen = barriosField.Length;
+                            var valueB = string.IsNullOrEmpty(barriosJoined) ? string.Empty : barriosJoined;
+                            if (maxLen > 0 && valueB.Length > maxLen)
+                                valueB = valueB.Substring(0, maxLen);
+                            rowBuffer[barriosField.Name] = valueB;
+                        }
+                        var clientesIdx = outDef.FindField("CLIENTES");
+                        if (clientesIdx >= 0)
+                        {
+                            var clientesField = outDef.GetFields()[clientesIdx];
+                            rowBuffer[clientesField.Name] = clientesCount;
+                        }
+                    }
+                    catch { }
 
                     using (var newFeature = outFc.CreateRow(rowBuffer))
                     {
@@ -950,6 +1070,86 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
         return false;
     }
 
+    // Helpers sincrónicos para obtener barrios y clientes a partir de la geometría unida
+    private string? ComputeNeighborhoodNamesSync(Geometry unionGeometry)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(Neighborhood)) return null;
+            var (gdbPath, datasetName) = ParseFeatureClassPath(Neighborhood!, Workspace);
+            if (string.IsNullOrWhiteSpace(gdbPath) || string.IsNullOrWhiteSpace(datasetName)) return null;
+
+            var connPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
+            using var gdb = new Geodatabase(connPath);
+            using var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName);
+
+            // Alinear SR
+            var targetSR = fc.GetDefinition().GetSpatialReference();
+            var geom = unionGeometry;
+            if (targetSR != null && unionGeometry.SpatialReference != null && !unionGeometry.SpatialReference.IsEqual(targetSR))
+            {
+                geom = GeometryEngine.Instance.Project(unionGeometry, targetSR);
+            }
+
+            var spatialFilter = new SpatialQueryFilter
+            {
+                FilterGeometry = geom,
+                SpatialRelationship = SpatialRelationship.Intersects
+            };
+
+            var names = new List<string>();
+            using (var cursor = fc.Search(spatialFilter, false))
+            {
+                var nameField = FindNameField(fc.GetDefinition());
+                if (nameField == null) return null;
+                while (cursor.MoveNext())
+                {
+                    using var feature = cursor.Current as Feature;
+                    var name = feature?[nameField]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
+                }
+            }
+            return names.Any() ? string.Join(", ", names.Distinct().OrderBy(n => n)) : null;
+        }
+        catch { return null; }
+    }
+
+    private int ComputeClientsCountSync(Geometry unionGeometry)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(ClientsAffected)) return 0;
+            var (gdbPath, datasetName) = ParseFeatureClassPath(ClientsAffected!, Workspace);
+            if (string.IsNullOrWhiteSpace(gdbPath) || string.IsNullOrWhiteSpace(datasetName)) return 0;
+
+            var connPath = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
+            using var gdb = new Geodatabase(connPath);
+            using var fc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(datasetName);
+
+            // Alinear SR
+            var targetSR = fc.GetDefinition().GetSpatialReference();
+            var geom = unionGeometry;
+            if (targetSR != null && unionGeometry.SpatialReference != null && !unionGeometry.SpatialReference.IsEqual(targetSR))
+            {
+                geom = GeometryEngine.Instance.Project(unionGeometry, targetSR);
+            }
+
+            var spatialFilter = new SpatialQueryFilter
+            {
+                FilterGeometry = geom,
+                SpatialRelationship = SpatialRelationship.Intersects
+            };
+
+            int count = 0;
+            using (var cursor = fc.Search(spatialFilter, false))
+            {
+                while (cursor.MoveNext()) count++;
+            }
+            return count;
+        }
+        catch { return 0; }
+    }
+
     private bool InsertUnionFeatureDirect(ArcGIS.Core.Data.FeatureClass outFc, FeatureClassDefinition outDef, Geometry geometry, Dictionary<string, object> attributes)
     {
         if (geometry == null) return false;
@@ -982,6 +1182,25 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
                 }
                 catch { }
             }
+
+            try
+            {
+                var barriosIdx = outDef.FindField("barrios");
+                if (barriosIdx >= 0)
+                {
+                    var maxLen = outDef.GetFields()[barriosIdx].Length;
+                    var valueB = string.IsNullOrEmpty(_cachedBarriosJoined) ? string.Empty : _cachedBarriosJoined;
+                    if (maxLen > 0 && valueB.Length > maxLen)
+                        valueB = valueB.Substring(0, maxLen);
+                    rowBuffer["barrios"] = valueB;
+                }
+                var clientesIdx = outDef.FindField("clientes");
+                if (clientesIdx >= 0)
+                {
+                    rowBuffer["clientes"] = _cachedClientesCount;
+                }
+            }
+            catch { }
 
             using (var newFeature = outFc.CreateRow(rowBuffer))
             {
@@ -1240,7 +1459,7 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
         return result;
     }
 
-    #region Helper Classes
+
 
     internal class PolygonFeature
     {
@@ -1250,5 +1469,5 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
         public string LayerName { get; set; } = string.Empty;
     }
 
-    #endregion
+  
 }
