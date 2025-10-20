@@ -98,8 +98,8 @@
           caption="Ajustes"
           className="EAABAddIn.Src.Presentation.View.Buttons.SettingsButton"
           loadOnClick="true"
-          smallImage="Images\Settings.png"
-          largeImage="Images\Settings.png"
+          smallImage="Images\Settings16.png"
+          largeImage="Images\Settings32.png"
           condition="EAABAddIn_DomainCheck"
           keytip="B3"
         >
