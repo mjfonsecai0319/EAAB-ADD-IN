@@ -31,21 +31,9 @@ Proporcionar una herramienta de apoyo dentro de ArcGIS Pro que facilite a los tr
 
 ## Uso
 
-## Problemas
-
-
-## Capacidades
-
-## Instalación
-
-
-## Uso
-
-### Cómo Usar el AddIn ###
-
 Una vez configurado, verás una nueva pestaña llamada **"EAAB Add-in"** en la parte superior de ArcGIS Pro.
 
-## FUNCIONALIDADES DE GEOCODIFICACIÓN
+### FUNCIONALIDADES DE GEOCODIFICACIÓN
 
 ### 1. Buscar una Dirección Individual
 
