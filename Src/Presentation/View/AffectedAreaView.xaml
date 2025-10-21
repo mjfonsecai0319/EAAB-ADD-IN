@@ -9,26 +9,30 @@
     xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
     mc:Ignorable="d"
     d:DesignHeight="400"
-    d:DesignWidth="350">
+    d:DesignWidth="350"
+>
 
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
+                <extensions:DesignOnlyResourceDictionary
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
             <conv:InverseBooleanConverter x:Key="InverseBooleanConverter" />
 
-            <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Style x:Key="HeaderTextStyle" TargetType="TextBlock"
+                BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="Margin" Value="0,0,0,5" />
             </Style>
 
-            <Style x:Key="BrowseButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style x:Key="BrowseButtonStyle" TargetType="Button"
+                BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
@@ -37,12 +41,14 @@
                 <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
+                        <Setter Property="Background"
+                            Value="{DynamicResource Esri_BackgroundPressedBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource Esri_Button}">
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button"
+                BasedOn="{StaticResource Esri_Button}">
                 <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderThickness" Value="0" />
@@ -61,7 +67,8 @@
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox"
+                BasedOn="{StaticResource {x:Type ComboBox}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
@@ -72,7 +79,11 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0">
+    <ScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        Margin="0"
+    >
         <Grid Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -108,7 +119,8 @@
                         Height="28"
                         Width="28"
                     >
-                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
@@ -139,7 +151,8 @@
                         Height="28"
                         Width="28"
                     >
-                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
@@ -184,7 +197,8 @@
                         Height="28"
                         Width="28"
                     >
-                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
@@ -215,7 +229,8 @@
                         Height="28"
                         Width="28"
                     >
-                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
@@ -244,7 +259,8 @@
                 >
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ID" Binding="{Binding ObjectID}" Width="Auto" />
-                        <DataGridTextColumn Header="Nombre" Binding="{Binding LayerName}" Width="*" MinWidth="80" />
+                        <DataGridTextColumn Header="Nombre" Binding="{Binding LayerName}" Width="*"
+                            MinWidth="80" />
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -263,7 +279,12 @@
                     TextWrapping="Wrap"
                     Style="{DynamicResource Esri_TextBlockRegular}"
                 />
-                <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <ProgressBar
+                    Height="4"
+                    IsIndeterminate="True"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                />
 
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
                     <Button
