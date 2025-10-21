@@ -38,6 +38,7 @@ Una vez configurado, verás una nueva pestaña llamada **"EAAB Add-in"** en la p
 ### 1. Buscar una Dirección Individual
 
 Esta función te permite buscar y localizar direcciones una por una.
+![Video Buscar](<docs\res\buscar.gif>)
 
 **Pasos:**
 
@@ -65,7 +66,7 @@ Esta función te permite buscar y localizar direcciones una por una.
 - La barra de progreso muestra el estado de la búsqueda
 
 ### 2. Geocodificar Direcciones Masivamente
-
+![Video Masivo](<docs\res\Masivo.gif>)
 Esta función permite procesar muchas direcciones al mismo tiempo desde un archivo Excel.
 
 #### Preparar el archivo Excel
