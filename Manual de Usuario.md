@@ -7,7 +7,7 @@
 ## Tabla de Contenido
 
 1. [Introducción](#introducción)
-2. [Objetivos](#objetivos)
+2. [Objetivo](#objetivo)
 3. [Capacidades](#capacidades)
 4. [Instalación](#instalación)
 5. [Uso](#uso)
@@ -21,7 +21,18 @@ El objetivo de esta guía es describir de forma clara y práctica las funcionali
 
 Este documento está organizado en secciones que cubren: objetivos y capacidades del Add-In; requisitos e instalación; instrucciones paso a paso para el uso de las herramientas; ejemplos prácticos; y solución de problemas y preguntas frecuentes. Antes de usar el Add-In, se recomienda revisar la sección de requisitos para confirmar la versión compatible de ArcGIS Pro y los permisos necesarios. Para mayor claridad, cada procedimiento incluye capturas de pantalla, ejemplos de entrada/salida y notas sobre limitaciones conocidas.
 
-## Objetivos
+## Objetivo
+
+Proporcionar una herramienta de apoyo dentro de ArcGIS Pro que facilite a los trabajadores de la Dirección de Información Técnica y Geográfica la realización de procesos de geocodificación y generación de cierres espaciales. Para ello, permite automatizar la localización de direcciones, la creación de polígonos de áreas afectadas y la gestión estructurada de los resultados en las bases de datos corporativas, con el fin de optimizar el tiempo de análisis, mejorar la precisión de la información geográfica y estandarizar los procedimientos operativos dentro de la entidad.
+
+## Capacidades
+
+## Instalación
+
+## Uso
+
+## Problemas
+
 
 ## Capacidades
 
