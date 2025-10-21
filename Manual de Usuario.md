@@ -102,7 +102,7 @@ Tu archivo Excel debe tener exactamente estas tres columnas:
 - El sistema intenta encontrar cada dirección dos veces si no hay coincidencia exacta
 
 ### 3. Búsqueda de Puntos de Interés (POIs)
-
+![Video Pois](<docs\res\Pois.gif>)
 La herramienta también permite localizar Puntos de Interés (instituciones, equipamientos, servicios, etc.).
 
 **Pasos:**
@@ -123,6 +123,7 @@ La herramienta también permite localizar Puntos de Interés (instituciones, equ
 ### 4. Cambiar la Configuración de Conexión
 
 Si necesitas cambiar de base de datos o actualizar tus credenciales:
+![Video Bd](<docs\res\Bd.gif>)
 
 1. Ve a **Archivo → Opciones → EAAB Add-In**
 2. Modifica los datos que necesites cambiar
@@ -150,6 +151,7 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 ## FUNCIONALIDADES DE GESTIÓN DE CIERRES
 
 ### 6. Crear Nuevo Cierre
+![Video Cierres](<docs\res\Cierres.gif>)
 
 Esta herramienta permite generar polígonos de cierre automáticamente a partir de puntos seleccionados, agrupándolos por un identificador común.
 
@@ -198,7 +200,7 @@ Si tienes una capa de válvulas con el campo "ORDEN_CIERRE" y quieres generar el
 ---
 
 ### 7. Calcular Área Afectada
-
+![Afectada](docs/res/Afectada.png)
 Esta función permite actualizar polígonos existentes con información de barrios y clientes afectados, sin necesidad de regenerar los polígonos.
 
 #### ¿Cuándo usar esta función?
