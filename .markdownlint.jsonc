@@ -1,0 +1,7 @@
+{
+  "single-h1": true,
+  "line-length": false,
+  "no-duplicate-heading": {
+    "siblings_only": true
+  }
+}

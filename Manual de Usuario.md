@@ -2,7 +2,7 @@
 
 | Fecha   | 21/10/2025 |
 | ------- | ---------- |
-| Version | 1.0        |
+| Version | 2.0        |
 
 ## Tabla de Contenido
 
@@ -27,26 +27,43 @@ Proporcionar una herramienta de apoyo dentro de ArcGIS Pro que facilite a los tr
 
 ## Capacidades
 
+### Funciones de geocodificacion
+
+El Add-In permite transformar direcciones en ubicaciones espaciales precisas dentro de ArcGIS Pro, mediante un proceso de geocodificación que puede realizarse de forma individual o masiva. Para ello, la herramienta integra un buscador que prioriza las fuentes de información de la EAAB y, en caso de no encontrar coincidencias, utiliza fuentes externas como Catastro o ESRI. Los resultados incluyen coordenadas geográficas y metadatos asociados.
+
+### Funciones de cierres
+
+El Add-In facilita la creación y gestión de polígonos de cierre que representan áreas afectadas o zonas de interés dentro del territorio. A través de herramientas integradas en la interfaz, los usuarios pueden generar polígonos a partir de puntos o capas existentes, utilizando métodos como envolventes convexas o cóncavas.
+
 ## Instalación
+
+Para instalar el Add-In, el usuario debe ejecutar el archivo correspondiente y, en la ventana del asistente de instalación de ESRI ArcGIS Add-In Installation Utility, hacer clic en el botón “Install Add-In”. Una vez completado el proceso, la herramienta quedará disponible dentro de ArcGIS Pro en la pestaña asignada por la EAAB.
+
+![Ventana de Instalcion](<docs/res/Captura de pantalla 2025-10-21 092423.png>)
 
 ## Uso
 
-Una vez configurado, verás una nueva pestaña llamada **"EAAB Add-in"** en la parte superior de ArcGIS Pro.
+Una vez completada la instalación, el Add-In agrega una nueva pestaña llamada “EAAB Add-In” en la parte superior de ArcGIS Pro. Desde esta pestaña, el usuario puede acceder a todas las funciones disponibles, organizadas en botones y paneles de fácil acceso.
 
-### FUNCIONALIDADES DE GEOCODIFICACIÓN
+### Funciones de geocodificacion
 
 ### 1. Buscar una Dirección Individual
 
-Esta función te permite buscar y localizar direcciones una por una.
+Esta función permite localizar una dirección específica y visualizarla directamente en el mapa de ArcGIS Pro.
+
 ![Video Buscar](<docs\res\buscar.gif>)
 
-**Pasos:**
+#### Pasos
 
-1. Haz clic en el botón **"Buscar"** en la pestaña EAAB Add-in
-2. Se abrirá un panel a la derecha
-3. **Selecciona la ciudad** de la lista desplegable
-4. **Escribe la dirección** que quieres buscar (ej: "Calle 123 #45-67")
-5. Haz clic en **"Buscar Dirección"**
+1. Haga clic en el botón **“Buscar”** dentro de la pestaña *EAAB Add-In*.
+
+2. Se abrirá un panel lateral a la derecha de la pantalla.
+
+3. Seleccione la ciudad correspondiente desde la lista desplegable.
+
+4. Ingrese la dirección completa que desea buscar (por ejemplo: *“Calle 123 #45-67”*).
+
+5. Presione el botón **“Buscar Dirección”** para iniciar el proceso.
 
 **Resultados:**
 
@@ -66,6 +83,7 @@ Esta función te permite buscar y localizar direcciones una por una.
 - La barra de progreso muestra el estado de la búsqueda
 
 ### 2. Geocodificar Direcciones Masivamente
+
 ![Video Masivo](<docs\res\Masivo.gif>)
 Esta función permite procesar muchas direcciones al mismo tiempo desde un archivo Excel.
 
@@ -73,10 +91,10 @@ Esta función permite procesar muchas direcciones al mismo tiempo desde un archi
 
 Tu archivo Excel debe tener exactamente estas tres columnas:
 
-| Identificador | Direccion | Poblacion |
-|--------------|-----------|-----------|
-| 001 | Calle 123 #45-67 | Bogotá |
-| 002 | Carrera 50 #20-30 | Bogotá |
+| Identificador | Direccion         | Poblacion |
+| ------------- | ----------------- | --------- |
+| 001           | Calle 123 #45-67  | Bogotá    |
+| 002           | Carrera 50 #20-30 | Bogotá    |
 
 - **Identificador**: Un código único para cada dirección (puede ser número o texto)
 - **Direccion**: La dirección completa
@@ -102,10 +120,12 @@ Tu archivo Excel debe tener exactamente estas tres columnas:
 - El sistema intenta encontrar cada dirección dos veces si no hay coincidencia exacta
 
 ### 3. Búsqueda de Puntos de Interés (POIs)
+
 ![Video Pois](<docs\res\Pois.gif>)
 La herramienta también permite localizar Puntos de Interés (instituciones, equipamientos, servicios, etc.).
 
 **Pasos:**
+
 1. Haz clic en el botón **"POI"** en la pestaña EAAB Add-in (ícono de lupa sobre edificio).
 2. Se abrirá un panel lateral similar al de direcciones.
 3. Ingresa un término de búsqueda (ej: "fontibon", "colegio", "calera", "acueducto").
@@ -116,6 +136,7 @@ La herramienta también permite localizar Puntos de Interés (instituciones, equ
 6. (Alternativamente) Usa **"Buscar POI"** para refrescar/filtrar la lista si cambias el texto.
 
 **Resultados:**
+
 - Se listarán coincidencias con nombre, tipo y código.
 - Al seleccionar un POI y ubicarlo el mapa hace zoom y se agrega un punto a la capa `POIResults`.
 - Si eliges "Ubicar todos" se insertan todos los puntos visibles.
@@ -137,11 +158,13 @@ Los cambios se guardan automáticamente mientras editas los campos.
 Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 
 **Opciones comunes:**
+
 - Clic derecho sobre la capa `GeocodedAddresses` → Export → **Feature Class To Feature Class** (para otra GDB)
 - Clic derecho → Data → **Export Features** → Guardar como Shapefile o GeoPackage
 - Uso de **Table To Excel** para extraer atributos en tabular
 
 **Campos Clave en `GeocodedAddresses`:**
+
 - `Identificador`: El código original del archivo o de tu búsqueda individual
 - `Direccion`: Dirección consultada
 - `FullAddressEAAB` / `FullAddressCadastre`: Variantes enriquecidas
@@ -151,11 +174,13 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 ## FUNCIONALIDADES DE GESTIÓN DE CIERRES
 
 ### 6. Crear Nuevo Cierre
+
 ![Video Cierres](<docs\res\Cierres.gif>)
 
 Esta herramienta permite generar polígonos de cierre automáticamente a partir de puntos seleccionados, agrupándolos por un identificador común.
 
 #### ¿Cuándo usar esta función?
+
 - Cuando tienes puntos dispersos que representan eventos o incidencias
 - Necesitas agrupar puntos por un criterio común (ej: número de orden, código de proyecto)
 - Quieres generar automáticamente áreas de cobertura o influencia
@@ -166,14 +191,16 @@ Esta herramienta permite generar polígonos de cierre automáticamente a partir 
 2. Se abrirá un panel a la derecha con las siguientes opciones:
 
 **Configuración básica:**
+
 - **Workspace**: Selecciona la geodatabase donde se guardarán los polígonos generados
 - **Feature Class de Puntos**: Selecciona la capa de puntos desde donde generarás los cierres
 - **Campo Identificador**: Selecciona el campo que agrupa los puntos (ej: "ID_ORDEN", "CODIGO_CIERRE")
 
 **Configuración opcional (enriquecimiento):**
-- **Feature Class de Barrios**: (Opcional) Capa de polígonos de barrios para identificar qué barrios intersecta cada cierre
-- **Feature Class de Clientes**: (Opcional) Capa de puntos de clientes para contar cuántos quedan dentro de cada cierre
 
+- **Feature Class de Barrios**: (Opcional) Capa de polígonos de barrios para identificar qué barrios intersecta cada cierre
+
+- **Feature Class de Clientes**: (Opcional) Capa de puntos de clientes para contar cuántos quedan dentro de cada cierre
 3. Haz clic en **"Generar Polígonos"**
 
 **Resultados:**
@@ -186,12 +213,14 @@ Esta herramienta permite generar polígonos de cierre automáticamente a partir 
 - Se abrirá un resumen indicando cuántos polígonos se generaron
 
 **Requisitos importantes:**
+
 - Se necesitan **mínimo 3-4 puntos** por identificador para generar un polígono válido
 - Los puntos deben tener el mismo valor en el campo identificador para agruparse
 - La configuración permite ajustar si se aceptan triángulos (3 puntos) desde las opciones del AddIn
 
 **Ejemplo de uso:**
 Si tienes una capa de válvulas con el campo "ORDEN_CIERRE" y quieres generar el área de impacto:
+
 - Selecciona la capa de válvulas
 - Elige "ORDEN_CIERRE" como campo identificador
 - Opcionalmente agrega barrios y clientes
@@ -200,10 +229,12 @@ Si tienes una capa de válvulas con el campo "ORDEN_CIERRE" y quieres generar el
 ---
 
 ### 7. Calcular Área Afectada
+
 ![Afectada](docs/res/Afectada.png)
 Esta función permite actualizar polígonos existentes con información de barrios y clientes afectados, sin necesidad de regenerar los polígonos.
 
 #### ¿Cuándo usar esta función?
+
 - Ya tienes polígonos de cierre creados manualmente o por otro método
 - Necesitas actualizar la información de barrios y clientes en polígonos existentes
 - Quieres enriquecer polígonos con datos de intersección espacial
@@ -215,14 +246,16 @@ Esta función permite actualizar polígonos existentes con información de barri
 3. En el panel que se abre, configura:
 
 **Configuración requerida:**
+
 - **Workspace**: Geodatabase de trabajo
 - **Feature Class de Polígonos**: La capa que contiene los polígonos seleccionados
 - **Campo Identificador**: Campo que identifica cada polígono (para actualización)
 
 **Datos de enriquecimiento:**
-- **Feature Class de Barrios**: Capa de barrios (obligatoria)
-- **Feature Class de Clientes**: Capa de clientes (obligatoria)
 
+- **Feature Class de Barrios**: Capa de barrios (obligatoria)
+
+- **Feature Class de Clientes**: Capa de clientes (obligatoria)
 4. Haz clic en **"Calcular"**
 
 **Resultados:**
@@ -243,6 +276,7 @@ El panel muestra en tiempo real cuántos polígonos tienes seleccionados, ayudá
 Esta herramienta permite fusionar múltiples polígonos seleccionados en uno solo, combinando sus atributos de forma inteligente.
 
 #### ¿Cuándo usar esta función?
+
 - Necesitas consolidar varios cierres en un área de impacto única
 - Quieres fusionar zonas adyacentes o superpuestas
 - Requieres combinar atributos de múltiples polígonos (sumar clientes, unir barrios)
@@ -254,15 +288,16 @@ Esta herramienta permite fusionar múltiples polígonos seleccionados en uno sol
 3. En el panel que se abre, configura:
 
 **Configuración básica:**
+
 - **Workspace**: Geodatabase donde se guardará el polígono unido
 - **Feature Class de Origen**: La capa de donde provienen los polígonos seleccionados
 - **Campo Identificador**: Campo que identificará al nuevo polígono unido
 - **Valor del Identificador**: Texto o número para identificar el polígono resultante
 
 **Enriquecimiento (opcional):**
+
 - **Feature Class de Barrios**: Para calcular barrios del polígono unido
 - **Feature Class de Clientes**: Para contar clientes en el polígono unido
-
 4. Verifica el contador de polígonos seleccionados (mínimo 2)
 5. Haz clic en **"Ejecutar Unión"**
 
@@ -283,6 +318,7 @@ El panel muestra una lista de los polígonos seleccionados con su nombre de capa
 
 **Gestión de conflictos:**
 Si la Feature Class de salida no tiene permisos de escritura o ya existe el registro, el sistema intentará automáticamente:
+
 - Usar la geodatabase por defecto del proyecto
 - Generar un nombre único agregando sufijo numérico
 - Informarte de la ubicación alternativa donde se guardó
