@@ -213,7 +213,7 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
         !string.IsNullOrWhiteSpace(Workspace) &&
         !string.IsNullOrWhiteSpace(SelectedFeatureClassField) &&
         !string.IsNullOrWhiteSpace(IdentifierText) &&
-        SelectedFeaturesCount >= 2;
+        SelectedFeaturesCount >= 1;
 
     private void OnClearForm()
     {
@@ -355,18 +355,26 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
                 }
 
                 var selectedPolygons = await GetSelectedPolygonsAsync();
-                
-                if (selectedPolygons.Count < 2)
+
+                if (selectedPolygons.Count < 1)
                 {
-                    StatusMessage = "Debe seleccionar al menos 2 polígonos";
+                    StatusMessage = "Debe seleccionar al menos 1 polígono";
                     return;
                 }
 
-                var unionedGeometry = UnionGeometries(selectedPolygons.Select(p => p.Geometry).ToList());
-                
+                Geometry? unionedGeometry = null;
+                if (selectedPolygons.Count == 1)
+                {
+                    unionedGeometry = selectedPolygons[0].Geometry;
+                }
+                else
+                {
+                    unionedGeometry = UnionGeometries(selectedPolygons.Select(p => p.Geometry).ToList());
+                }
+
                 if (unionedGeometry == null)
                 {
-                    StatusMessage = "Error al unir los polígonos";
+                    StatusMessage = "Error al obtener la geometría de entrada";
                     return;
                 }
 
@@ -419,7 +427,8 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
 
                     var note = !string.IsNullOrWhiteSpace(Workspace) && !Workspace.Equals(outGdbPath, StringComparison.OrdinalIgnoreCase)
                         ? $" (creado en gdb alternativa: {System.IO.Path.GetFileName(outGdbPath)})" : string.Empty;
-                    StatusMessage = $"✓ Unión completada: {selectedPolygons.Count} polígonos unidos -> {outputName} (capa agregada){note}";
+                    var actionDesc = selectedPolygons.Count == 1 ? "polígono procesado" : $"{selectedPolygons.Count} polígonos unidos";
+                    StatusMessage = $"✓ {actionDesc} -> {outputName} (capa agregada){note}";
                 }
                 else
                 {
@@ -1401,11 +1410,107 @@ internal class UnionPolygonsViewModel : BusyViewModelBase
 
                 NotifyPropertyChanged(nameof(SelectedFeatures));
             });
+
+            if (selectedPolygons != null && selectedPolygons.Count > 0)
+            {
+                try
+                {
+                    await CreateSelectedFeatureClassAsync(selectedPolygons);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error creando FC de selección: {ex.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error al actualizar selección: {ex.Message}");
         }
+    }
+
+    private async Task CreateSelectedFeatureClassAsync(List<PolygonFeature> selectedPolygons)
+    {
+        if (selectedPolygons == null || selectedPolygons.Count == 0)
+            return;
+
+        await QueuedTask.Run(async () =>
+        {
+            string gdbPath = Workspace;
+            if (string.IsNullOrWhiteSpace(gdbPath) || !gdbPath.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) || !Directory.Exists(gdbPath))
+            {
+                var projGdb = Project.Current?.DefaultGeodatabasePath;
+                if (!string.IsNullOrWhiteSpace(projGdb) && projGdb.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase) && Directory.Exists(projGdb))
+                    gdbPath = projGdb;
+                else
+                    return; // No hay gdb válida donde crear
+            }
+
+            try
+            {
+                var conn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
+                using var gdb = new Geodatabase(conn);
+
+                var timepart = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var baseName = SanitizeName($"SelectedPolygons_{timepart}");
+                var fcName = GetUniqueDatasetName(gdb, baseName);
+
+                var sr = selectedPolygons[0].Geometry?.SpatialReference ?? MapView.Active?.Map?.SpatialReference;
+                if (sr == null) return;
+
+                var shapeDesc = new ArcGIS.Core.Data.DDL.ShapeDescription(GeometryType.Polygon, sr);
+
+                var fields = new List<ArcGIS.Core.Data.DDL.FieldDescription>();
+                fields.Add(new ArcGIS.Core.Data.DDL.FieldDescription("ORIGINAL_LAYER", FieldType.String) { Length = 255 });
+                fields.Add(new ArcGIS.Core.Data.DDL.FieldDescription("ORIGINAL_OID", FieldType.String) { Length = 50 });
+
+                var fcDesc = new FeatureClassDescription(fcName, fields, shapeDesc);
+                var sb = new SchemaBuilder(gdb);
+                sb.Create(fcDesc);
+                var created = sb.Build();
+                if (!created)
+                {
+                    System.Diagnostics.Debug.WriteLine($"No se pudo crear la feature class de selección: {fcName}");
+                    return;
+                }
+
+                using var outFc = gdb.OpenDataset<ArcGIS.Core.Data.FeatureClass>(fcName);
+                using var outDef = outFc.GetDefinition();
+
+                var editOp = new EditOperation
+                {
+                    Name = "Insertar selección en FC",
+                    ShowModalMessageAfterFailure = false
+                };
+
+                editOp.Callback(context =>
+                {
+                    foreach (var poly in selectedPolygons)
+                    {
+                        using (var rb = outFc.CreateRowBuffer())
+                        {
+                            rb[outDef.GetShapeField()] = poly.Geometry;
+                            try { rb["ORIGINAL_LAYER"] = poly.LayerName ?? string.Empty; } catch { }
+                            try { rb["ORIGINAL_OID"] = poly.OID.ToString(); } catch { }
+                            using (var newRow = outFc.CreateRow(rb))
+                            {
+                                context.Invalidate(newRow);
+                            }
+                        }
+                    }
+                }, outFc);
+
+                var ok = await editOp.ExecuteAsync();
+                if (!ok)
+                {
+                    System.Diagnostics.Debug.WriteLine($"EditOperation failed inserting selection into '{fcName}': {editOp.ErrorMessage}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creando feature class de selección: {ex.Message}");
+            }
+        });
     }
     private async Task<List<PolygonFeature>> GetSelectedPolygonsAlternativeAsync()
     {
