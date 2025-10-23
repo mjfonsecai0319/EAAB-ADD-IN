@@ -11,7 +11,18 @@
 3. [Capacidades](#capacidades)
 4. [Instalación](#instalación)
 5. [Uso](#uso)
+   1. [Funciones de geocodificación](#funciones-de-geocodificacion)
+      1. [Buscar una Dirección Individual](#1-buscar-una-dirección-individual)
+      2. [Geocodificar Direcciones Masivamente](#2-geocodificar-direcciones-masivamente)
+      3. [Búsqueda de Puntos de Interés (POIs)](#3-búsqueda-de-puntos-de-interés-pois)
+      4. [Cambiar la Configuración de Conexión](#4-cambiar-la-configuración-de-conexión)
+   2. [Funciones de cierres](#funciones-de-cierres)
+      1. [Crear Nuevo Cierre](#1-crear-nuevo-cierre)
+      2. [Calcular Área Afectada](#2-calcular-área-afectada)
+      3. [Unir Polígonos](#3-unir-polígonos)
 6. [Problemas](#problemas)
+   1. [Fallo en la conexión con la base de datos](#1-fallo-en-la-conexión-con-la-base-de-datos)
+   2. [Error "Edición no habilitada" al unir polígonos](#2-error-edición-no-habilitada-al-unir-polígonos)
 
 ## Introducción
 
@@ -47,13 +58,13 @@ Una vez completada la instalación, el Add-In agrega una nueva pestaña llamada 
 
 ### Funciones de geocodificacion
 
-### 1. Buscar una Dirección Individual
+#### 1. Buscar una Dirección Individual
 
 Esta función permite localizar una dirección específica y visualizarla directamente en el mapa de ArcGIS Pro.
 
 ![Video Buscar](<docs\res\buscar.gif>)
 
-#### Pasos
+##### Pasos
 
 1. Haga clic en el botón **“Buscar”** dentro de la pestaña *EAAB Add-In*.
 
@@ -65,40 +76,42 @@ Esta función permite localizar una dirección específica y visualizarla direct
 
 5. Presione el botón **“Buscar Dirección”** para iniciar el proceso.
 
-**Resultados:**
+##### Resultados
 
-- El mapa se moverá y hará zoom automáticamente a la ubicación encontrada
-- Se creará un punto en el mapa con la ubicación
-- Los datos se guardarán en una capa llamada `GeocodedAddresses` que incluye:
-  - La dirección que escribiste
-  - La dirección encontrada en la base de datos
-  - La fuente de la información (EAAB, Catastro o ESRI)
-  - Fecha y hora de la búsqueda
-- Si no se encuentra la dirección, se registrará en una tabla de **direcciones no encontradas** para auditoría y análisis posteriores.
+El Add-In procesará la información ingresada, realizará la búsqueda priorizando las fuentes de datos de la EAAB y, en caso necesario, recurrirá a Catastro o ESRI. Si la dirección es encontrada, el mapa se desplazará automáticamente hacia la ubicación correspondiente, generando un punto de referencia en la capa `GeocodedAddresses`. Esta capa almacenará información relevante como la dirección ingresada, la dirección encontrada, la fuente de origen, la puntuación de coincidencia (score), así como la fecha y hora de la búsqueda.
 
-**Consejos:**
+En caso de no hallarse la dirección, el sistema la registrará automáticamente en una tabla de direcciones no encontradas `GeocodeNotFound`, con el fin de permitir su revisión y análisis posterior por parte del equipo técnico.
 
-- Si la lista de ciudades aparece vacía, haz clic en el botón de **"Recargar"** (ícono de actualizar)
-- El panel te indicará si estás conectado a la base de datos
-- La barra de progreso muestra el estado de la búsqueda
+##### Consejos
 
-### 2. Geocodificar Direcciones Masivamente
+- Si la lista de ciudades aparece vacía, utilice el botón **“Recargar”** (ícono de actualización) para refrescar los datos.
+
+- Verifique en el panel de estado que la conexión a la base de datos esté activa antes de realizar una búsqueda.
+
+- Durante el proceso, podrá observar una barra de progreso que indica el avance de la operación.
+
+- Para mejorar los resultados, se recomienda ingresar direcciones completas y estandarizadas, siguiendo el formato habitual de la EAAB.
+
+#### 2. Geocodificar Direcciones Masivamente
+
+Esta función permite procesar simultáneamente un gran número de direcciones a partir de un archivo de Excel, lo que agiliza considerablemente el trabajo de geocodificación cuando se manejan bases de datos extensas.
 
 ![Video Masivo](<docs\res\Masivo.gif>)
-Esta función permite procesar muchas direcciones al mismo tiempo desde un archivo Excel.
 
-#### Preparar el archivo Excel
+##### Preparar el archivo Excel
 
-Tu archivo Excel debe tener exactamente estas tres columnas:
+Antes de iniciar el proceso, es necesario contar con un archivo de Excel correctamente estructurado. El archivo debe contener exactamente tres columnas con los siguientes nombres:
 
-| Identificador | Direccion         | Poblacion |
-| ------------- | ----------------- | --------- |
-| 001           | Calle 123 #45-67  | Bogotá    |
-| 002           | Carrera 50 #20-30 | Bogotá    |
+| Identificador | Direccion    | Poblacion |
+| ------------- | ------------ | --------- |
+| 001           | CL 123 45 67 | 11001     |
+| 002           | KR 50 20 30  | 11001     |
 
-- **Identificador**: Un código único para cada dirección (puede ser número o texto)
-- **Direccion**: La dirección completa
-- **Poblacion**: El nombre de la ciudad
+- Identificador: Código único.
+
+- Direccion: Dirección completa que se desea localizar.
+
+- Poblacion: Codigo de la ciudad.
 
 **Pasos:**
 
@@ -111,79 +124,58 @@ Tu archivo Excel debe tener exactamente estas tres columnas:
 
 **Resultados:**
 
-- Al finalizar, verás un resumen:
-  - Número de direcciones encontradas
-  - Número de direcciones no encontradas
-  - Total procesado
-- Todas las direcciones se agregarán a la capa `GeocodedAddresses`
-- Todas las no encontradas quedarán registradas en la tabla de **direcciones no encontradas** con fecha y hora
-- El sistema intenta encontrar cada dirección dos veces si no hay coincidencia exacta
+Al finalizar la ejecución, el sistema mostrará un resumen con el número total de direcciones procesadas, cantidad de coincidencias encontradas y direcciones no localizadas. Las direcciones correctamente geocodificadas se agregarán automáticamente a la capa `GeocodedAddresses`, mientras que las no encontradas se registrarán en la tabla `GeocodeNotFound` con su identificador, dirección, ciudad y la fecha y hora del intento.
 
-### 3. Búsqueda de Puntos de Interés (POIs)
+#### 3. Búsqueda de Puntos de Interés (POIs)
 
-![Video Pois](<docs\res\Pois.gif>)
-La herramienta también permite localizar Puntos de Interés (instituciones, equipamientos, servicios, etc.).
+El Add-In incluye una función que permite buscar y ubicar **Puntos de Interés (POIs)** dentro del territorio de operación de la EAAB. En este contexto, un POI puede corresponder a **barrios, localidades, sectores o zonas de referencia**, los cuales son útiles para la identificación espacial de áreas donde se desarrollan actividades operativas, análisis o proyectos técnicos.
 
-**Pasos:**
+![Video de Referencia para POIs](<docs\res\Pois.gif>)
 
-1. Haz clic en el botón **"POI"** en la pestaña EAAB Add-in (ícono de lupa sobre edificio).
-2. Se abrirá un panel lateral similar al de direcciones.
-3. Ingresa un término de búsqueda (ej: "fontibon", "colegio", "calera", "acueducto").
-4. (Opcional) Selecciona una ciudad o limita por área activa del mapa.
-5. Dependiendo del término y lo que necesites:
-   - Selecciona un resultado específico de la lista y haz clic en **"Ubicar seleccionado"** para centrar solo ese.
-   - Haz clic en **"Ubicar todos"** para agregar y centrar todos los resultados devueltos.
-6. (Alternativamente) Usa **"Buscar POI"** para refrescar/filtrar la lista si cambias el texto.
+##### Pasos
 
-**Resultados:**
+1. Haga clic en el botón **“POI”** en la pestaña *EAAB Add-In* (ícono de lupa sobre un edificio).
 
-- Se listarán coincidencias con nombre, tipo y código.
-- Al seleccionar un POI y ubicarlo el mapa hace zoom y se agrega un punto a la capa `POIResults`.
-- Si eliges "Ubicar todos" se insertan todos los puntos visibles.
+2. Se abrirá un panel lateral similar al utilizado en la búsqueda de direcciones.
 
-### 4. Cambiar la Configuración de Conexión
+3. Ingrese un término de búsqueda que corresponda al nombre del barrio, localidad o sector de interés (por ejemplo: *“Fontibón”*, *“Chapinero”*, *“Suba”*, *“Acueducto”*).
 
-Si necesitas cambiar de base de datos o actualizar tus credenciales:
-![Video Bd](<docs\res\Bd.gif>)
+4. (Opcional) Puede restringir la búsqueda seleccionando una ciudad o limitándola al área visible del mapa.
 
-1. Ve a **Archivo → Opciones → EAAB Add-In**
-2. Modifica los datos que necesites cambiar
-3. Haz clic en **"Probar Conexión"** para verificar
-4. Haz clic en **"Guardar y Conectar"**
+5. Dependiendo del caso:
+   
+   1. Seleccione un resultado específico de la lista y haga clic en **“Ubicar seleccionado”** para centrar el mapa en esa ubicación.
+   2. O bien, presione **“Ubicar todos”** para agregar y centrar todos los resultados encontrados.
 
-Los cambios se guardan automáticamente mientras editas los campos.
+6. Si modifica el texto de búsqueda, use **“Buscar POI”** para actualizar la lista de coincidencias.
 
-### 5. Exportar Resultados
+##### Resultados
 
-Puedes exportar los puntos generados a otros formatos para compartir o procesar:
+El sistema mostrará los lugares que coincidan con el término ingresado, incluyendo su **nombre**, **tipo** y **código** de identificación. Al seleccionar un POI, el mapa se desplazará automáticamente hacia la ubicación correspondiente y se agregará un marcador en la capa `GeocodedAddresses`. Si el usuario elige la opción **“Ubicar todos”**, se insertarán todos los puntos visibles en el mapa, lo que facilita una vista general del área de interés.  
 
-**Opciones comunes:**
+#### 4. Cambiar la Configuración de Conexión
 
-- Clic derecho sobre la capa `GeocodedAddresses` → Export → **Feature Class To Feature Class** (para otra GDB)
-- Clic derecho → Data → **Export Features** → Guardar como Shapefile o GeoPackage
-- Uso de **Table To Excel** para extraer atributos en tabular
+El Add-In permite modificar fácilmente la conexión a la base de datos en caso de que el usuario necesite actualizar sus credenciales o trabajar con un entorno diferente (por ejemplo, cambiar entre bases de datos de prueba y producción).
 
-**Campos Clave en `GeocodedAddresses`:**
+![Video de configuración de la base de datos](<docs\res\Bd.gif>)
 
-- `Identificador`: El código original del archivo o de tu búsqueda individual
-- `Direccion`: Dirección consultada
-- `FullAddressEAAB` / `FullAddressCadastre`: Variantes enriquecidas
-- `Source` / `ScoreText`: Origen y calidad
-- `FechaHora`: Marca de tiempo de la operación
+1. Diríjase al menú **Archivo → Opciones → EAAB Add-In** dentro de ArcGIS Pro.
 
-## FUNCIONALIDADES DE GESTIÓN DE CIERRES
+2. En la ventana que se abrirá, edite los campos correspondientes según la nueva configuración requerida (usuario, contraseña, servidor o tipo de base de datos).
 
-### 6. Crear Nuevo Cierre
+3. Haga clic en **“Probar Conexión”** para verificar que los datos ingresados sean correctos y que el sistema pueda establecer comunicación con la base de datos seleccionada.
+
+4. Si la prueba es exitosa, presione **“Guardar y Conectar”** para aplicar los cambios.
+
+Los datos modificados se guardan automáticamente mientras se editan, garantizando que la configuración actualizada quede registrada de forma inmediata.
+
+### Funciones de cierres
+
+#### 1. Crear Nuevo Cierre
 
 ![Video Cierres](<docs\res\Cierres.gif>)
 
 Esta herramienta permite generar polígonos de cierre automáticamente a partir de puntos seleccionados, agrupándolos por un identificador común.
-
-#### ¿Cuándo usar esta función?
-
-- Cuando tienes puntos dispersos que representan eventos o incidencias
-- Necesitas agrupar puntos por un criterio común (ej: número de orden, código de proyecto)
-- Quieres generar automáticamente áreas de cobertura o influencia
 
 **Pasos:**
 
@@ -200,8 +192,7 @@ Esta herramienta permite generar polígonos de cierre automáticamente a partir 
 
 - **Feature Class de Barrios**: (Opcional) Capa de polígonos de barrios para identificar qué barrios intersecta cada cierre
 
-- **Feature Class de Clientes**: (Opcional) Capa de puntos de clientes para contar cuántos quedan dentro de cada cierre
-3. Haz clic en **"Generar Polígonos"**
+- **Feature Class de Clientes**: (Opcional) Capa de puntos de clientes 
 
 **Resultados:**
 
@@ -225,15 +216,13 @@ Si tienes una capa de válvulas con el campo "ORDEN_CIERRE" y quieres generar el
 - Elige "ORDEN_CIERRE" como campo identificador
 - Opcionalmente agrega barrios y clientes
 - El sistema generará un polígono por cada orden de cierre
-
----
-
-### 7. Calcular Área Afectada
+  
+#### 2. Calcular Área Afectada
 
 ![Afectada](docs/res/Afectada.png)
 Esta función permite actualizar polígonos existentes con información de barrios y clientes afectados, sin necesidad de regenerar los polígonos.
 
-#### ¿Cuándo usar esta función?
+##### ¿Cuándo usar esta función?
 
 - Ya tienes polígonos de cierre creados manualmente o por otro método
 - Necesitas actualizar la información de barrios y clientes en polígonos existentes
@@ -269,13 +258,11 @@ Esta función permite actualizar polígonos existentes con información de barri
 **Contador de selección:**
 El panel muestra en tiempo real cuántos polígonos tienes seleccionados, ayudándote a verificar antes de ejecutar el cálculo.
 
----
-
-### 8. Unir Polígonos
+#### 3. Unir Polígonos
 
 Esta herramienta permite fusionar múltiples polígonos seleccionados en uno solo, combinando sus atributos de forma inteligente.
 
-#### ¿Cuándo usar esta función?
+##### ¿Cuándo usar esta función?
 
 - Necesitas consolidar varios cierres en un área de impacto única
 - Quieres fusionar zonas adyacentes o superpuestas
@@ -323,6 +310,26 @@ Si la Feature Class de salida no tiene permisos de escritura o ya existe el regi
 - Generar un nombre único agregando sufijo numérico
 - Informarte de la ubicación alternativa donde se guardó
 
----
-
 ## Problemas
+
+A continuación, se describen algunos de los inconvenientes más comunes que pueden presentarse durante el uso del Add-In, junto con las acciones recomendadas para resolverlos de manera segura y eficiente.
+
+### 1. Fallo en la conexión con la base de datos
+
+#### Descripción
+
+En algunos casos, el Add-In puede mostrar mensajes de error relacionados con la conexión a la base de datos corporativa. Esto puede deberse a credenciales incorrectas, pérdida de conexión temporal con el servidor o configuraciones incompletas.
+
+#### Solución
+
+Verifique que los datos de conexión (usuario, contraseña, servidor y tipo de base de datos) sean correctos. Para hacerlo, acceda a Archivo → Opciones → EAAB Add-In, actualice la información y utilice el botón “Probar Conexión”. Si el error persiste, cierre y reinicie ArcGIS Pro para restablecer la sesión de conexión. En caso de continuar el problema, contacte al área técnica encargada de las bases de datos para verificar el estado del servidor o las credenciales asignadas.
+
+### 2. Error “Edición no habilitada” al unir polígonos
+
+#### Descripción
+
+Durante la ejecución de operaciones espaciales, especialmente al unir polígonos o generar cierres, puede aparecer el mensaje “Edición no habilitada”. Este error suele presentarse cuando el entorno de edición de ArcGIS Pro se encuentra bloqueado o presenta inconsistencias temporales en el caché.
+
+#### Solución
+
+Cierre todos los proyectos abiertos y elimine el caché de ArcGIS Pro. Si el problema persiste, se recomienda realizar una instalación limpia de ArcGIS Pro, eliminando archivos residuales antes de la reinstalación para asegurar un entorno estable.
