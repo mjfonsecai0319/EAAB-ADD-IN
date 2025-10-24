@@ -48,6 +48,7 @@
         <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
           <group refID="EAABAddIn_Group1" />
           <group refID="EAABAddIn_Group_DrawingTools" />
+          <group refID="EAABAddIn_Group_Migracion" />
         </tab>
       </tabs>
 
@@ -63,6 +64,10 @@
           <button refID="EAABAddIn_DrawPolygonButton" size="large" />
           <button refID="EAABAddIn_AffectedAreaButton" size="large" />
           <button refID="EAABAddIn_UnionPolygonsButton" size="large" />
+        </group>
+        
+        <group id="EAABAddIn_Group_Migracion" caption="Migracion" appearsOnAddInTab="false" keytip="D1" smallImage="">
+          <button refID="EAABAddIn_Migrar" size="large" />
         </group>
       </groups>
 
@@ -154,7 +159,32 @@
         >
           <tooltip heading="Unir polígonos">Une varios polígonos desde una gdb.<disabledText /></tooltip>
         </button>
+        
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.UnionPolygonsButton"
+          id="EAABAddIn_UnionPolygonsButton"
+          caption="Unir Polígonos"
+          smallImage="Images\Union16.png"
+          largeImage="Images\Union32.png"
+          condition="EAABAddIn_DomainCheckWithMapPane"
+          keytip="B7"
+        >
+          <tooltip heading="Unir polígonos">Une varios polígonos desde una gdb.<disabledText /></tooltip>
+        </button>
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.MigrarButton"
+          id="EAABAddIn_Migrar"
+          caption="Migrar Datos"
+          smallImage="Images\"
+          largeImage="Images\"
+          condition="EAABAddIn_DomainCheckWithMapPane"
+          keytip="B8"
+        >
+          <tooltip heading="Migrar Datos">Migra datos de una capa a otra.<disabledText /></tooltip>
+        </button>
+
       </controls>
+
 
       <dockPanes>
         <dockPane
@@ -176,7 +206,19 @@
           dockWith="esri_core_projectDockPane"
           condition="EAABAddIn_DomainCheck"
         >
+
           <content className="EAABAddIn.Src.Presentation.View.Dockpanes.CierresDockpaneView" />
+        </dockPane>
+
+        <dockPane
+          className="EAABAddIn.Src.Presentation.ViewModel.DockPanes.MigrationDockpaneViewModel"
+          id="EAABAddIn_Dockpane_Migracion"
+          caption="Migración EAAB"
+          dock="group"
+          dockWith="esri_core_projectDockPane"
+          condition="EAABAddIn_DomainCheck"
+        >
+          <content className="EAABAddIn.Src.Presentation.View.Dockpanes.MigrationDockpaneView" />
         </dockPane>
       </dockPanes>
     </insertModule>
