@@ -263,19 +263,22 @@ internal class MigrationViewModel : BusyViewModelBase
             // }
 
 
-            var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace, "GDB_Cargue.gdb", XmlSchemaPath);
+            // Crear la GDB "migracion" e importar el esquema XML
+            var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace, XmlSchemaPath);
 
             if (!okGdb)
             {
-                StatusMessage = $"Error creando GDB: {msgGdb}";
+                StatusMessage = $"Error creando GDB de migración: {msgGdb}";
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Error creando GDB desde XML: {msgGdb}",
+                    messageText: $"Error creando GDB 'migracion' desde XML: {msgGdb}",
                     caption: "Error",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Error
                 );
                 return;
             }
+            
+            StatusMessage = $"GDB 'migracion' creada exitosamente en: {gdbPath}";
 
             // Camino corto: si el usuario quiere hacer una migración simple origen->destino
             // if (!string.IsNullOrWhiteSpace(SourcePath) && !string.IsNullOrWhiteSpace(TargetPath))
@@ -298,7 +301,7 @@ internal class MigrationViewModel : BusyViewModelBase
             // }
 
             // TODO: Implementar port 1:1 de validaciones y migración por tipo usando los caminos del script Python
-            StatusMessage = "Proceso finalizado. Si definiste FGDB+XML, revisa la GDB creada; si definiste origen/destino, Append terminó.";
+            StatusMessage = $"Proceso finalizado. GDB 'migracion' lista para migración en: {gdbPath}";
         }
         catch (Exception ex)
         {
