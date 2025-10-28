@@ -30,6 +30,8 @@ internal class MigrationViewModel : BusyViewModelBase
     public ICommand XmlSchemaCommand { get; private set; }
     public ICommand BrowseLAcuOrigenCommand { get; private set; }
     public ICommand BrowsePAcuOrigenCommand { get; private set; }
+    public ICommand BrowseLAlcOrigenCommand { get; private set; }
+    public ICommand BrowsePAlcOrigenCommand { get; private set; }
     public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
     public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
     public ICommand RunCommand { get; private set; }
@@ -41,6 +43,8 @@ internal class MigrationViewModel : BusyViewModelBase
         XmlSchemaCommand = new RelayCommand(BrowseXmlSchema);
         BrowseLAcuOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Acu_Origen = path));
         BrowsePAcuOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Acu_Origen = path));
+        BrowseLAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Origen = path));
+        BrowsePAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Origen = path));
         BrowseLAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Pluv_Origen = path));
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
         RunCommand = new AsyncRelayCommand(RunAsync);
