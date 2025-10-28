@@ -8,180 +8,266 @@
     xmlns:controls="clr-namespace:ArcGIS.Desktop.Framework.Controls;assembly=ArcGIS.Desktop.Framework"
     xmlns:viewModel="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
     mc:Ignorable="d"
-    d:DesignHeight="300"
+    d:DesignHeight="700"
     d:DataContext="{Binding Path=viewModel.MigrationViewModel}"
-    MinWidth="250"
 >
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <extensions:DesignOnlyResourceDictionary Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
+                <extensions:DesignOnlyResourceDictionary
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-            <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Style x:Key="HeaderTextStyle" TargetType="TextBlock"
+                BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="FontSize" Value="14" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
+                <Setter Property="Margin" Value="0,0,0,5" />
+            </Style>
+
+            <Style x:Key="BrowseButtonStyle" TargetType="Button"
+                BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background"
+                            Value="{DynamicResource Esri_BackgroundPressedBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button"
+                BasedOn="{StaticResource Esri_Button}">
+                <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BlueHover}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource Esri_Gray155}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox"
+                BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
-                <Setter Property="Margin" Value="0,0,0,6" />
-                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Margin" Value="0,0,0,15" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <ScrollViewer Margin="10,12,10,12" VerticalScrollBarVisibility="Auto">
-        <StackPanel Orientation="Vertical" >
-            <TextBlock Text="Migración de datos" Style="{StaticResource HeaderTextStyle}" />
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <!-- Orígenes agrupados -->
-            <Expander Header="Acueducto" Margin="0,8,0,0" IsExpanded="True">
-                <StackPanel Orientation="Vertical" Margin="10,6,0,6">
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Líneas (origen)"/>
-                            <TextBox Text="{Binding L_Acu_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseLAcuOrigenCommand}"/>
-                    </Grid>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Puntos (origen)"/>
-                            <TextBox Text="{Binding P_Acu_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowsePAcuOrigenCommand}"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
+        <ScrollViewer
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
+            Margin="0"
+            Grid.Row="0"
+        >
 
-            <Expander Header="Alcantarillado Sanitario" Margin="0,6,0,0" IsExpanded="False">
-                <StackPanel Orientation="Vertical" Margin="10,6,0,6">
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Líneas (origen)"/>
-                            <TextBox Text="{Binding L_Alc_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseLAlcOrigenCommand}"/>
-                    </Grid>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Puntos (origen)"/>
-                            <TextBox Text="{Binding P_Alc_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowsePAlcOrigenCommand}"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
+            <StackPanel Grid.Row="0">
+                <TextBlock
+                    Text="Workspace *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <Expander Header="Alcantarillado Pluvial" Margin="0,6,0,0" IsExpanded="False">
-                <StackPanel Orientation="Vertical" Margin="10,6,0,6">
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Líneas (origen)"/>
-                            <TextBox Text="{Binding L_Alc_Pluv_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseLAlcPluvOrigenCommand}"/>
-                    </Grid>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Puntos (origen)"/>
-                            <TextBox Text="{Binding P_Alc_Pluv_Origen, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowsePAlcPluvOrigenCommand}"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding Workspace, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
 
-            <!-- Opcional: Append rápido para pruebas -->
-            <Expander Header="Append simple (opcional)" Margin="0,10,0,0" IsExpanded="False">
-                <StackPanel Orientation="Vertical" Margin="10,6,0,6">
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Origen (feature class)"/>
-                            <TextBox Text="{Binding SourcePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseSourceCommand}"/>
-                    </Grid>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Destino (feature class)"/>
-                            <TextBox Text="{Binding TargetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseTargetCommand}"/>
-                    </Grid>
-                    <CheckBox Content="Usar selección del mapa" IsChecked="{Binding UseSelection, Mode=TwoWay}" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Expander>
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding WorkspaceCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
 
-            <!-- Salida y opciones -->
-            <Expander Header="Salida y esquema" Margin="0,10,0,0" IsExpanded="True">
-                <StackPanel Orientation="Vertical" Margin="10,6,0,6">
-                    <Grid Margin="0,0,0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Carpeta de salida (FGDB)"/>
-                            <TextBox Text="{Binding OutputFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseOutputFolderCommand}"/>
-                    </Grid>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="XML de esquema"/>
-                            <TextBox Text="{Binding XmlSchemaPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="Examinar" Width="80" Margin="6,0,0,0" Command="{Binding BrowseXmlSchemaCommand}"/>
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <CheckBox Content="Probar esquema (TEST)" IsChecked="{Binding TestSchema, Mode=TwoWay}"/>
-                        <CheckBox Content="Migrar con advertencias" IsChecked="{Binding MigrarConAdvertencias, Mode=TwoWay}" Margin="12,0,0,0"/>
+                <TextBlock
+                    Text="XML NS-046 *"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,10"
+                />
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding XmlSchemaPath, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Height="28"
+                    />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding XmlSchemaCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16"
+                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
+
+                <Expander
+                    Header="Migracion Información Acueducto"
+                    IsExpanded="False"
+                    Style="{DynamicResource Esri_ExpanderBorderless}"
+                >
+                    <StackPanel Margin="0,15,0,0">
+                        <TextBlock
+                            Text="Lineas Acueducto *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding L_Acu_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowseLAcuOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
+
+                        <TextBlock
+                            Text="Puntos Acueducto *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding P_Acu_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowsePAcuOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
                     </StackPanel>
-                </StackPanel>
-            </Expander>
+                </Expander>
 
-            <StackPanel Orientation="Vertical" Margin="0,12,0,0">
-                <Button Content="Migrar" Height="34" Command="{Binding RunCommand}"/>
-                <TextBlock Text="{Binding StatusMessage}" Margin="0,6,0,0" Foreground="{DynamicResource Esri_TextSecondaryBrush}" TextWrapping="Wrap"/>
-                <Button Content="Abrir reportes" Margin="0,6,0,0" Command="{Binding OpenReportsFolderCommand}" Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVis}}" />
+                <Expander
+                    Header="Migracion Información Alcantarillado"
+                    IsExpanded="False"
+                    Style="{DynamicResource Esri_ExpanderBorderless}"
+                >
+
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2">
+            <TextBlock
+                Text="{Binding StatusMessage}"
+                Margin="0,0,0,8"
+                TextWrapping="Wrap"
+                Style="{DynamicResource Esri_TextBlockRegular}"
+            />
+
+            <ProgressBar
+                Height="4"
+                IsIndeterminate="True"
+                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+            />
+
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
+                <Button
+                    Content="Limpiar"
+                    Style="{StaticResource Esri_Button}"
+                    Margin="0,0,10,0"
+                    Command="{Binding ClearFormCommand}"
+                />
+                <Button
+                    Content="Ejecutar"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Command="{Binding RunCommand}"
+                />
             </StackPanel>
         </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>
