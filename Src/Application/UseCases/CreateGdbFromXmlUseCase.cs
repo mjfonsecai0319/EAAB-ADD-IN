@@ -27,7 +27,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (!Directory.Exists(outFolder))
                     Directory.CreateDirectory(outFolder);
 
-                const string gdbName = "migracion";
+                const string gdbName = "GDB_Cargue";
                 var gdbPath = Path.Combine(outFolder, $"{gdbName}.gdb");
                 
                 // Si la GDB ya existe, eliminarla para sobrescribir
