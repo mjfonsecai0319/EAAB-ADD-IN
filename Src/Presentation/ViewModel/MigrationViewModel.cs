@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -25,11 +26,14 @@ internal class MigrationViewModel : BusyViewModelBase
 
     private readonly ValidateDatasetsUseCase _datasetValidatorUseCase = new ValidateDatasetsUseCase();
     private readonly CreateGdbFromXmlUseCase _createGdbFromXmlUseCase = new CreateGdbFromXmlUseCase();
+    private readonly MigrateAlcantarilladoUseCase _migrateAlcantarilladoUseCase = new MigrateAlcantarilladoUseCase();
 
     public ICommand WorkspaceCommand { get; private set; }
     public ICommand XmlSchemaCommand { get; private set; }
     public ICommand BrowseLAcuOrigenCommand { get; private set; }
     public ICommand BrowsePAcuOrigenCommand { get; private set; }
+    public ICommand BrowseLAlcOrigenCommand { get; private set; }
+    public ICommand BrowsePAlcOrigenCommand { get; private set; }
     public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
     public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
     public ICommand RunCommand { get; private set; }
@@ -41,6 +45,8 @@ internal class MigrationViewModel : BusyViewModelBase
         XmlSchemaCommand = new RelayCommand(BrowseXmlSchema);
         BrowseLAcuOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Acu_Origen = path));
         BrowsePAcuOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Acu_Origen = path));
+        BrowseLAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Origen = path));
+        BrowsePAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Origen = path));
         BrowseLAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Pluv_Origen = path));
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
         RunCommand = new AsyncRelayCommand(RunAsync);
@@ -278,30 +284,80 @@ internal class MigrationViewModel : BusyViewModelBase
                 return;
             }
             
-            StatusMessage = $"GDB 'migracion' creada exitosamente en: {gdbPath}";
+            StatusMessage = $"GDB 'migracion' creada exitosamente. Iniciando migración de datos de alcantarillado...";
 
-            // Camino corto: si el usuario quiere hacer una migración simple origen->destino
-            // if (!string.IsNullOrWhiteSpace(SourcePath) && !string.IsNullOrWhiteSpace(TargetPath))
-            // {
-            //     var options = new AppendOptions
-            //     {
-            //         SourcePath = SourcePath,
-            //         TargetPath = TargetPath,
-            //         UseSelection = UseSelection,
-            //         SchemaType = TestSchema ? "TEST" : "NO_TEST",
-            //         FieldMappings = string.Empty
-            //     };
-            //     var append = new AppendFeaturesUseCase();
-            //     var result = await append.Invoke(options);
-            //     if (!result.ok)
-            //     {
-            //         StatusMessage = $"Append falló: {result.message}";
-            //         return;
-            //     }
-            // }
+            // Migrar datos de Alcantarillado si se especificaron
+            var mensajesMigracion = new List<string>();
 
-            // TODO: Implementar port 1:1 de validaciones y migración por tipo usando los caminos del script Python
-            StatusMessage = $"Proceso finalizado. GDB 'migracion' lista para migración en: {gdbPath}";
+            if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
+            {
+                StatusMessage = "Migrando líneas de alcantarillado...";
+                var (okLines, msgLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
+                if (okLines)
+                {
+                    mensajesMigracion.Add(msgLines);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Líneas: {msgLines}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
+            {
+                StatusMessage = "Migrando puntos de alcantarillado...";
+                var (okPoints, msgPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
+                if (okPoints)
+                {
+                    mensajesMigracion.Add(msgPoints);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Puntos: {msgPoints}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
+            {
+                StatusMessage = "Migrando líneas de alcantarillado pluvial...";
+                var (okLinesPluv, msgLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
+                if (okLinesPluv)
+                {
+                    mensajesMigracion.Add(msgLinesPluv);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Líneas pluvial: {msgLinesPluv}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
+            {
+                StatusMessage = "Migrando puntos de alcantarillado pluvial...";
+                var (okPointsPluv, msgPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
+                if (okPointsPluv)
+                {
+                    mensajesMigracion.Add(msgPointsPluv);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Puntos pluvial: {msgPointsPluv}");
+                }
+            }
+
+            // Mensaje final
+            var mensajeFinal = mensajesMigracion.Count > 0 
+                ? string.Join("\n", mensajesMigracion) 
+                : "No se especificaron datos de alcantarillado para migrar.";
+
+            StatusMessage = $"✓ Proceso finalizado.\n{mensajeFinal}\nGDB: {gdbPath}";
+            
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                messageText: $"Migración completada:\n\n{mensajeFinal}",
+                caption: "Migración Exitosa",
+                button: System.Windows.MessageBoxButton.OK,
+                icon: System.Windows.MessageBoxImage.Information
+            );
         }
         catch (Exception ex)
         {

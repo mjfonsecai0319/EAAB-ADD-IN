@@ -236,7 +236,147 @@
                     IsExpanded="False"
                     Style="{DynamicResource Esri_ExpanderBorderless}"
                 >
+                    <StackPanel Margin="0,15,0,0">
+                        <TextBlock
+                            Text="Líneas Alcantarillado Sanitario/Combinado *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
 
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding L_Alc_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowseLAlcOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
+
+                        <TextBlock
+                            Text="Puntos Alcantarillado Sanitario/Combinado *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding P_Alc_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowsePAlcOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
+
+                        <TextBlock
+                            Text="Líneas Alcantarillado Pluvial *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding L_Alc_Pluv_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowseLAlcPluvOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
+
+                        <TextBlock
+                            Text="Puntos Alcantarillado Pluvial *"
+                            Style="{StaticResource HeaderTextStyle}"
+                            Margin="0,0,0,10"
+                        />
+
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding P_Alc_Pluv_Origen, Mode=OneWay}"
+                                IsReadOnly="True"
+                                Height="28"
+                            />
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding BrowsePAlcPluvOrigenCommand}"
+                                Height="28"
+                                Width="28"
+                            >
+                                <Image
+                                    Width="16"
+                                    Height="16"
+                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
+                                />
+                            </Button>
+                        </Grid>
+                    </StackPanel>
                 </Expander>
             </StackPanel>
         </ScrollViewer>
