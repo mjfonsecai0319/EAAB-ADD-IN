@@ -9,6 +9,8 @@ using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Editing;
+using ArcGIS.Desktop.Mapping;
+using ArcGIS.Core.CIM;
 
 
 namespace EAABAddIn.Src.Application.UseCases
@@ -351,160 +353,11 @@ namespace EAABAddIn.Src.Application.UseCases
             };
         }
 
-        private bool MigrateLineFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
+         private bool MigrateLineFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
         {
             error = null;
             try
             {
-                System.Diagnostics.Debug.WriteLine($"🔧 Intentando migrar a: {targetClassName}");
-                // Ya estamos en el hilo MCT (el llamador usa QueuedTask.Run), así que NO volvamos a llamar QueuedTask.Run aquí.
-                using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
-                if (targetFC == null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"❌ No se encontró la clase: {targetClassName}");
-                    // Listar clases disponibles en GDB (si es posible)
-                    try
-                    {
-                        var defs = targetGdb.GetDefinitions<FeatureClassDefinition>();
-                        System.Diagnostics.Debug.WriteLine("📋 Clases disponibles en GDB:");
-                        foreach (var def in defs)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"   - {def.GetName()}");
-                        }
-                    }
-                    catch { }
-                    return false;
-                }
-
-                var geometry = sourceFeature.GetShape();
-                if (geometry == null || geometry.IsEmpty)
-                {
-                    System.Diagnostics.Debug.WriteLine("❌ Geometría vacía");
-                    return false;
-                }
-
-                using var featureClassDef = targetFC.GetDefinition();
-                
-                // Eliminar Z y M si el destino no los soporta
-                var targetHasZ = featureClassDef.HasZ();
-                var targetHasM = featureClassDef.HasM();
-                if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
-                {
-                    try
-                    {
-                        var builder = new PolylineBuilderEx(geometry as Polyline);
-                        builder.HasZ = targetHasZ;
-                        builder.HasM = targetHasM;
-                        geometry = builder.ToGeometry();
-                        System.Diagnostics.Debug.WriteLine($"✅ Geometría ajustada: Z={targetHasZ}, M={targetHasM}");
-                    }
-                    catch (Exception dimEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"⚠ No se pudo ajustar dimensiones Z/M: {dimEx.Message}");
-                    }
-                }
-
-                // Reproyectar si es necesario
-                try
-                {
-                    var targetSR = featureClassDef.GetSpatialReference();
-                    if (geometry.SpatialReference != null && targetSR != null && !geometry.SpatialReference.IsEqual(targetSR))
-                    {
-                        geometry = GeometryEngine.Instance.Project(geometry, targetSR);
-                    }
-                }
-                catch (Exception prjEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"⚠ No se pudo reproyectar: {prjEx.Message}");
-                }
-                var attributes = BuildLineAttributes(sourceFeature, featureClassDef, subtipo);
-                System.Diagnostics.Debug.WriteLine($"📋 Atributos a mapear: {attributes.Count}");
-
-                // Construir diccionario con solo campos existentes en destino (incluye geometría)
-                var dict = new Dictionary<string, object?>();
-                string shapeField = featureClassDef.GetShapeField();
-                dict[shapeField] = geometry;
-
-                int mappedCount = 0;
-                var fieldMap = featureClassDef.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
-                foreach (var attr in attributes)
-                {
-                    if (!fieldMap.TryGetValue(attr.Key, out var fieldDef))
-                        continue;
-                    try
-                    {
-                        dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
-                        mappedCount++;
-                    }
-                    catch (Exception fieldEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"⚠ Error en campo {attr.Key}: {fieldEx.Message}");
-                    }
-                }
-                // Fallback para DOMTIPOSISTEMA cuando SISTEMA viene nulo pero el campo es requerido
-                if (fieldMap.TryGetValue("DOMTIPOSISTEMA", out var domTipoSisField))
-                {
-                    if (!dict.ContainsKey("DOMTIPOSISTEMA") || dict["DOMTIPOSISTEMA"] is DBNull)
-                    {
-                        if (domTipoSisField.FieldType == FieldType.Integer || domTipoSisField.FieldType == FieldType.SmallInteger)
-                            dict["DOMTIPOSISTEMA"] = 0; // valor por defecto
-                        else if (domTipoSisField.FieldType == FieldType.String)
-                            dict["DOMTIPOSISTEMA"] = string.Empty;
-                    }
-                }
-                System.Diagnostics.Debug.WriteLine($"✅ Campos mapeados: {mappedCount}");
-
-                // 🔹 Crear mediante EditOperation con diccionario (soporta undo/redo y edición segura)
-                var editOp = new EditOperation
-                {
-                    Name = $"Migrar línea -> {targetClassName}",
-                    SelectNewFeatures = false
-                };
-                editOp.Create((Table)targetFC, dict);
-                bool ok = editOp.Execute();
-                if (!ok)
-                {
-                    var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-                    System.Diagnostics.Debug.WriteLine($"❌ EditOperation falló: {msg}");
-
-                    // Fallback: si la edición de la aplicación no está habilitada, intentar inserción directa con Core Data
-                    if (msg.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
-                        if (insertOk)
-                        {
-                            System.Diagnostics.Debug.WriteLine("✅ Inserción directa realizada (sin EditOperation).");
-                            return true;
-                        }
-                        else
-                        {
-                            error = $"{msg} | Fallback directo también falló: {insertErr}";
-                            return false;
-                        }
-                    }
-
-                    var hint = "Posibles causas: valores fuera de dominio (p.ej., DOMMATERIAL, DOMTIPOSISTEMA, SUBTIPO), campos requeridos nulos, subtipo inválido, clase o dataset de solo lectura, o edición no habilitada.";
-                    var advice = "Siguiente paso: verifica dominios y subtipos de la clase destino en la GDB de cargue; prueba insertar manualmente un registro con los mismos valores; si falla, ajusta mapeos/valores.";
-                    error = $"{msg} | {hint} {advice}";
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Error migrando línea: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"🔍 StackTrace: {ex.StackTrace}");
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        private bool MigratePointFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
-        {
-            error = null;
-            try
-            {
-                // Ya estamos en el hilo MCT (el llamador usa QueuedTask.Run), así que NO volvamos a llamar QueuedTask.Run aquí.
                 using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
                 if (targetFC == null)
                 {
@@ -514,45 +367,14 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 var geometry = sourceFeature.GetShape();
                 if (geometry == null || geometry.IsEmpty)
+                {
+                    error = "Geometría nula o vacía en origen";
                     return false;
+                }
 
                 using var featureClassDef = targetFC.GetDefinition();
-                
-                // Eliminar Z y M si el destino no los soporta
-                var targetHasZ = featureClassDef.HasZ();
-                var targetHasM = featureClassDef.HasM();
-                if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
-                {
-                    try
-                    {
-                        var builder = new MapPointBuilderEx(geometry as MapPoint);
-                        builder.HasZ = targetHasZ;
-                        builder.HasM = targetHasM;
-                        geometry = builder.ToGeometry();
-                        System.Diagnostics.Debug.WriteLine($"✅ Geometría punto ajustada: Z={targetHasZ}, M={targetHasM}");
-                    }
-                    catch (Exception dimEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"⚠ No se pudo ajustar dimensiones Z/M del punto: {dimEx.Message}");
-                    }
-                }
 
-                // Reproyectar si es necesario
-                try
-                {
-                    var targetSR = featureClassDef.GetSpatialReference();
-                    if (geometry.SpatialReference != null && targetSR != null && !geometry.SpatialReference.IsEqual(targetSR))
-                    {
-                        geometry = GeometryEngine.Instance.Project(geometry, targetSR);
-                    }
-                }
-                catch (Exception prjEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"⚠ No se pudo reproyectar: {prjEx.Message}");
-                }
-                var attributes = BuildPointAttributes(sourceFeature, featureClassDef, subtipo);
-
-                // Construir diccionario con solo campos existentes
+                var attributes = BuildLineAttributes(sourceFeature, featureClassDef, subtipo);
                 var dict = new Dictionary<string, object?>();
                 string shapeField = featureClassDef.GetShapeField();
                 dict[shapeField] = geometry;
@@ -564,76 +386,258 @@ namespace EAABAddIn.Src.Application.UseCases
                         continue;
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
-                // Fallback para DOMTIPOSISTEMA
-                if (fieldMap.TryGetValue("DOMTIPOSISTEMA", out var domTipoSisFieldP))
+
+                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
+                var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
+                if (insertOk)
                 {
-                    if (!dict.ContainsKey("DOMTIPOSISTEMA") || dict["DOMTIPOSISTEMA"] is DBNull)
+                    // Forzar refresco del mapa si hay vista activa
+                    if (MapView.Active != null)
                     {
-                        if (domTipoSisFieldP.FieldType == FieldType.Integer || domTipoSisFieldP.FieldType == FieldType.SmallInteger)
-                            dict["DOMTIPOSISTEMA"] = 0;
-                        else if (domTipoSisFieldP.FieldType == FieldType.String)
-                            dict["DOMTIPOSISTEMA"] = string.Empty;
+                        MapView.Active.Redraw(true);
                     }
+                    return true;
                 }
 
+                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
                 var editOp = new EditOperation
                 {
-                    Name = $"Migrar punto -> {targetClassName}",
+                    Name = $"Migrar línea -> {targetClassName}",
                     SelectNewFeatures = false
                 };
-                editOp.Create((Table)targetFC, dict);
+
+                editOp.Callback(context =>
+                {
+                    using (var rowBuffer = targetFC.CreateRowBuffer())
+                    {
+                        foreach (var kv in dict)
+                            rowBuffer[kv.Key] = kv.Value;
+
+                        using (var row = targetFC.CreateRow(rowBuffer))
+                        {
+                            context.Invalidate(row);
+                        }
+                    }
+                }, targetFC);
+
                 bool ok = editOp.Execute();
+
                 if (!ok)
                 {
                     var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-                    System.Diagnostics.Debug.WriteLine($"❌ EditOperation falló: {msg}");
-
-                    if (msg.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
-                        if (insertOk)
-                        {
-                            System.Diagnostics.Debug.WriteLine("✅ Inserción directa realizada (sin EditOperation).");
-                            return true;
-                        }
-                        else
-                        {
-                            error = $"{msg} | Fallback directo también falló: {insertErr}";
-                            return false;
-                        }
-                    }
-
-                    var hint = "Posibles causas: valores fuera de dominio (p.ej., DOMs), campos requeridos nulos, subtipo inválido, clase o dataset de solo lectura, o edición no habilitada.";
-                    var advice = "Siguiente paso: valida dominios/subtipos de la clase destino y prueba un insert manual en la GDB de cargue.";
-                    error = $"{msg} | {hint} {advice}";
+                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
                     return false;
                 }
+
+                if (MapView.Active != null)
+                    MapView.Active.Redraw(true);
+
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Error migrando punto: {ex.Message}");
                 error = ex.Message;
                 return false;
             }
         }
 
-        // Inserción directa en FGDB sin usar EditOperation (no requiere edición habilitada en la app)
+
+        private bool MigratePointFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
+        {
+            error = null;
+            try
+            {
+                using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
+                if (targetFC == null)
+                {
+                    error = $"No se encontró la clase de destino: {targetClassName}";
+                    return false;
+                }
+
+                var geometry = sourceFeature.GetShape();
+                if (geometry == null || geometry.IsEmpty)
+                {
+                    error = "Geometría nula o vacía en origen";
+                    return false;
+                }
+
+                using var featureClassDef = targetFC.GetDefinition();
+
+                // Atributos
+                var attributes = BuildPointAttributes(sourceFeature, featureClassDef, subtipo);
+                var dict = new Dictionary<string, object?>();
+                string shapeField = featureClassDef.GetShapeField();
+                dict[shapeField] = geometry;
+
+                var fieldMap = featureClassDef.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
+                foreach (var attr in attributes)
+                {
+                    if (!fieldMap.TryGetValue(attr.Key, out var fieldDef))
+                        continue;
+                    dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
+                }
+
+                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
+                var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
+                if (insertOk)
+                {
+                    // Forzar refresco del mapa si hay vista activa
+                    if (MapView.Active != null)
+                    {
+                        MapView.Active.Redraw(true);
+                    }
+                    return true;
+                }
+
+                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
+                var editOp = new EditOperation
+                {
+                    Name = $"Migrar punto -> {targetClassName}",
+                    SelectNewFeatures = false
+                };
+
+                editOp.Callback(context =>
+                {
+                    using (var rowBuffer = targetFC.CreateRowBuffer())
+                    {
+                        foreach (var kv in dict)
+                            rowBuffer[kv.Key] = kv.Value;
+
+                        using (var row = targetFC.CreateRow(rowBuffer))
+                        {
+                            context.Invalidate(row);
+                        }
+                    }
+                }, targetFC);
+
+                bool ok = editOp.Execute();
+
+                if (!ok)
+                {
+                    var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
+                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
+                    return false;
+                }
+
+                if (MapView.Active != null)
+                    MapView.Active.Redraw(true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        // Inserción directa con transacción para ser robustos ante estados de edición de la app
         private (bool ok, string? error) TryInsertRowDirect(FeatureClass targetFC, Dictionary<string, object?> dict)
         {
             try
             {
                 using var def = targetFC.GetDefinition();
                 var fieldMap = def.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
-                using var rowBuffer = targetFC.CreateRowBuffer();
+                
+                // Validar geometría
+                string shapeField = def.GetShapeField();
+                if (dict.TryGetValue(shapeField, out var geomVal))
+                {
+                    if (geomVal == null || (geomVal is Geometry g && g.IsEmpty))
+                    {
+                        return (false, "Geometría nula o vacía al insertar");
+                    }
+                    
+                    // ✅ CORRECCIÓN: Eliminar valores Z/M si la FeatureClass no los soporta
+                    if (geomVal is Geometry sourceGeom)
+                    {
+                        bool targetHasZ = def.HasZ();
+                        bool targetHasM = def.HasM();
+                        bool sourceHasZ = sourceGeom.HasZ;
+                        bool sourceHasM = sourceGeom.HasM;
+                        
+                        // Si hay mismatch en Z o M, crear geometría compatible
+                        if ((sourceHasZ && !targetHasZ) || (sourceHasM && !targetHasM))
+                        {
+                            try
+                            {
+                                System.Diagnostics.Debug.WriteLine($"🔧 Ajustando geometría: Source(Z={sourceHasZ},M={sourceHasM}) → Target(Z={targetHasZ},M={targetHasM})");
+                                
+                                // Recrear geometría sin Z/M usando JSON (más confiable)
+                                Geometry adjustedGeom = sourceGeom;
+                                
+                                if (sourceGeom is MapPoint point)
+                                {
+                                    // Para puntos, crear directamente sin Z
+                                    adjustedGeom = MapPointBuilderEx.CreateMapPoint(point.X, point.Y, sourceGeom.SpatialReference);
+                                }
+                                else if (sourceGeom is Polyline line)
+                                {
+                                    // Para líneas, copiar puntos sin Z/M desde segmentos
+                                    var builder = new PolylineBuilderEx(sourceGeom.SpatialReference);
+                                    foreach (var part in line.Parts)
+                                    {
+                                        var points = new List<MapPoint>();
+                                        // Iterar sobre segmentos para extraer puntos
+                                        foreach (var segment in part)
+                                        {
+                                            var startPt = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        // Agregar el último punto (EndPoint del último segmento)
+                                        if (part.Count > 0)
+                                        {
+                                            var lastSegment = part[part.Count - 1];
+                                            var endPt = lastSegment.EndPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(endPt.X, endPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        if (points.Count > 0)
+                                            builder.AddPart(points);
+                                    }
+                                    adjustedGeom = builder.ToGeometry();
+                                }
+                                else if (sourceGeom is Polygon poly)
+                                {
+                                    // Para polígonos, copiar puntos sin Z/M desde segmentos
+                                    var builder = new PolygonBuilderEx(sourceGeom.SpatialReference);
+                                    foreach (var part in poly.Parts)
+                                    {
+                                        var points = new List<MapPoint>();
+                                        // Iterar sobre segmentos para extraer puntos
+                                        foreach (var segment in part)
+                                        {
+                                            var startPt = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        // Para polígonos cerrados, no necesitamos agregar el EndPoint del último segmento
+                                        // porque el StartPoint del primer segmento es igual al EndPoint del último
+                                        if (points.Count > 0)
+                                            builder.AddPart(points);
+                                    }
+                                    adjustedGeom = builder.ToGeometry();
+                                }
+                                
+                                dict[shapeField] = adjustedGeom;
+                                System.Diagnostics.Debug.WriteLine($"✓ Geometría ajustada correctamente (nuevo HasZ={adjustedGeom.HasZ}, HasM={adjustedGeom.HasM})");
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"❌ Error ajustando geometría: {ex.Message}");
+                                return (false, $"Error ajustando geometría Z/M: {ex.Message}");
+                            }
+                        }
+                    }
+                }
 
+                // ✅ Inserción directa sin verificar transacciones (más simple y robusto)
+                using var rowBuffer = targetFC.CreateRowBuffer();
                 foreach (var kv in dict)
                 {
                     if (!fieldMap.TryGetValue(kv.Key, out var fieldDef))
                         continue;
-                    // OID/GlobalID no se establecen manualmente
                     if (fieldDef.FieldType == FieldType.OID || fieldDef.FieldType == FieldType.GlobalID)
                         continue;
+                    
                     rowBuffer[kv.Key] = kv.Value ?? DBNull.Value;
                 }
 
@@ -676,10 +680,13 @@ namespace EAABAddIn.Src.Application.UseCases
         {
             var a = new Dictionary<string, object?>();
             a["SUBTIPO"] = subtipo;
-            a["DOMTIPOSISTEMA"] = GetFieldValue<int?>(source, "SISTEMA");
+            // Manejar SISTEMA como string (igual que en líneas)
+            var sistema = GetFieldValue<int?>(source, "SISTEMA");
+            a["DOMTIPOSISTEMA"] = sistema?.ToString();
             a["FECHAINSTALACION"] = GetFieldValue<DateTime?>(source, "FECHADATO");
             a["DOMESTADOENRED"] = GetFieldValue<string>(source, "ESTADOENRE");
             a["DOMCALIDADDATO"] = GetFieldValue<string>(source, "CALIDADDAT");
+            System.Diagnostics.Debug.WriteLine($"📋 Atributos punto construidos: SUBTIPO={subtipo}, SISTEMA={sistema}");
             return a;
         }
 
@@ -778,6 +785,179 @@ namespace EAABAddIn.Src.Application.UseCases
             catch { }
 
             return null;
+        }
+
+        /// <summary>
+        /// Agrega las capas migradas de alcantarillado al mapa activo con simbología visible
+        /// </summary>
+        public async Task<(bool ok, string message)> AddMigratedLayersToMap(string targetGdbPath)
+        {
+            return await QueuedTask.Run(() =>
+            {
+                var log = new System.Text.StringBuilder();
+                try
+                {
+                    var map = MapView.Active?.Map;
+                    if (map == null)
+                    {
+                        return (false, "No hay un mapa activo");
+                    }
+
+                    using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
+                    
+                    log.AppendLine("🗺️ Agregando capas de alcantarillado al mapa...");
+
+                    var layersAdded = new List<string>();
+                    Envelope? combinedExtent = null;
+
+                    // Clases de líneas
+                    var lineClasses = new[] { "als_RedLocal", "als_RedMatriz", "als_Conduccion" };
+                    foreach (var className in lineClasses)
+                    {
+                        var (added, extent) = AddFeatureLayerToMap(map, targetGdb, className, isLine: true);
+                        if (added)
+                        {
+                            layersAdded.Add(className);
+                            if (extent != null)
+                                combinedExtent = combinedExtent == null ? extent : combinedExtent.Union(extent);
+                        }
+                    }
+
+                    // Clases de puntos
+                    var pointClasses = new[] { "als_Pozo", "als_CamaraInspeccion", "als_Sumidero", "als_EstructuraControl" };
+                    foreach (var className in pointClasses)
+                    {
+                        var (added, extent) = AddFeatureLayerToMap(map, targetGdb, className, isLine: false);
+                        if (added)
+                        {
+                            layersAdded.Add(className);
+                            if (extent != null)
+                                combinedExtent = combinedExtent == null ? extent : combinedExtent.Union(extent);
+                        }
+                    }
+
+                    if (layersAdded.Count > 0)
+                    {
+                        log.AppendLine($"✓ Capas agregadas: {string.Join(", ", layersAdded)}");
+                        
+                        // Hacer zoom al extent combinado
+                        if (combinedExtent != null && MapView.Active != null)
+                        {
+                            MapView.Active.ZoomTo(combinedExtent, TimeSpan.FromSeconds(1));
+                            log.AppendLine($"✓ Zoom aplicado al extent de las features");
+                        }
+                        
+                        return (true, log.ToString());
+                    }
+                    else
+                    {
+                        return (false, "No se agregó ninguna capa (posiblemente vacías o no existen)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.AppendLine($"❌ Error: {ex.Message}");
+                    return (false, log.ToString());
+                }
+            });
+        }
+
+        private (bool added, Envelope? extent) AddFeatureLayerToMap(Map map, Geodatabase gdb, string className, bool isLine)
+        {
+            try
+            {
+                using var fc = OpenTargetFeatureClass(gdb, className);
+                if (fc == null)
+                    return (false, null);
+
+                var count = fc.GetCount();
+                if (count == 0)
+                    return (false, null);
+
+                // Verificar si la capa ya existe
+                var existingLayer = map.GetLayersAsFlattenedList()
+                    .OfType<FeatureLayer>()
+                    .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+
+                if (existingLayer != null)
+                {
+                    // Ya existe, solo aplicar simbología y obtener extent
+                    ApplySymbology(existingLayer, isLine);
+                    using var def = fc.GetDefinition();
+                    return (true, def.GetExtent());
+                }
+
+                // Crear URI de la feature class
+                using var fcDef = fc.GetDefinition();
+                var fcPath = fcDef.GetName();
+                
+                var uri = new Uri(Path.Combine(gdb.GetPath().LocalPath, fcPath));
+                
+                // Crear y agregar la capa
+                var layerParams = new LayerCreationParams(uri)
+                {
+                    Name = className
+                };
+
+                var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(layerParams, map);
+                
+                if (layer != null)
+                {
+                    ApplySymbology(layer, isLine);
+                    return (true, fcDef.GetExtent());
+                }
+
+                return (false, null);
+            }
+            catch
+            {
+                return (false, null);
+            }
+        }
+
+        private void ApplySymbology(FeatureLayer layer, bool isLine)
+        {
+            try
+            {
+                if (isLine)
+                {
+                    // Simbología para líneas (verde para alcantarillado)
+                    var lineSymbol = SymbolFactory.Instance.ConstructLineSymbol(
+                        ColorFactory.Instance.CreateRGBColor(0, 176, 80), // Verde
+                        2.5,
+                        SimpleLineStyle.Solid
+                    );
+                    
+                    var rendererDef = new SimpleRendererDefinition()
+                    {
+                        SymbolTemplate = lineSymbol.MakeSymbolReference()
+                    };
+                    
+                    var renderer = layer.CreateRenderer(rendererDef);
+                    layer.SetRenderer(renderer);
+                }
+                else
+                {
+                    // Simbología para puntos (naranja para alcantarillado)
+                    var pointSymbol = SymbolFactory.Instance.ConstructPointSymbol(
+                        ColorFactory.Instance.CreateRGBColor(255, 165, 0), // Naranja
+                        8,
+                        SimpleMarkerStyle.Circle
+                    );
+                    
+                    var rendererDef = new SimpleRendererDefinition()
+                    {
+                        SymbolTemplate = pointSymbol.MakeSymbolReference()
+                    };
+                    
+                    var renderer = layer.CreateRenderer(rendererDef);
+                    layer.SetRenderer(renderer);
+                }
+            }
+            catch
+            {
+                // Si falla la simbología, la capa se agrega con la simbología por defecto
+            }
         }
 
         #endregion

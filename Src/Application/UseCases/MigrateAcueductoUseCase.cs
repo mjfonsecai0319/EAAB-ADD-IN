@@ -9,6 +9,8 @@ using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Editing;
+using ArcGIS.Desktop.Mapping;
+using ArcGIS.Core.CIM;
 
 namespace EAABAddIn.Src.Application.UseCases
 {
@@ -36,6 +38,10 @@ namespace EAABAddIn.Src.Application.UseCases
                         return (false, $"No se pudo abrir: {sourceLineasPath}");
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
+
+                    // Asegurar que las capas de destino estén presentes en el mapa (ayuda a iniciar sesión de edición del workspace)
+                    var map = MapView.Active?.Map;
+                    var ensuredLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     int migrated = 0, total = 0, noClase = 0, noTarget = 0, failed = 0;
 
@@ -72,25 +78,28 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                                 
                                 // Verificar SR del destino
-                                using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
-                                if (targetFC != null)
+                                if (clase.HasValue)
                                 {
-                                    using var targetDef = targetFC.GetDefinition();
-                                    var targetSR = targetDef.GetSpatialReference();
-                                    string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
-                                    log.AppendLine($"   SR Destino: {targetSRInfo}");
-                                    
-                                    if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
+                                    using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
+                                    if (targetFC != null)
                                     {
-                                        bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
-                                        bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
-                                        if (isMagnaSource && isMagnaTarget)
+                                        using var targetDef = targetFC.GetDefinition();
+                                        var targetSR = targetDef.GetSpatialReference();
+                                        string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
+                                        log.AppendLine($"   SR Destino: {targetSRInfo}");
+                                        
+                                        if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
                                         {
-                                            log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
-                                        }
-                                        else
-                                        {
-                                            log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
+                                            bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
+                                            bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
+                                            if (isMagnaSource && isMagnaTarget)
+                                            {
+                                                log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
+                                            }
+                                            else
+                                            {
+                                                log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
+                                            }
                                         }
                                     }
                                 }
@@ -120,6 +129,13 @@ namespace EAABAddIn.Src.Application.UseCases
                             noTarget++;
                             System.Diagnostics.Debug.WriteLine($"⚠ Clase destino no existe: {targetClassName}");
                             continue;
+                        }
+
+                        // Garantizar capa en mapa (solo una vez por clase)
+                        if (map != null && !ensuredLayers.Contains(targetClassName))
+                        {
+                            EnsureLayerForTargetClass(map, targetGdb, targetClassName, isLine: true);
+                            ensuredLayers.Add(targetClassName);
                         }
 
                         if (total <= 5)
@@ -241,6 +257,10 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
+                    // Asegurar que las capas de destino estén presentes en el mapa (ayuda a iniciar sesión de edición del workspace)
+                    var map = MapView.Active?.Map;
+                    var ensuredLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                     int migrated = 0, total = 0, noClase = 0, noTarget = 0, failed = 0;
 
                     using var cursor = sourceFC.Search();
@@ -322,6 +342,12 @@ namespace EAABAddIn.Src.Application.UseCases
                             noTarget++;
                             System.Diagnostics.Debug.WriteLine($"⚠ Clase destino no existe: {targetClassName}");
                             continue;
+                        }
+
+                        if (map != null && !ensuredLayers.Contains(targetClassName))
+                        {
+                            EnsureLayerForTargetClass(map, targetGdb, targetClassName, isLine: false);
+                            ensuredLayers.Add(targetClassName);
                         }
 
                         if (total <= 5)
@@ -577,102 +603,7 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 using var featureClassDef = targetFC.GetDefinition();
 
-                // Obtener SR del destino primero
-                var targetSR = featureClassDef.GetSpatialReference();
-                var sourceSR = geometry.SpatialReference;
-
-                // PASO 1: Ajustar Z/M
-                var targetHasZ = featureClassDef.HasZ();
-                var targetHasM = featureClassDef.HasM();
-                if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
-                {
-                    try
-                    {
-                        var builder = new PolylineBuilderEx(geometry as Polyline);
-                        builder.HasZ = targetHasZ;
-                        builder.HasM = targetHasM;
-                        // IMPORTANTE: Preservar el SR original
-                        if (sourceSR != null)
-                            builder.SpatialReference = sourceSR;
-                        geometry = builder.ToGeometry();
-                        
-                        if (geometry == null || geometry.IsEmpty)
-                        {
-                            error = "Geometría inválida después de eliminar Z/M";
-                            return false;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        error = $"Error eliminando dimensiones Z/M: {ex.Message}";
-                        return false;
-                    }
-                }
-
-                // PASO 2: Manejar sistema de referencia espacial
-                // Si ambos son MAGNA Bogotá (102233 o 6247), NO reproyectar - solo cambiar SR
-                bool isMagnaBogotaSource = sourceSR != null && (sourceSR.Wkid == 102233 || sourceSR.Wkid == 6247);
-                bool isMagnaBogotaTarget = targetSR != null && (targetSR.Wkid == 102233 || targetSR.Wkid == 6247);
-                
-                if (isMagnaBogotaSource && isMagnaBogotaTarget && sourceSR != null && targetSR != null)
-                {
-                    // Mantener coordenadas exactas, solo cambiar el SR al del destino
-                    if (!sourceSR.IsEqual(targetSR))
-                    {
-                        var builder = new PolylineBuilderEx(geometry as Polyline);
-                        builder.SpatialReference = targetSR;
-                        geometry = builder.ToGeometry();
-                    }
-                }
-                else if (sourceSR != null && targetSR != null && !sourceSR.IsEqual(targetSR))
-                {
-                    // Reproyectar solo si son sistemas realmente diferentes
-                    try
-                    {
-                        var projected = GeometryEngine.Instance.Project(geometry, targetSR);
-                        if (projected != null && !projected.IsEmpty)
-                        {
-                            geometry = projected;
-                        }
-                        else
-                        {
-                            error = $"Reproyección falló: geometría vacía después de proyectar";
-                            return false;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        error = $"Error reproyectando: {ex.Message}";
-                        return false;
-                    }
-                }
-                else if (sourceSR == null && targetSR != null)
-                {
-                    // Si no hay SR en origen, usar el del destino
-                    var builder = new PolylineBuilderEx(geometry as Polyline);
-                    builder.SpatialReference = targetSR;
-                    geometry = builder.ToGeometry();
-                }
-
-                // Validar geometría final
-                if (geometry == null || geometry.IsEmpty)
-                {
-                    error = "Geometría inválida después de transformaciones";
-                    return false;
-                }
-                
-                // Verificar que la geometría tiene SR asignado
-                if (geometry.SpatialReference == null && targetSR != null)
-                {
-                    // Última oportunidad: asignar SR del destino
-                    var builder = new PolylineBuilderEx(geometry as Polyline);
-                    builder.SpatialReference = targetSR;
-                    geometry = builder.ToGeometry();
-                }
-
                 var attributes = BuildLineAttributes(sourceFeature, featureClassDef, subtipo);
-
-                // Construir diccionario con solo campos existentes
                 var dict = new Dictionary<string, object?>();
                 string shapeField = featureClassDef.GetShapeField();
                 dict[shapeField] = geometry;
@@ -685,32 +616,51 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
+                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
+                var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
+                if (insertOk)
+                {
+                    // Forzar refresco del mapa si hay vista activa
+                    if (MapView.Active != null)
+                    {
+                        MapView.Active.Redraw(true);
+                    }
+                    return true;
+                }
+
+                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
                 var editOp = new EditOperation
                 {
-                    Name = $"Migrar línea ACU -> {targetClassName}",
+                    Name = $"Migrar línea -> {targetClassName}",
                     SelectNewFeatures = false
                 };
-                editOp.Create(targetFC, dict);
+
+                editOp.Callback(context =>
+                {
+                    using (var rowBuffer = targetFC.CreateRowBuffer())
+                    {
+                        foreach (var kv in dict)
+                            rowBuffer[kv.Key] = kv.Value;
+
+                        using (var row = targetFC.CreateRow(rowBuffer))
+                        {
+                            context.Invalidate(row);
+                        }
+                    }
+                }, targetFC);
+
                 bool ok = editOp.Execute();
+
                 if (!ok)
                 {
                     var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-
-                    if (msg.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
-                        if (insertOk)
-                            return true;
-                        else
-                        {
-                            error = $"{msg} | Fallback directo también falló: {insertErr}";
-                            return false;
-                        }
-                    }
-
-                    error = msg;
+                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
                     return false;
                 }
+
+                if (MapView.Active != null)
+                    MapView.Active.Redraw(true);
+
                 return true;
             }
             catch (Exception ex)
@@ -719,6 +669,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 return false;
             }
         }
+
 
         private bool MigratePointFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
         {
@@ -741,101 +692,8 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 using var featureClassDef = targetFC.GetDefinition();
 
-                // Obtener SR del destino primero
-                var targetSR = featureClassDef.GetSpatialReference();
-                var sourceSR = geometry.SpatialReference;
-
-                // PASO 1: Ajustar Z/M
-                var targetHasZ = featureClassDef.HasZ();
-                var targetHasM = featureClassDef.HasM();
-                if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
-                {
-                    try
-                    {
-                        var builder = new MapPointBuilderEx(geometry as MapPoint);
-                        builder.HasZ = targetHasZ;
-                        builder.HasM = targetHasM;
-                        // IMPORTANTE: Preservar el SR original
-                        if (sourceSR != null)
-                            builder.SpatialReference = sourceSR;
-                        geometry = builder.ToGeometry();
-                        
-                        if (geometry == null || geometry.IsEmpty)
-                        {
-                            error = "Geometría inválida después de eliminar Z/M";
-                            return false;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        error = $"Error eliminando dimensiones Z/M: {ex.Message}";
-                        return false;
-                    }
-                }
-
-                // PASO 2: Manejar sistema de referencia espacial
-                // Si ambos son MAGNA Bogotá (102233 o 6247), NO reproyectar - solo cambiar SR
-                bool isMagnaBogotaSource = sourceSR != null && (sourceSR.Wkid == 102233 || sourceSR.Wkid == 6247);
-                bool isMagnaBogotaTarget = targetSR != null && (targetSR.Wkid == 102233 || targetSR.Wkid == 6247);
-                
-                if (isMagnaBogotaSource && isMagnaBogotaTarget && sourceSR != null && targetSR != null)
-                {
-                    // Mantener coordenadas exactas, solo cambiar el SR al del destino
-                    if (!sourceSR.IsEqual(targetSR))
-                    {
-                        var builder = new MapPointBuilderEx(geometry as MapPoint);
-                        builder.SpatialReference = targetSR;
-                        geometry = builder.ToGeometry();
-                    }
-                }
-                else if (sourceSR != null && targetSR != null && !sourceSR.IsEqual(targetSR))
-                {
-                    // Reproyectar solo si son sistemas realmente diferentes
-                    try
-                    {
-                        var projected = GeometryEngine.Instance.Project(geometry, targetSR);
-                        if (projected != null && !projected.IsEmpty)
-                        {
-                            geometry = projected;
-                        }
-                        else
-                        {
-                            error = $"Reproyección falló: geometría vacía después de proyectar";
-                            return false;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        error = $"Error reproyectando: {ex.Message}";
-                        return false;
-                    }
-                }
-                else if (sourceSR == null && targetSR != null)
-                {
-                    // Si no hay SR en origen, usar el del destino
-                    var builder = new MapPointBuilderEx(geometry as MapPoint);
-                    builder.SpatialReference = targetSR;
-                    geometry = builder.ToGeometry();
-                }
-
-                // Validar geometría final
-                if (geometry == null || geometry.IsEmpty)
-                {
-                    error = "Geometría inválida después de transformaciones";
-                    return false;
-                }
-                
-                // Verificar que la geometría tiene SR asignado
-                if (geometry.SpatialReference == null && targetSR != null)
-                {
-                    // Última oportunidad: asignar SR del destino
-                    var builder = new MapPointBuilderEx(geometry as MapPoint);
-                    builder.SpatialReference = targetSR;
-                    geometry = builder.ToGeometry();
-                }
-
+                // Atributos
                 var attributes = BuildPointAttributes(sourceFeature, featureClassDef, subtipo);
-
                 var dict = new Dictionary<string, object?>();
                 string shapeField = featureClassDef.GetShapeField();
                 dict[shapeField] = geometry;
@@ -848,32 +706,51 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
+                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
+                var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
+                if (insertOk)
+                {
+                    // Forzar refresco del mapa si hay vista activa
+                    if (MapView.Active != null)
+                    {
+                        MapView.Active.Redraw(true);
+                    }
+                    return true;
+                }
+
+                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
                 var editOp = new EditOperation
                 {
-                    Name = $"Migrar punto ACU -> {targetClassName}",
+                    Name = $"Migrar punto -> {targetClassName}",
                     SelectNewFeatures = false
                 };
-                editOp.Create(targetFC, dict);
+
+                editOp.Callback(context =>
+                {
+                    using (var rowBuffer = targetFC.CreateRowBuffer())
+                    {
+                        foreach (var kv in dict)
+                            rowBuffer[kv.Key] = kv.Value;
+
+                        using (var row = targetFC.CreateRow(rowBuffer))
+                        {
+                            context.Invalidate(row);
+                        }
+                    }
+                }, targetFC);
+
                 bool ok = editOp.Execute();
+
                 if (!ok)
                 {
                     var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-
-                    if (msg.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
-                        if (insertOk)
-                            return true;
-                        else
-                        {
-                            error = $"{msg} | Fallback directo también falló: {insertErr}";
-                            return false;
-                        }
-                    }
-
-                    error = msg;
+                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
                     return false;
                 }
+
+                if (MapView.Active != null)
+                    MapView.Active.Redraw(true);
+
                 return true;
             }
             catch (Exception ex)
@@ -882,6 +759,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 return false;
             }
         }
+
 
         // Mapeo de atributos líneas acueducto (según Python: atrib_l_ecu_shp -> atrib_l_ecu_gdb)
         private Dictionary<string, object?> BuildLineAttributes(Feature source, FeatureClassDefinition def, int subtipo)
@@ -1094,8 +972,7 @@ namespace EAABAddIn.Src.Application.UseCases
             {
                 using var def = targetFC.GetDefinition();
                 var fieldMap = def.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
-                using var rowBuffer = targetFC.CreateRowBuffer();
-
+                
                 // Verificar que la geometría está en el diccionario
                 string shapeField = def.GetShapeField();
                 if (dict.TryGetValue(shapeField, out var geomValue))
@@ -1104,8 +981,86 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         return (false, "Geometría nula o vacía al insertar");
                     }
+                    
+                    // ✅ CORRECCIÓN: Eliminar valores Z/M si la FeatureClass no los soporta
+                    if (geomValue is Geometry sourceGeom)
+                    {
+                        bool targetHasZ = def.HasZ();
+                        bool targetHasM = def.HasM();
+                        bool sourceHasZ = sourceGeom.HasZ;
+                        bool sourceHasM = sourceGeom.HasM;
+                        
+                        // Si hay mismatch en Z o M, crear geometría compatible
+                        if ((sourceHasZ && !targetHasZ) || (sourceHasM && !targetHasM))
+                        {
+                            try
+                            {
+                                // Recrear geometría sin Z/M usando coordenadas directas (más confiable)
+                                Geometry adjustedGeom = sourceGeom;
+                                
+                                if (sourceGeom is MapPoint point)
+                                {
+                                    // Para puntos, crear directamente sin Z
+                                    adjustedGeom = MapPointBuilderEx.CreateMapPoint(point.X, point.Y, sourceGeom.SpatialReference);
+                                }
+                                else if (sourceGeom is Polyline line)
+                                {
+                                    // Para líneas, copiar puntos sin Z/M desde segmentos
+                                    var builder = new PolylineBuilderEx(sourceGeom.SpatialReference);
+                                    foreach (var part in line.Parts)
+                                    {
+                                        var points = new List<MapPoint>();
+                                        // Iterar sobre segmentos para extraer puntos
+                                        foreach (var segment in part)
+                                        {
+                                            var startPt = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        // Agregar el último punto (EndPoint del último segmento)
+                                        if (part.Count > 0)
+                                        {
+                                            var lastSegment = part[part.Count - 1];
+                                            var endPt = lastSegment.EndPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(endPt.X, endPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        if (points.Count > 0)
+                                            builder.AddPart(points);
+                                    }
+                                    adjustedGeom = builder.ToGeometry();
+                                }
+                                else if (sourceGeom is Polygon poly)
+                                {
+                                    // Para polígonos, copiar puntos sin Z/M desde segmentos
+                                    var builder = new PolygonBuilderEx(sourceGeom.SpatialReference);
+                                    foreach (var part in poly.Parts)
+                                    {
+                                        var points = new List<MapPoint>();
+                                        // Iterar sobre segmentos para extraer puntos
+                                        foreach (var segment in part)
+                                        {
+                                            var startPt = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                        }
+                                        // Para polígonos cerrados, no necesitamos agregar el EndPoint del último segmento
+                                        // porque el StartPoint del primer segmento es igual al EndPoint del último
+                                        if (points.Count > 0)
+                                            builder.AddPart(points);
+                                    }
+                                    adjustedGeom = builder.ToGeometry();
+                                }
+                                
+                                dict[shapeField] = adjustedGeom;
+                            }
+                            catch (Exception ex)
+                            {
+                                return (false, $"Error ajustando geometría Z/M: {ex.Message}");
+                            }
+                        }
+                    }
                 }
 
+                // ✅ Inserción directa sin verificar transacciones (más simple y robusto)
+                using var rowBuffer = targetFC.CreateRowBuffer();
                 foreach (var kv in dict)
                 {
                     if (!fieldMap.TryGetValue(kv.Key, out var fieldDef))
@@ -1113,24 +1068,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     if (fieldDef.FieldType == FieldType.OID || fieldDef.FieldType == FieldType.GlobalID)
                         continue;
                     
-                    var valueToSet = kv.Value ?? DBNull.Value;
-                    
-                    // Validación especial para geometría
-                    if (kv.Key.Equals(shapeField, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (valueToSet is Geometry g && !g.IsEmpty)
-                        {
-                            rowBuffer[kv.Key] = valueToSet;
-                        }
-                        else
-                        {
-                            return (false, $"Geometría inválida en campo {shapeField}");
-                        }
-                    }
-                    else
-                    {
-                        rowBuffer[kv.Key] = valueToSet;
-                    }
+                    rowBuffer[kv.Key] = kv.Value ?? DBNull.Value;
                 }
 
                 using var row = targetFC.CreateRow(rowBuffer);
@@ -1223,6 +1161,445 @@ namespace EAABAddIn.Src.Application.UseCases
                     return $"❌ Error: {ex.Message}";
                 }
             });
+        }
+
+        /// <summary>
+        /// Agrega las capas migradas al mapa activo con simbología visible
+        /// </summary>
+        public async Task<(bool ok, string message)> AddMigratedLayersToMap(string targetGdbPath, bool linesOnly = false, bool pointsOnly = false)
+        {
+            return await QueuedTask.Run(() =>
+            {
+                var log = new System.Text.StringBuilder();
+                try
+                {
+                    var map = MapView.Active?.Map;
+                    if (map == null)
+                    {
+                        return (false, "No hay un mapa activo. Abre un mapa en ArcGIS Pro primero.");
+                    }
+
+                    log.AppendLine($"🗺️ Mapa activo: {map.Name}");
+                    try
+                    {
+                        var mapSR = map.SpatialReference;
+                        if (mapSR != null)
+                            log.AppendLine($"   SR del mapa: WKID={mapSR.Wkid}, Name={mapSR.Name}");
+                    }
+                    catch { }
+                    log.AppendLine($"📂 GDB: {targetGdbPath}");
+
+                    if (!Directory.Exists(targetGdbPath))
+                    {
+                        return (false, $"La GDB no existe: {targetGdbPath}");
+                    }
+
+                    using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
+                    
+                    log.AppendLine("🗺️ Agregando capas al mapa...");
+
+                    var layersAdded = new List<string>();
+                    Envelope? combinedExtent = null;
+
+                    // Clases de líneas
+                    if (!pointsOnly)
+                    {
+                        var lineClasses = new[] { "acd_RedMatriz", "acd_Conduccion", "acd_RedMenor", "acd_LineaLateral" };
+                        foreach (var className in lineClasses)
+                        {
+                            var (added, extent) = AddFeatureLayerToMap(map, targetGdb, className, isLine: true);
+                            if (added)
+                            {
+                                layersAdded.Add(className);
+                                if (extent != null)
+                                    combinedExtent = combinedExtent == null ? extent : combinedExtent.Union(extent);
+                            }
+                        }
+                    }
+
+                    // Clases de puntos
+                    if (!linesOnly)
+                    {
+                        var pointClasses = new[] { "acd_Accesorio", "acd_ValvulaControl", "acd_ValvulaSistema", "acd_Hidrante", "acd_CamaraAcceso" };
+                        foreach (var className in pointClasses)
+                        {
+                            var (added, extent) = AddFeatureLayerToMap(map, targetGdb, className, isLine: false);
+                            if (added)
+                            {
+                                layersAdded.Add(className);
+                                if (extent != null)
+                                    combinedExtent = combinedExtent == null ? extent : combinedExtent.Union(extent);
+                            }
+                        }
+                    }
+
+                    if (layersAdded.Count > 0)
+                    {
+                        log.AppendLine($"✓ Capas agregadas: {string.Join(", ", layersAdded)}");
+                        
+                        // Hacer zoom al extent combinado
+                        if (combinedExtent != null && MapView.Active != null)
+                        {
+                            log.AppendLine($"📍 Extent: XMin={combinedExtent.XMin:F2}, YMin={combinedExtent.YMin:F2}, XMax={combinedExtent.XMax:F2}, YMax={combinedExtent.YMax:F2}");
+                            
+                            // Validar que el extent sea válido
+                            if (!double.IsNaN(combinedExtent.XMin) && !double.IsNaN(combinedExtent.YMin))
+                            {
+                                // Expandir el extent un 10% para dar margen
+                                var width = combinedExtent.Width;
+                                var height = combinedExtent.Height;
+                                var expandedExtent = new EnvelopeBuilderEx(
+                                    combinedExtent.XMin - width * 0.1,
+                                    combinedExtent.YMin - height * 0.1,
+                                    combinedExtent.XMax + width * 0.1,
+                                    combinedExtent.YMax + height * 0.1,
+                                    combinedExtent.SpatialReference
+                                ).ToGeometry();
+                                
+                                MapView.Active.ZoomTo(expandedExtent, TimeSpan.FromSeconds(1.5));
+                                log.AppendLine($"✓ Zoom aplicado (expandido 10%)");
+                                
+                                // Forzar refresh del mapa
+                                MapView.Active.Redraw(true);
+                            }
+                            else
+                            {
+                                log.AppendLine($"⚠ Extent inválido (contiene NaN), no se puede hacer zoom");
+                            }
+                        }
+                        
+                        return (true, log.ToString());
+                    }
+                    else
+                    {
+                        log.AppendLine("⚠ No se agregó ninguna capa. Revisa la ventana Output > Debug para más detalles.");
+                        return (false, log.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.AppendLine($"❌ Error: {ex.Message}");
+                    log.AppendLine($"Stack: {ex.StackTrace}");
+                    return (false, log.ToString());
+                }
+            });
+        }
+
+        private (bool added, Envelope? extent) AddFeatureLayerToMap(Map map, Geodatabase gdb, string className, bool isLine)
+        {
+            try
+            {
+                using var fc = OpenTargetFeatureClass(gdb, className);
+                if (fc == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ {className}: No se pudo abrir la FeatureClass");
+                    return (false, null);
+                }
+
+                var count = fc.GetCount();
+                if (count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠ {className}: Capa vacía (0 features)");
+                    return (false, null);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"📊 {className}: {count} features encontradas");
+
+                // Calcular extent real desde las geometrías
+                Envelope? calculatedExtent = null;
+                try
+                {
+                    using var cursor = fc.Search();
+                    int geomCount = 0;
+                    while (cursor.MoveNext() && geomCount < 100) // Limitar a 100 para performance
+                    {
+                        using var feature = cursor.Current as Feature;
+                        if (feature != null)
+                        {
+                            var geom = feature.GetShape();
+                            if (geom != null && !geom.IsEmpty)
+                            {
+                                var geomExtent = geom.Extent;
+                                if (geomExtent != null && !double.IsNaN(geomExtent.XMin))
+                                {
+                                    calculatedExtent = calculatedExtent == null 
+                                        ? geomExtent 
+                                        : calculatedExtent.Union(geomExtent);
+                                    geomCount++;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (calculatedExtent != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"📏 {className}: Extent calculado desde geometrías - X[{calculatedExtent.XMin:F2}, {calculatedExtent.XMax:F2}] Y[{calculatedExtent.YMin:F2}, {calculatedExtent.YMax:F2}]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠ {className}: Error calculando extent - {ex.Message}");
+                }
+
+                // Verificar si la capa ya existe y si apunta a la misma fuente de datos
+                var existingLayer = map.GetLayersAsFlattenedList()
+                    .OfType<FeatureLayer>()
+                    .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+
+                if (existingLayer != null)
+                {
+                    bool sameDatasource = false;
+                    try
+                    {
+                        using var layerFc = existingLayer.GetFeatureClass();
+                        var layerGdb = layerFc?.GetDatastore() as Geodatabase;
+                        var layerGdbPath = layerGdb?.GetPath().LocalPath ?? string.Empty;
+                        var targetGdbPath = gdb.GetPath().LocalPath;
+                        var layerFcName = layerFc?.GetName() ?? string.Empty;
+                        var targetFcName = fc.GetName();
+                        sameDatasource =
+                            !string.IsNullOrEmpty(layerGdbPath) &&
+                            layerGdbPath.Equals(targetGdbPath, StringComparison.OrdinalIgnoreCase) &&
+                            layerFcName.Equals(targetFcName, StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch { }
+
+                    if (sameDatasource)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"✓ {className}: Capa ya existe y apunta a la misma fuente, aplicando simbología");
+                        ApplySymbology(existingLayer, isLine);
+                        EnsureLayerIsVisibleAndSelectable(existingLayer, fc);
+                        return (true, calculatedExtent);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"↻ {className}: Existe una capa con el mismo nombre pero distinta fuente. Se reemplazará.");
+                        try { map.RemoveLayer(existingLayer); } catch { }
+                    }
+                }
+
+                // Obtener la ruta completa
+                using var fcDef = fc.GetDefinition();
+                var gdbPath = gdb.GetPath().LocalPath;
+                
+                // Buscar si está dentro de un FeatureDataset
+                string fullPath = Path.Combine(gdbPath, className);
+                
+                // Intentar encontrar en feature datasets
+                try
+                {
+                    var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
+                    foreach (var fdDef in fdDefs)
+                    {
+                        try
+                        {
+                            using var fd = gdb.OpenDataset<FeatureDataset>(fdDef.GetName());
+                            using var testFc = fd.OpenDataset<FeatureClass>(className);
+                            if (testFc != null)
+                            {
+                                fullPath = Path.Combine(gdbPath, fdDef.GetName(), className);
+                                System.Diagnostics.Debug.WriteLine($"📂 {className}: Encontrada en dataset {fdDef.GetName()}");
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                // Crear y agregar la capa directamente desde el FeatureClass (más robusto que por URI)
+                System.Diagnostics.Debug.WriteLine($"🎨 Creando capa {className} desde FeatureClass...");
+                var flParams = new FeatureLayerCreationParams(fc)
+                {
+                    Name = className,
+                    MapMemberPosition = MapMemberPosition.AddToTop
+                };
+                var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(flParams, map);
+                
+                if (layer != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✓ {className}: Capa creada exitosamente");
+                    ApplySymbology(layer, isLine);
+                    EnsureLayerIsVisibleAndSelectable(layer, fc);
+                    
+                    // Forzar recálculo de extent de la capa
+                    try
+                    {
+                        layer.SetDefinitionQuery("1=1"); // Forzar refresh
+                        layer.SetDefinitionQuery(""); // Limpiar query
+                    }
+                    catch { }
+                    
+                    return (true, calculatedExtent);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ {className}: LayerFactory devolvió null");
+                }
+
+                return (false, null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ {className}: Error - {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   Stack: {ex.StackTrace}");
+                return (false, null);
+            }
+        }
+
+        private void ApplySymbology(FeatureLayer layer, bool isLine)
+        {
+            try
+            {
+                if (isLine)
+                {
+                    // Simbología para líneas
+                    var lineSymbol = SymbolFactory.Instance.ConstructLineSymbol(
+                        ColorFactory.Instance.CreateRGBColor(0, 112, 255), // Azul
+                        3.0, // Grosor ligeramente mayor para asegurarnos de verlo
+                        SimpleLineStyle.Solid
+                    );
+                    
+                    var rendererDef = new SimpleRendererDefinition()
+                    {
+                        SymbolTemplate = lineSymbol.MakeSymbolReference()
+                    };
+                    
+                    var renderer = layer.CreateRenderer(rendererDef);
+                    layer.SetRenderer(renderer);
+                }
+                else
+                {
+                    // Simbología para puntos
+                    var pointSymbol = SymbolFactory.Instance.ConstructPointSymbol(
+                        ColorFactory.Instance.CreateRGBColor(255, 0, 0), // Rojo
+                        12, // Tamaño mayor para visibilidad inmediata
+                        SimpleMarkerStyle.Circle
+                    );
+                    
+                    var rendererDef = new SimpleRendererDefinition()
+                    {
+                        SymbolTemplate = pointSymbol.MakeSymbolReference()
+                    };
+                    
+                    var renderer = layer.CreateRenderer(rendererDef);
+                    layer.SetRenderer(renderer);
+                }
+            }
+            catch
+            {
+                // Si falla la simbología, la capa se agrega con la simbología por defecto
+            }
+        }
+
+        /// <summary>
+        /// Asegura que la capa esté visible a cualquier escala y resalta una pequeña muestra de features.
+        /// </summary>
+        private void EnsureLayerIsVisibleAndSelectable(FeatureLayer layer, FeatureClass fc)
+        {
+            try
+            {
+                // Visibilidad y sin definición
+                try { layer.SetVisibility(true); } catch { }
+                try { layer.SetDefinitionQuery(""); } catch { }
+
+                // Quitar restricciones de escala
+                try
+                {
+                    var cim = layer.GetDefinition() as CIMFeatureLayer;
+                    if (cim != null)
+                    {
+                        cim.MinScale = 0;
+                        cim.MaxScale = 0;
+                        layer.SetDefinition(cim);
+                    }
+                }
+                catch { }
+
+                // Seleccionar una pequeña muestra para resaltar
+                try
+                {
+                    using var def = fc.GetDefinition();
+                    var oidField = def.GetObjectIDField();
+                    var oids = new List<long>();
+                    using (var cursor = fc.Search(null, false))
+                    {
+                        int cnt = 0;
+                        while (cursor.MoveNext() && cnt < 5)
+                        {
+                            using var row = cursor.Current as Row;
+                            if (row != null)
+                            {
+                                var oid = Convert.ToInt64(row[oidField]);
+                                oids.Add(oid);
+                                cnt++;
+                            }
+                        }
+                    }
+
+                    if (oids.Count > 0)
+                    {
+                        var where = $"{oidField} IN (" + string.Join(",", oids) + ")";
+                        var qf = new QueryFilter() { WhereClause = where };
+                        layer.Select(qf, SelectionCombinationMethod.New);
+                        System.Diagnostics.Debug.WriteLine($"✨ Selección de muestra en {layer.Name}: {oids.Count} features");
+                        try { MapView.Active?.Redraw(true); } catch { }
+                    }
+                }
+                catch { }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Garantiza que exista una capa para la clase de destino en el mapa, incluso si está vacía.
+        /// Esto ayuda a que Pro inicialice la sesión de edición para el workspace de la GDB.
+        /// </summary>
+        private void EnsureLayerForTargetClass(Map map, Geodatabase gdb, string className, bool isLine)
+        {
+            try
+            {
+                // Si ya hay una capa con este nombre y apunta a la misma fuente, no hacer nada
+                var existingLayer = map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
+                    .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+                if (existingLayer != null)
+                {
+                    try
+                    {
+                        using var layerFc = existingLayer.GetFeatureClass();
+                        var layerGdb = layerFc?.GetDatastore() as Geodatabase;
+                        if (layerGdb != null)
+                        {
+                            var same = string.Equals(layerGdb.GetPath().LocalPath, gdb.GetPath().LocalPath, StringComparison.OrdinalIgnoreCase)
+                                       && string.Equals(layerFc?.GetName(), className, StringComparison.OrdinalIgnoreCase);
+                            if (same)
+                            {
+                                ApplySymbology(existingLayer, isLine);
+                                EnsureLayerIsVisibleAndSelectable(existingLayer, layerFc!);
+                                return;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                using var fc = OpenTargetFeatureClass(gdb, className);
+                if (fc == null)
+                    return;
+
+                var flParams = new FeatureLayerCreationParams(fc)
+                {
+                    Name = className,
+                    MapMemberPosition = MapMemberPosition.AddToTop
+                };
+                var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(flParams, map);
+                if (layer != null)
+                {
+                    ApplySymbology(layer, isLine);
+                    EnsureLayerIsVisibleAndSelectable(layer, fc);
+                }
+            }
+            catch { }
         }
 
         #endregion

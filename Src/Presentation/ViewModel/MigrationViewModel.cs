@@ -289,6 +289,8 @@ internal class MigrationViewModel : BusyViewModelBase
 
             // Migrar datos de Acueducto si se especificaron
             var mensajesMigracion = new List<string>();
+            bool acueductoMigrated = false;
+            bool alcantarilladoMigrated = false;
 
             if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
             {
@@ -297,6 +299,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okLines)
                 {
                     mensajesMigracion.Add(msgLines);
+                    acueductoMigrated = true;
                 }
                 else
                 {
@@ -311,10 +314,22 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okPoints)
                 {
                     mensajesMigracion.Add(msgPoints);
+                    acueductoMigrated = true;
                 }
                 else
                 {
                     mensajesMigracion.Add($"⚠ Puntos ACU: {msgPoints}");
+                }
+            }
+
+            // Agregar capas de acueducto al mapa
+            if (acueductoMigrated)
+            {
+                StatusMessage = "Agregando capas de acueducto al mapa...";
+                var (okAdd, msgAdd) = await _migrateAcueductoUseCase.AddMigratedLayersToMap(gdbPath);
+                if (okAdd)
+                {
+                    mensajesMigracion.Add(msgAdd);
                 }
             }
 
@@ -327,6 +342,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okLines)
                 {
                     mensajesMigracion.Add(msgLines);
+                    alcantarilladoMigrated = true;
                 }
                 else
                 {
@@ -341,6 +357,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okPoints)
                 {
                     mensajesMigracion.Add(msgPoints);
+                    alcantarilladoMigrated = true;
                 }
                 else
                 {
@@ -355,6 +372,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okLinesPluv)
                 {
                     mensajesMigracion.Add(msgLinesPluv);
+                    alcantarilladoMigrated = true;
                 }
                 else
                 {
@@ -369,10 +387,22 @@ internal class MigrationViewModel : BusyViewModelBase
                 if (okPointsPluv)
                 {
                     mensajesMigracion.Add(msgPointsPluv);
+                    alcantarilladoMigrated = true;
                 }
                 else
                 {
                     mensajesMigracion.Add($"⚠ Puntos pluvial: {msgPointsPluv}");
+                }
+            }
+
+            // Agregar capas de alcantarillado al mapa
+            if (alcantarilladoMigrated)
+            {
+                StatusMessage = "Agregando capas de alcantarillado al mapa...";
+                var (okAdd, msgAdd) = await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
+                if (okAdd)
+                {
+                    mensajesMigracion.Add(msgAdd);
                 }
             }
 
