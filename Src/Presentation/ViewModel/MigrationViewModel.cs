@@ -27,6 +27,7 @@ internal class MigrationViewModel : BusyViewModelBase
     private readonly ValidateDatasetsUseCase _datasetValidatorUseCase = new ValidateDatasetsUseCase();
     private readonly CreateGdbFromXmlUseCase _createGdbFromXmlUseCase = new CreateGdbFromXmlUseCase();
     private readonly MigrateAlcantarilladoUseCase _migrateAlcantarilladoUseCase = new MigrateAlcantarilladoUseCase();
+    private readonly MigrateAcueductoUseCase _migrateAcueductoUseCase = new MigrateAcueductoUseCase();
 
     public ICommand WorkspaceCommand { get; private set; }
     public ICommand XmlSchemaCommand { get; private set; }
@@ -284,10 +285,40 @@ internal class MigrationViewModel : BusyViewModelBase
                 return;
             }
             
-            StatusMessage = $"GDB 'migracion' creada exitosamente. Iniciando migración de datos de alcantarillado...";
+            StatusMessage = $"GDB 'migracion' creada exitosamente. Iniciando migración de datos...";
+
+            // Migrar datos de Acueducto si se especificaron
+            var mensajesMigracion = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
+            {
+                StatusMessage = "Migrando líneas de acueducto...";
+                var (okLines, msgLines) = await _migrateAcueductoUseCase.MigrateLines(L_Acu_Origen, gdbPath);
+                if (okLines)
+                {
+                    mensajesMigracion.Add(msgLines);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Líneas ACU: {msgLines}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
+            {
+                StatusMessage = "Migrando puntos de acueducto...";
+                var (okPoints, msgPoints) = await _migrateAcueductoUseCase.MigratePoints(P_Acu_Origen, gdbPath);
+                if (okPoints)
+                {
+                    mensajesMigracion.Add(msgPoints);
+                }
+                else
+                {
+                    mensajesMigracion.Add($"⚠ Puntos ACU: {msgPoints}");
+                }
+            }
 
             // Migrar datos de Alcantarillado si se especificaron
-            var mensajesMigracion = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
             {

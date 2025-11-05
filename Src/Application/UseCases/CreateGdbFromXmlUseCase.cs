@@ -30,16 +30,75 @@ namespace EAABAddIn.Src.Application.UseCases
                 const string gdbName = "GDB_Cargue";
                 var gdbPath = Path.Combine(outFolder, $"{gdbName}.gdb");
                 
-                // Si la GDB ya existe, eliminarla para sobrescribir
+                // Si la GDB ya existe, intentar limpiar de forma segura (manejo de locks)
                 if (Directory.Exists(gdbPath))
                 {
-                    try
+                    // Forzar recolección de objetos que puedan retener handles
+                    try { GC.Collect(); GC.WaitForPendingFinalizers(); } catch { }
+
+                    bool deleted = false;
+                    Exception? lastEx = null;
+
+                    // Reintentos controlados de borrado (p. ej., si hay .lock)
+                    for (int attempt = 1; attempt <= 3 && !deleted; attempt++)
                     {
-                        Directory.Delete(gdbPath, recursive: true);
+                        try
+                        {
+                            Directory.Delete(gdbPath, recursive: true);
+                            deleted = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            lastEx = ex;
+                            await Task.Delay(attempt * 250);
+                        }
                     }
-                    catch (Exception ex)
+
+                    if (!deleted)
                     {
-                        return (false, string.Empty, $"No se pudo eliminar la GDB existente: {ex.Message}");
+                        // Intentar renombrar como fallback para liberar el nombre
+                        try
+                        {
+                            var backupName = $"{gdbName}_old_{DateTime.Now:yyyyMMdd_HHmmss}.gdb";
+                            var backupPath = Path.Combine(outFolder, backupName);
+                            Directory.Move(gdbPath, backupPath);
+                            // Intentar borrar el backup en background (best effort)
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await Task.Delay(1000);
+                                    Directory.Delete(backupPath, true);
+                                }
+                                catch { }
+                            });
+                        }
+                        catch (Exception moveEx)
+                        {
+                            // Último recurso: crear con nombre único para no bloquear el flujo
+                            var uniqueName = $"{gdbName}_{DateTime.Now:yyyyMMdd_HHmmss}";
+                            var uniqueGdbPath = Path.Combine(outFolder, uniqueName + ".gdb");
+                            var createParamsUnique = Geoprocessing.MakeValueArray(outFolder, uniqueName);
+                            var createResultUnique = await Geoprocessing.ExecuteToolAsync("management.CreateFileGDB", createParamsUnique);
+                            if (createResultUnique.IsFailed)
+                                return (false, string.Empty, $"La GDB existente está bloqueada y no se pudo crear una nueva: {(lastEx ?? moveEx).Message}");
+
+                            // Importar esquema al nombre único
+                            var importParamsUnique = Geoprocessing.MakeValueArray(
+                                uniqueGdbPath,
+                                xmlPath,
+                                "SCHEMA_ONLY"
+                            );
+                            var importResultUnique = await Geoprocessing.ExecuteToolAsync("management.ImportXMLWorkspaceDocument", importParamsUnique);
+                            if (importResultUnique.IsFailed)
+                            {
+                                var errorMessagesU = string.Join("; ", importResultUnique.Messages.Select(m => m.Text));
+                                return (false, uniqueGdbPath, $"Creada GDB única, pero falló la importación del XML: {errorMessagesU}");
+                            }
+
+                            return (true, uniqueGdbPath, $"GDB existente bloqueada (.lock). Se creó y usará '{uniqueName}.gdb'.");
+                        }
                     }
                 }
 
@@ -69,7 +128,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     return (false, gdbPath, $"Error al importar esquema XML: {errorMessages}");
                 }
                 
-                return (true, gdbPath, "GDB 'migracion' creada y esquema XML importado exitosamente.");
+                return (true, gdbPath, "GDB 'GDB_Cargue' creada y esquema XML importado exitosamente.");
             }
             catch (Exception ex)
             {

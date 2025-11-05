@@ -9,8 +9,8 @@
     xmlns:viewModel="clr-namespace:EAABAddIn.Src.Presentation.ViewModel"
     mc:Ignorable="d"
     d:DesignHeight="700"
-    d:DataContext="{Binding Path=viewModel.MigrationViewModel}"
->
+    d:DataContext="{Binding Path=viewModel.MigrationViewModel}">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -76,335 +76,244 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <!-- ✅ Scroll general para todo el contenido -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Margin="20">
 
-        <ScrollViewer
-            VerticalScrollBarVisibility="Auto"
-            HorizontalScrollBarVisibility="Disabled"
-            Margin="0"
-            Grid.Row="0"
-        >
+        <StackPanel>
 
-            <StackPanel Grid.Row="0">
-                <TextBlock
-                    Text="Workspace *"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                />
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+            <!-- 🔹 Workspace -->
+            <TextBlock
+                Text="Workspace *"
+                Style="{StaticResource HeaderTextStyle}"
+                Margin="0,0,0,10"/>
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                    <TextBox
-                        Grid.Column="0"
-                        Text="{Binding Workspace, Mode=OneWay}"
-                        IsReadOnly="True"
-                        Height="28"
-                    />
+                <TextBox
+                    Grid.Column="0"
+                    Text="{Binding Workspace, Mode=OneWay}"
+                    IsReadOnly="True"
+                    Height="28"/>
+                <Button
+                    Grid.Column="2"
+                    Style="{StaticResource BrowseButtonStyle}"
+                    Command="{Binding WorkspaceCommand}"
+                    Height="28"
+                    Width="28">
+                    <Image Width="16" Height="16"
+                           Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                </Button>
+            </Grid>
 
-                    <Button
-                        Grid.Column="2"
-                        Style="{StaticResource BrowseButtonStyle}"
-                        Command="{Binding WorkspaceCommand}"
-                        Height="28"
-                        Width="28"
-                    >
-                        <Image Width="16" Height="16"
-                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
-                    </Button>
-                </Grid>
+            <!-- 🔹 XML -->
+            <TextBlock
+                Text="XML NS-046 *"
+                Style="{StaticResource HeaderTextStyle}"
+                Margin="0,0,0,10"/>
+            <Grid Margin="0,0,0,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                <TextBlock
-                    Text="XML NS-046 *"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                />
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <TextBox
+                    Grid.Column="0"
+                    Text="{Binding XmlSchemaPath, Mode=OneWay}"
+                    IsReadOnly="True"
+                    Height="28"/>
+                <Button
+                    Grid.Column="2"
+                    Style="{StaticResource BrowseButtonStyle}"
+                    Command="{Binding XmlSchemaCommand}"
+                    Height="28"
+                    Width="28">
+                    <Image Width="16" Height="16"
+                           Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                </Button>
+            </Grid>
 
-                    <TextBox
-                        Grid.Column="0"
-                        Text="{Binding XmlSchemaPath, Mode=OneWay}"
-                        IsReadOnly="True"
-                        Height="28"
-                    />
-
-                    <Button
-                        Grid.Column="2"
-                        Style="{StaticResource BrowseButtonStyle}"
-                        Command="{Binding XmlSchemaCommand}"
-                        Height="28"
-                        Width="28"
-                    >
-                        <Image Width="16" Height="16"
-                            Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
-                    </Button>
-                </Grid>
-
-                <Expander
-                    Header="Migracion Información Acueducto"
-                    IsExpanded="True"
-                    Style="{DynamicResource Esri_ExpanderBorderless}"
-                >
-                    <StackPanel Margin="0,15,0,0">
-                        <TextBlock
-                            Text="Lineas Acueducto *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding L_Acu_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+            <!-- 🔹 Migración Acueducto -->
+            <Expander Header="Migracion Información Acueducto"
+                      IsExpanded="True"
+                      Style="{DynamicResource Esri_ExpanderBorderless}">
+                <StackPanel Margin="0,15,0,0">
+                    <TextBlock Text="Lineas Acueducto *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding L_Acu_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowseLAcuOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
 
-                        <TextBlock
-                            Text="Puntos Acueducto *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding P_Acu_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+                    <TextBlock Text="Puntos Acueducto *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding P_Acu_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowsePAcuOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-                </Expander>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Expander>
 
-                <Expander
-                    Header="Migracion Información Alcantarillado"
-                    IsExpanded="False"
-                    Style="{DynamicResource Esri_ExpanderBorderless}"
-                >
-                    <StackPanel Margin="0,15,0,0">
-                        <TextBlock
-                            Text="Lineas Alcantarillado (Sanitario/Combinado) *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding L_Alc_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+            <!-- 🔹 Migración Alcantarillado -->
+            <Expander Header="Migracion Información Alcantarillado"
+                      IsExpanded="False"
+                      Style="{DynamicResource Esri_ExpanderBorderless}">
+                <StackPanel Margin="0,15,0,0">
+                    <TextBlock Text="Lineas Alcantarillado (Sanitario/Combinado) *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding L_Alc_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowseLAlcOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
 
-                        <TextBlock
-                            Text="Puntos Alcantarillado (Sanitario/Combinado) *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding P_Alc_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+                    <TextBlock Text="Puntos Alcantarillado (Sanitario/Combinado) *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding P_Alc_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowsePAlcOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
 
-                        <TextBlock
-                            Text="Lineas Alcantarillado (Pluvial) *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding L_Alc_Pluv_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+                    <TextBlock Text="Lineas Alcantarillado (Pluvial) *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding L_Alc_Pluv_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowseLAlcPluvOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
 
-                        <TextBlock
-                            Text="Puntos Alcantarillado (Pluvial) *"
-                            Style="{StaticResource HeaderTextStyle}"
-                            Margin="0,0,0,10"
-                        />
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox
-                                Grid.Column="0"
-                                Text="{Binding P_Alc_Pluv_Origen, Mode=OneWay}"
-                                IsReadOnly="True"
-                                Height="28"
-                            />
-
-                            <Button
-                                Grid.Column="2"
+                    <TextBlock Text="Puntos Alcantarillado (Pluvial) *"
+                               Style="{StaticResource HeaderTextStyle}"
+                               Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding P_Alc_Pluv_Origen, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Height="28"/>
+                        <Button Grid.Column="2"
                                 Style="{StaticResource BrowseButtonStyle}"
                                 Command="{Binding BrowsePAlcPluvOrigenCommand}"
                                 Height="28"
-                                Width="28"
-                            >
-                                <Image
-                                    Width="16"
-                                    Height="16"
-                                    Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"
-                                />
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-                </Expander>
-            </StackPanel>
-        </ScrollViewer>
+                                Width="28">
+                            <Image Width="16" Height="16"
+                                   Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Expander>
 
-        <StackPanel Grid.Row="2">
+            <!-- 🔹 Estado y botones -->
             <TextBlock
                 Text="{Binding StatusMessage}"
-                Margin="0,0,0,8"
+                Margin="0,20,0,8"
                 TextWrapping="Wrap"
-                Style="{DynamicResource Esri_TextBlockRegular}"
-            />
-
+                Style="{DynamicResource Esri_TextBlockRegular}"/>
             <ProgressBar
                 Height="4"
                 IsIndeterminate="True"
-                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-            />
+                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
-                <Button
-                    Content="Limpiar"
-                    Style="{StaticResource Esri_Button}"
-                    Margin="0,0,10,0"
-                    Command="{Binding ClearFormCommand}"
-                />
-                <Button
-                    Content="Ejecutar"
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    Command="{Binding RunCommand}"
-                />
+            <StackPanel HorizontalAlignment="Right"
+                        Orientation="Horizontal"
+                        Margin="0,10,0,0">
+                <Button Content="Limpiar"
+                        Style="{StaticResource Esri_Button}"
+                        Margin="0,0,10,0"
+                        Command="{Binding ClearFormCommand}"/>
+                <Button Content="Ejecutar"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding RunCommand}"/>
             </StackPanel>
+
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </UserControl>
