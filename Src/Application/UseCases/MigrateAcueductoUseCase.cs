@@ -59,10 +59,40 @@ namespace EAABAddIn.Src.Application.UseCases
                             var geom = feature.GetShape();
                             if (geom != null && !geom.IsEmpty)
                             {
+                                var sr = geom.SpatialReference;
+                                string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
                                 log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
+                                log.AppendLine($"   SR Origen: {srInfo}");
+                                
                                 if (geom is Polyline polyline)
                                 {
                                     log.AppendLine($"   Longitud: {polyline.Length:F2} m, Puntos: {polyline.PointCount}");
+                                    var extent = polyline.Extent;
+                                    log.AppendLine($"   Extent: XMin={extent.XMin:F2}, YMin={extent.YMin:F2}, XMax={extent.XMax:F2}, YMax={extent.YMax:F2}");
+                                }
+                                
+                                // Verificar SR del destino
+                                using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
+                                if (targetFC != null)
+                                {
+                                    using var targetDef = targetFC.GetDefinition();
+                                    var targetSR = targetDef.GetSpatialReference();
+                                    string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
+                                    log.AppendLine($"   SR Destino: {targetSRInfo}");
+                                    
+                                    if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
+                                    {
+                                        bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
+                                        bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
+                                        if (isMagnaSource && isMagnaTarget)
+                                        {
+                                            log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
+                                        }
+                                        else
+                                        {
+                                            log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
+                                        }
+                                    }
                                 }
                             }
                             else
@@ -123,6 +153,64 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
+                    
+                    // Verificar que las features se insertaron
+                    if (migrated > 0)
+                    {
+                        log.AppendLine($"\n🔍 Verificando features insertadas...");
+                        var targetClassName = GetTargetLineClassName(4); // Usar una clase común para verificar
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
+                            if (targetFC != null)
+                            {
+                                var count = targetFC.GetCount();
+                                log.AppendLine($"   Features en {targetClassName}: {count}");
+                                
+                                // Verificar las geometrías insertadas
+                                if (count > 0)
+                                {
+                                    using var def = targetFC.GetDefinition();
+                                    var sr = def.GetSpatialReference();
+                                    log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
+                                    
+                                    using var verifyCursor = targetFC.Search(null, false);
+                                    int checkedCount = 0;
+                                    int validGeoms = 0;
+                                    int emptyGeoms = 0;
+                                    while (verifyCursor.MoveNext() && checkedCount < 5)
+                                    {
+                                        using var feat = verifyCursor.Current as Feature;
+                                        if (feat != null)
+                                        {
+                                            var geom = feat.GetShape();
+                                            checkedCount++;
+                                            if (geom != null && !geom.IsEmpty)
+                                            {
+                                                validGeoms++;
+                                                if (checkedCount == 1 && geom is Polyline pl)
+                                                {
+                                                    var ext = pl.Extent;
+                                                    var geomSR = geom.SpatialReference;
+                                                    log.AppendLine($"   Primera feature insertada:");
+                                                    log.AppendLine($"     Extent: XMin={ext.XMin:F2}, YMin={ext.YMin:F2}, XMax={ext.XMax:F2}, YMax={ext.YMax:F2}");
+                                                    log.AppendLine($"     SR: WKID={geomSR?.Wkid}");
+                                                    log.AppendLine($"     Longitud: {pl.Length:F2}, Puntos: {pl.PointCount}");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                emptyGeoms++;
+                                            }
+                                        }
+                                    }
+                                    log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
+                                    if (emptyGeoms > 0)
+                                        log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
+                                }
+                            }
+                        }
+                    }
 
                     return (true, log.ToString());
                 }
@@ -175,10 +263,38 @@ namespace EAABAddIn.Src.Application.UseCases
                             var geom = feature.GetShape();
                             if (geom != null && !geom.IsEmpty)
                             {
+                                var sr = geom.SpatialReference;
+                                string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
                                 log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
+                                log.AppendLine($"   SR Origen: {srInfo}");
+                                
                                 if (geom is MapPoint point)
                                 {
                                     log.AppendLine($"   Coordenadas: X={point.X:F2}, Y={point.Y:F2}");
+                                }
+                                
+                                // Verificar SR del destino
+                                using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetPointClassName(clase.Value));
+                                if (targetFC != null)
+                                {
+                                    using var targetDef = targetFC.GetDefinition();
+                                    var targetSR = targetDef.GetSpatialReference();
+                                    string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
+                                    log.AppendLine($"   SR Destino: {targetSRInfo}");
+                                    
+                                    if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
+                                    {
+                                        bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
+                                        bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
+                                        if (isMagnaSource && isMagnaTarget)
+                                        {
+                                            log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
+                                        }
+                                        else
+                                        {
+                                            log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
+                                        }
+                                    }
                                 }
                             }
                             else
@@ -239,6 +355,62 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
+                    
+                    // Verificar que las features se insertaron
+                    if (migrated > 0)
+                    {
+                        log.AppendLine($"\n🔍 Verificando features insertadas...");
+                        var targetClassName = GetTargetPointClassName(7); // Usar una clase común para verificar
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
+                            if (targetFC != null)
+                            {
+                                var count = targetFC.GetCount();
+                                log.AppendLine($"   Features en {targetClassName}: {count}");
+                                
+                                // Verificar las geometrías insertadas
+                                if (count > 0)
+                                {
+                                    using var def = targetFC.GetDefinition();
+                                    var sr = def.GetSpatialReference();
+                                    log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
+                                    
+                                    using var verifyCursor = targetFC.Search(null, false);
+                                    int checkedCount = 0;
+                                    int validGeoms = 0;
+                                    int emptyGeoms = 0;
+                                    while (verifyCursor.MoveNext() && checkedCount < 5)
+                                    {
+                                        using var feat = verifyCursor.Current as Feature;
+                                        if (feat != null)
+                                        {
+                                            var geom = feat.GetShape();
+                                            checkedCount++;
+                                            if (geom != null && !geom.IsEmpty)
+                                            {
+                                                validGeoms++;
+                                                if (checkedCount == 1 && geom is MapPoint mp)
+                                                {
+                                                    var geomSR = geom.SpatialReference;
+                                                    log.AppendLine($"   Primera feature insertada:");
+                                                    log.AppendLine($"     Coordenadas: X={mp.X:F2}, Y={mp.Y:F2}");
+                                                    log.AppendLine($"     SR: WKID={geomSR?.Wkid}");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                emptyGeoms++;
+                                            }
+                                        }
+                                    }
+                                    log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
+                                    if (emptyGeoms > 0)
+                                        log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
+                                }
+                            }
+                        }
+                    }
 
                     return (true, log.ToString());
                 }
@@ -405,7 +577,11 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 using var featureClassDef = targetFC.GetDefinition();
 
-                // Eliminar Z y M si el destino no los soporta
+                // Obtener SR del destino primero
+                var targetSR = featureClassDef.GetSpatialReference();
+                var sourceSR = geometry.SpatialReference;
+
+                // PASO 1: Ajustar Z/M
                 var targetHasZ = featureClassDef.HasZ();
                 var targetHasM = featureClassDef.HasM();
                 if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
@@ -415,9 +591,11 @@ namespace EAABAddIn.Src.Application.UseCases
                         var builder = new PolylineBuilderEx(geometry as Polyline);
                         builder.HasZ = targetHasZ;
                         builder.HasM = targetHasM;
+                        // IMPORTANTE: Preservar el SR original
+                        if (sourceSR != null)
+                            builder.SpatialReference = sourceSR;
                         geometry = builder.ToGeometry();
                         
-                        // Verificar que la geometría sigue siendo válida después de la conversión
                         if (geometry == null || geometry.IsEmpty)
                         {
                             error = "Geometría inválida después de eliminar Z/M";
@@ -431,16 +609,66 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                // Reproyectar si es necesario
-                try
+                // PASO 2: Manejar sistema de referencia espacial
+                // Si ambos son MAGNA Bogotá (102233 o 6247), NO reproyectar - solo cambiar SR
+                bool isMagnaBogotaSource = sourceSR != null && (sourceSR.Wkid == 102233 || sourceSR.Wkid == 6247);
+                bool isMagnaBogotaTarget = targetSR != null && (targetSR.Wkid == 102233 || targetSR.Wkid == 6247);
+                
+                if (isMagnaBogotaSource && isMagnaBogotaTarget && sourceSR != null && targetSR != null)
                 {
-                    var targetSR = featureClassDef.GetSpatialReference();
-                    if (geometry.SpatialReference != null && targetSR != null && !geometry.SpatialReference.IsEqual(targetSR))
+                    // Mantener coordenadas exactas, solo cambiar el SR al del destino
+                    if (!sourceSR.IsEqual(targetSR))
                     {
-                        geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+                        var builder = new PolylineBuilderEx(geometry as Polyline);
+                        builder.SpatialReference = targetSR;
+                        geometry = builder.ToGeometry();
                     }
                 }
-                catch { }
+                else if (sourceSR != null && targetSR != null && !sourceSR.IsEqual(targetSR))
+                {
+                    // Reproyectar solo si son sistemas realmente diferentes
+                    try
+                    {
+                        var projected = GeometryEngine.Instance.Project(geometry, targetSR);
+                        if (projected != null && !projected.IsEmpty)
+                        {
+                            geometry = projected;
+                        }
+                        else
+                        {
+                            error = $"Reproyección falló: geometría vacía después de proyectar";
+                            return false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        error = $"Error reproyectando: {ex.Message}";
+                        return false;
+                    }
+                }
+                else if (sourceSR == null && targetSR != null)
+                {
+                    // Si no hay SR en origen, usar el del destino
+                    var builder = new PolylineBuilderEx(geometry as Polyline);
+                    builder.SpatialReference = targetSR;
+                    geometry = builder.ToGeometry();
+                }
+
+                // Validar geometría final
+                if (geometry == null || geometry.IsEmpty)
+                {
+                    error = "Geometría inválida después de transformaciones";
+                    return false;
+                }
+                
+                // Verificar que la geometría tiene SR asignado
+                if (geometry.SpatialReference == null && targetSR != null)
+                {
+                    // Última oportunidad: asignar SR del destino
+                    var builder = new PolylineBuilderEx(geometry as Polyline);
+                    builder.SpatialReference = targetSR;
+                    geometry = builder.ToGeometry();
+                }
 
                 var attributes = BuildLineAttributes(sourceFeature, featureClassDef, subtipo);
 
@@ -462,7 +690,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     Name = $"Migrar línea ACU -> {targetClassName}",
                     SelectNewFeatures = false
                 };
-                editOp.Create((Table)targetFC, dict);
+                editOp.Create(targetFC, dict);
                 bool ok = editOp.Execute();
                 if (!ok)
                 {
@@ -513,6 +741,11 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 using var featureClassDef = targetFC.GetDefinition();
 
+                // Obtener SR del destino primero
+                var targetSR = featureClassDef.GetSpatialReference();
+                var sourceSR = geometry.SpatialReference;
+
+                // PASO 1: Ajustar Z/M
                 var targetHasZ = featureClassDef.HasZ();
                 var targetHasM = featureClassDef.HasM();
                 if ((geometry.HasZ && !targetHasZ) || (geometry.HasM && !targetHasM))
@@ -522,9 +755,11 @@ namespace EAABAddIn.Src.Application.UseCases
                         var builder = new MapPointBuilderEx(geometry as MapPoint);
                         builder.HasZ = targetHasZ;
                         builder.HasM = targetHasM;
+                        // IMPORTANTE: Preservar el SR original
+                        if (sourceSR != null)
+                            builder.SpatialReference = sourceSR;
                         geometry = builder.ToGeometry();
                         
-                        // Verificar que la geometría sigue siendo válida después de la conversión
                         if (geometry == null || geometry.IsEmpty)
                         {
                             error = "Geometría inválida después de eliminar Z/M";
@@ -538,15 +773,66 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                try
+                // PASO 2: Manejar sistema de referencia espacial
+                // Si ambos son MAGNA Bogotá (102233 o 6247), NO reproyectar - solo cambiar SR
+                bool isMagnaBogotaSource = sourceSR != null && (sourceSR.Wkid == 102233 || sourceSR.Wkid == 6247);
+                bool isMagnaBogotaTarget = targetSR != null && (targetSR.Wkid == 102233 || targetSR.Wkid == 6247);
+                
+                if (isMagnaBogotaSource && isMagnaBogotaTarget && sourceSR != null && targetSR != null)
                 {
-                    var targetSR = featureClassDef.GetSpatialReference();
-                    if (geometry.SpatialReference != null && targetSR != null && !geometry.SpatialReference.IsEqual(targetSR))
+                    // Mantener coordenadas exactas, solo cambiar el SR al del destino
+                    if (!sourceSR.IsEqual(targetSR))
                     {
-                        geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+                        var builder = new MapPointBuilderEx(geometry as MapPoint);
+                        builder.SpatialReference = targetSR;
+                        geometry = builder.ToGeometry();
                     }
                 }
-                catch { }
+                else if (sourceSR != null && targetSR != null && !sourceSR.IsEqual(targetSR))
+                {
+                    // Reproyectar solo si son sistemas realmente diferentes
+                    try
+                    {
+                        var projected = GeometryEngine.Instance.Project(geometry, targetSR);
+                        if (projected != null && !projected.IsEmpty)
+                        {
+                            geometry = projected;
+                        }
+                        else
+                        {
+                            error = $"Reproyección falló: geometría vacía después de proyectar";
+                            return false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        error = $"Error reproyectando: {ex.Message}";
+                        return false;
+                    }
+                }
+                else if (sourceSR == null && targetSR != null)
+                {
+                    // Si no hay SR en origen, usar el del destino
+                    var builder = new MapPointBuilderEx(geometry as MapPoint);
+                    builder.SpatialReference = targetSR;
+                    geometry = builder.ToGeometry();
+                }
+
+                // Validar geometría final
+                if (geometry == null || geometry.IsEmpty)
+                {
+                    error = "Geometría inválida después de transformaciones";
+                    return false;
+                }
+                
+                // Verificar que la geometría tiene SR asignado
+                if (geometry.SpatialReference == null && targetSR != null)
+                {
+                    // Última oportunidad: asignar SR del destino
+                    var builder = new MapPointBuilderEx(geometry as MapPoint);
+                    builder.SpatialReference = targetSR;
+                    geometry = builder.ToGeometry();
+                }
 
                 var attributes = BuildPointAttributes(sourceFeature, featureClassDef, subtipo);
 
@@ -567,7 +853,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     Name = $"Migrar punto ACU -> {targetClassName}",
                     SelectNewFeatures = false
                 };
-                editOp.Create((Table)targetFC, dict);
+                editOp.Create(targetFC, dict);
                 bool ok = editOp.Execute();
                 if (!ok)
                 {
@@ -810,13 +1096,41 @@ namespace EAABAddIn.Src.Application.UseCases
                 var fieldMap = def.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
                 using var rowBuffer = targetFC.CreateRowBuffer();
 
+                // Verificar que la geometría está en el diccionario
+                string shapeField = def.GetShapeField();
+                if (dict.TryGetValue(shapeField, out var geomValue))
+                {
+                    if (geomValue == null || (geomValue is Geometry geom && geom.IsEmpty))
+                    {
+                        return (false, "Geometría nula o vacía al insertar");
+                    }
+                }
+
                 foreach (var kv in dict)
                 {
                     if (!fieldMap.TryGetValue(kv.Key, out var fieldDef))
                         continue;
                     if (fieldDef.FieldType == FieldType.OID || fieldDef.FieldType == FieldType.GlobalID)
                         continue;
-                    rowBuffer[kv.Key] = kv.Value ?? DBNull.Value;
+                    
+                    var valueToSet = kv.Value ?? DBNull.Value;
+                    
+                    // Validación especial para geometría
+                    if (kv.Key.Equals(shapeField, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (valueToSet is Geometry g && !g.IsEmpty)
+                        {
+                            rowBuffer[kv.Key] = valueToSet;
+                        }
+                        else
+                        {
+                            return (false, $"Geometría inválida en campo {shapeField}");
+                        }
+                    }
+                    else
+                    {
+                        rowBuffer[kv.Key] = valueToSet;
+                    }
                 }
 
                 using var row = targetFC.CreateRow(rowBuffer);
@@ -826,6 +1140,89 @@ namespace EAABAddIn.Src.Application.UseCases
             {
                 return (false, ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Diagnóstico: verifica cuántas features hay en cada clase de destino
+        /// </summary>
+        public async Task<string> DiagnoseTargetGdb(string targetGdbPath)
+        {
+            return await QueuedTask.Run(() =>
+            {
+                var log = new System.Text.StringBuilder();
+                try
+                {
+                    using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
+                    log.AppendLine("🔍 Diagnóstico de GDB destino:");
+                    
+                    var acuClasses = new[] { "acd_RedMatriz", "acd_Conduccion", "acd_RedMenor", "acd_LineaLateral", "acd_Accesorio", "acd_ValvulaControl", "acd_ValvulaSistema" };
+                    
+                    foreach (var className in acuClasses)
+                    {
+                        try
+                        {
+                            using var fc = OpenTargetFeatureClass(targetGdb, className);
+                            if (fc != null)
+                            {
+                                var count = fc.GetCount();
+                                using var def = fc.GetDefinition();
+                                var sr = def.GetSpatialReference();
+                                string srInfo = sr != null ? $"WKID={sr.Wkid}" : "Sin SR";
+                                log.AppendLine($"   {className}: {count} features ({srInfo})");
+                                
+                                // Verificar una muestra con más detalle
+                                if (count > 0)
+                                {
+                                    using var cursor = fc.Search(null, false);
+                                    if (cursor.MoveNext())
+                                    {
+                                        using var feature = cursor.Current as Feature;
+                                        if (feature != null)
+                                        {
+                                            var geom = feature.GetShape();
+                                            if (geom != null && !geom.IsEmpty)
+                                            {
+                                                var geomSR = geom.SpatialReference;
+                                                log.AppendLine($"      SR Geometría: WKID={geomSR?.Wkid}");
+                                                
+                                                if (geom is Polyline pl)
+                                                {
+                                                    var ext = pl.Extent;
+                                                    log.AppendLine($"      Polyline: Long={pl.Length:F2}, Pts={pl.PointCount}");
+                                                    log.AppendLine($"      Extent: X[{ext.XMin:F2}, {ext.XMax:F2}] Y[{ext.YMin:F2}, {ext.YMax:F2}]");
+                                                }
+                                                else if (geom is MapPoint mp)
+                                                {
+                                                    log.AppendLine($"      Point: X={mp.X:F2}, Y={mp.Y:F2}");
+                                                    if (mp.HasZ) log.AppendLine($"      Z={mp.Z:F2}");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                log.AppendLine($"      ⚠ Feature con geometría vacía!");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                log.AppendLine($"   {className}: No existe");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            log.AppendLine($"   {className}: Error - {ex.Message}");
+                        }
+                    }
+                    
+                    return log.ToString();
+                }
+                catch (Exception ex)
+                {
+                    return $"❌ Error: {ex.Message}";
+                }
+            });
         }
 
         #endregion
