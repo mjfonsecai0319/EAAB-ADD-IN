@@ -310,7 +310,50 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     var conn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
                     var gdb = new Geodatabase(conn);
-                    return gdb.OpenDataset<FeatureClass>(fcName);
+
+                    // 1) Intentar abrir directamente (funciona para clases en la raíz)
+                    try
+                    {
+                        var fc = gdb.OpenDataset<FeatureClass>(fcName);
+                        if (fc != null) return fc;
+                    }
+                    catch { }
+
+                    // 2) Si viene ruta con FeatureDataset (ej. FD\FC), abrir desde el FD
+                    var parts = fcName.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                    var last = parts.Length > 0 ? parts[parts.Length - 1] : fcName;
+
+                    // Si se especifica el FD explícitamente, priorizar ese
+                    if (parts.Length >= 2)
+                    {
+                        var fdName = parts[0];
+                        try
+                        {
+                            var fd = gdb.OpenDataset<FeatureDataset>(fdName);
+                            var fcFromFd = fd.OpenDataset<FeatureClass>(last);
+                            if (fcFromFd != null) return fcFromFd;
+                        }
+                        catch { }
+                    }
+
+                    // 3) Explorar todos los FeatureDatasets por si el nombre viene sin FD correcto
+                    try
+                    {
+                        var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
+                        foreach (var fdDef in fdDefs)
+                        {
+                            try
+                            {
+                                var fd = gdb.OpenDataset<FeatureDataset>(fdDef.GetName());
+                                var fcFromAnyFd = fd.OpenDataset<FeatureClass>(last);
+                                if (fcFromAnyFd != null) return fcFromAnyFd;
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+
+                    return null;
                 }
 
                 return null;
@@ -377,8 +420,12 @@ namespace EAABAddIn.Src.Application.UseCases
         private string GetTargetLineClassName(int clase, string? tipoSistema)
         {
             // Manejar SISTEMA vacío o nulo
-            string prefix = (tipoSistema == "0" || tipoSistema == "2" || string.IsNullOrEmpty(tipoSistema))
-                ? "als_" : "alp_";
+            string prefix = tipoSistema switch
+            {
+                "1" => "alp_", // Pluvial
+                "0" or "2" or null or "" => "als_", // Sanitario / Combinado / desconocido
+                _ => "als_"
+            };
             return clase switch
             {
                 1 => prefix + "RedLocal",
@@ -392,8 +439,12 @@ namespace EAABAddIn.Src.Application.UseCases
         private string GetTargetPointClassName(int clase, string? tipoSistema)
         {
             // Manejar SISTEMA vacío o nulo
-            string prefix = (tipoSistema == "0" || tipoSistema == "2" || string.IsNullOrEmpty(tipoSistema))
-                ? "als_" : "alp_";
+            string prefix = tipoSistema switch
+            {
+                "1" => "alp_",
+                "0" or "2" or null or "" => "als_",
+                _ => "als_"
+            };
             return clase switch
             {
                 1 => prefix + "EstructuraRed",

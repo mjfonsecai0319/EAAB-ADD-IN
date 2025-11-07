@@ -54,6 +54,14 @@ internal class MigrationViewModel : BusyViewModelBase
         // OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
     }
 
+    // Checkbox: Migrar con advertencias
+    private bool _migrarConAdvertencias = false;
+    public bool MigrarConAdvertencias
+    {
+        get => _migrarConAdvertencias;
+        set { if (_migrarConAdvertencias != value) { _migrarConAdvertencias = value; NotifyPropertyChanged(nameof(MigrarConAdvertencias)); } }
+    }
+
     private string? _workspace = null;
     public string? Workspace
     {
@@ -253,21 +261,20 @@ internal class MigrationViewModel : BusyViewModelBase
                         new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen),
                     }
             });
-
-            // actualizar estado de reportes
-            // HasWarnings = validation.TotalWarnings > 0;
-            // ReportsFolder = validation.ReportFolder ?? string.Empty;
-            // ReportFiles.Clear();
-            // foreach (var f in validation.ReportFiles ?? Enumerable.Empty<string>())
-            //     ReportFiles.Add(f);
-            // NotifyPropertyChanged(nameof(HasWarnings));
-            // NotifyPropertyChanged(nameof(ReportsFolder));
-
-            // if (validation.TotalWarnings > 0 && !MigrarConAdvertencias)
-            // {
-            //     StatusMessage = $"Hay {validation.TotalWarnings} advertencias. Se generaron reportes en: {validation.ReportFolder}. Activa 'Migrar con advertencias' para continuar.";
-            //     return;
-            // }
+            // Activar lógica de advertencias
+            int totalWarnings = validation.TotalWarnings;
+            if (totalWarnings > 0 && !MigrarConAdvertencias)
+            {
+                StatusMessage = $"Hay {totalWarnings} advertencias. Activa 'Migrar con advertencias' para continuar.";
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: StatusMessage,
+                    caption: "Advertencias detectadas",
+                    button: System.Windows.MessageBoxButton.OK,
+                    icon: System.Windows.MessageBoxImage.Warning
+                );
+                IsBusy = false;
+                return;
+            }
 
 
             // Crear la GDB "migracion" e importar el esquema XML
@@ -411,7 +418,8 @@ internal class MigrationViewModel : BusyViewModelBase
                 ? string.Join("\n", mensajesMigracion) 
                 : "No se especificaron datos de alcantarillado para migrar.";
 
-            StatusMessage = $"✓ Proceso finalizado.\n{mensajeFinal}\nGDB: {gdbPath}";
+            // Mostrar detalle SOLO en ventana modal, no en el panel de estado
+            StatusMessage = "✓ Proceso finalizado.";
             
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
                 messageText: $"Migración completada:\n\n{mensajeFinal}",
