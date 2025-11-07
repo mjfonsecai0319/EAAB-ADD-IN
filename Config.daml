@@ -175,8 +175,8 @@
           className="EAABAddIn.Src.Presentation.View.Buttons.MigrarButton"
           id="EAABAddIn_Migrar"
           caption="Migrar Datos"
-          smallImage="Images\"
-          largeImage="Images\"
+          smallImage="Images\Migrar16.png"
+          largeImage="Images\Migrar32.png"
           condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B8"
         >
