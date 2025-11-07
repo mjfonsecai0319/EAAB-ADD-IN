@@ -38,6 +38,8 @@ internal class MigrationViewModel : BusyViewModelBase
     public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
     public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
     public ICommand RunCommand { get; private set; }
+    public ICommand ClearFormCommand { get; private set; }
+    public ICommand OpenReportsFolderCommand { get; private set; }
 
     public MigrationViewModel()
     {
@@ -50,8 +52,9 @@ internal class MigrationViewModel : BusyViewModelBase
         BrowsePAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Origen = path));
         BrowseLAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Pluv_Origen = path));
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
-        RunCommand = new AsyncRelayCommand(RunAsync);
-        // OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
+        RunCommand = new AsyncRelayCommand(RunAsync, CanRun);
+        ClearFormCommand = new RelayCommand(ClearForm);
+        OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
     }
 
     // Checkbox: Migrar con advertencias
@@ -59,7 +62,7 @@ internal class MigrationViewModel : BusyViewModelBase
     public bool MigrarConAdvertencias
     {
         get => _migrarConAdvertencias;
-        set { if (_migrarConAdvertencias != value) { _migrarConAdvertencias = value; NotifyPropertyChanged(nameof(MigrarConAdvertencias)); } }
+        set { if (_migrarConAdvertencias != value) { _migrarConAdvertencias = value; NotifyPropertyChanged(nameof(MigrarConAdvertencias)); RaiseCommandsCanExecute(); } }
     }
 
     private string? _workspace = null;
@@ -261,19 +264,39 @@ internal class MigrationViewModel : BusyViewModelBase
                         new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen),
                     }
             });
-            // Activar lógica de advertencias
-            int totalWarnings = validation.TotalWarnings;
-            if (totalWarnings > 0 && !MigrarConAdvertencias)
+            // Capturar advertencias y preparar UI de reportes
+            TotalWarnings = validation.TotalWarnings;
+            ReportsFolder = validation.ReportFolder;
+            ReportFiles = new ObservableCollection<string>(validation.ReportFiles ?? new List<string>());
+            HasWarnings = TotalWarnings > 0;
+
+            // Gating estilo Python
+            if (HasWarnings && !MigrarConAdvertencias)
             {
-                StatusMessage = $"Hay {totalWarnings} advertencias. Activa 'Migrar con advertencias' para continuar.";
+                StatusMessage = $"Hay {TotalWarnings} advertencias. Activa 'Migrar con advertencias' para continuar.";
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: StatusMessage,
+                    messageText: $"Se detectaron {TotalWarnings} advertencias. Revisa los reportes y activa 'Migrar con advertencias' si deseas continuar.\n\nCarpeta de reportes:\n{ReportsFolder}",
                     caption: "Advertencias detectadas",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Warning
                 );
+                RaiseCommandsCanExecute();
                 IsBusy = false;
                 return;
+            }
+            else if (HasWarnings && MigrarConAdvertencias)
+            {
+                var res = ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    messageText: $"Continuar a pesar de {TotalWarnings} advertencias?\n\nPuedes abrir los reportes en: {ReportsFolder}",
+                    caption: "Confirmar migración con advertencias",
+                    button: System.Windows.MessageBoxButton.YesNo,
+                    icon: System.Windows.MessageBoxImage.Question
+                );
+                if (res != System.Windows.MessageBoxResult.Yes)
+                {
+                    IsBusy = false;
+                    return;
+                }
             }
 
 
@@ -435,32 +458,80 @@ internal class MigrationViewModel : BusyViewModelBase
         finally { IsBusy = false; }
     }
 
-    //     public bool MigrarConAdvertencias { get => _migrarConAdvertencias; set { if (_migrarConAdvertencias != value) { _migrarConAdvertencias = value; NotifyPropertyChanged(nameof(MigrarConAdvertencias)); } } }
-    //     private bool _migrarConAdvertencias = false;
-    //     // Reportes
-    //     public bool HasWarnings { get => _hasWarnings; private set { if (_hasWarnings != value) { _hasWarnings = value; NotifyPropertyChanged(nameof(HasWarnings)); } } }
-    //     public string ReportsFolder { get => _reportsFolder; private set { if (_reportsFolder != value) { _reportsFolder = value; NotifyPropertyChanged(nameof(ReportsFolder)); } } }
-    //     public ObservableCollection<string> ReportFiles { get; } = new();
-    //     private bool _hasWarnings = false;
-    //     private string _reportsFolder = string.Empty;
+    private void ClearForm()
+    {
+        if (IsBusy) return; // no limpiar en medio de proceso
+        Workspace = null;
+        XmlSchemaPath = null;
+        L_Acu_Origen = null;
+        P_Acu_Origen = null;
+        L_Alc_Origen = null;
+        P_Alc_Origen = null;
+        L_Alc_Pluv_Origen = null;
+        P_Alc_Pluv_Origen = null;
+        MigrarConAdvertencias = false;
+        HasWarnings = false;
+        TotalWarnings = 0;
+        ReportsFolder = string.Empty;
+        ReportFiles.Clear();
+        StatusMessage = "Formulario limpio. Seleccione origen y destino.";
+        RaiseCommandsCanExecute();
+    }
 
-    //     private void OpenReportsFolder()
-    //     {
-    //         try
-    //         {
-    //             var folder = string.IsNullOrWhiteSpace(ReportsFolder) ? OutputFolder : ReportsFolder;
-    //             if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
-    //             {
-    //                 var psi = new ProcessStartInfo
-    //                 {
-    //                     FileName = "explorer.exe",
-    //                     Arguments = folder,
-    //                     UseShellExecute = true
-    //                 };
-    //                 Process.Start(psi);
-    //             }
-    //         }
-    //         catch { /* ignorar */
-    // }
-    //     }
+    // Reportes / Advertencias
+    public int TotalWarnings
+    {
+        get => _totalWarnings;
+        private set { if (_totalWarnings != value) { _totalWarnings = value; NotifyPropertyChanged(nameof(TotalWarnings)); } }
+    }
+    private int _totalWarnings = 0;
+
+    public bool HasWarnings
+    {
+        get => _hasWarnings;
+        private set { if (_hasWarnings != value) { _hasWarnings = value; NotifyPropertyChanged(nameof(HasWarnings)); RaiseCommandsCanExecute(); } }
+    }
+    private bool _hasWarnings = false;
+
+    public string ReportsFolder
+    {
+        get => _reportsFolder;
+        private set { if (_reportsFolder != value) { _reportsFolder = value; NotifyPropertyChanged(nameof(ReportsFolder)); } }
+    }
+    private string _reportsFolder = string.Empty;
+
+    public ObservableCollection<string> ReportFiles { get; private set; } = new();
+
+    private void OpenReportsFolder()
+    {
+        try
+        {
+            var folder = string.IsNullOrWhiteSpace(ReportsFolder) ? Workspace : ReportsFolder;
+            if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = folder,
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
+            }
+        }
+        catch { /* ignorar */ }
+    }
+
+    private bool CanRun()
+    {
+        // Deshabilitar ejecución si hay advertencias y el checkbox no está marcado
+        if (HasWarnings && !MigrarConAdvertencias) return false;
+        return !IsBusy;
+    }
+
+    private void RaiseCommandsCanExecute()
+    {
+        (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ClearFormCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (OpenReportsFolderCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
 }

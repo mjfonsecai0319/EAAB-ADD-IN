@@ -25,6 +25,7 @@ namespace EAABAddIn.Src.Application.UseCases
             return await QueuedTask.Run(() =>
             {
                 var log = new System.Text.StringBuilder();
+                var perClassStats = new Dictionary<string, (int attempts, int migrated, int failed)>(StringComparer.OrdinalIgnoreCase);
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourceLineasPath) || string.IsNullOrWhiteSpace(targetGdbPath))
@@ -161,6 +162,16 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                             }
                         }
+
+                        // Actualizar stats por clase
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            if (!perClassStats.TryGetValue(targetClassName, out var stats))
+                                stats = (0, 0, 0);
+                            stats.attempts++;
+                            if (string.IsNullOrWhiteSpace(migrateErr)) stats.migrated++; else stats.failed++;
+                            perClassStats[targetClassName] = stats;
+                        }
                     }
 
                     log.AppendLine($"\n📊 Resumen líneas ACU:");
@@ -228,6 +239,19 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
+                    // Escribir CSV resumen
+                    try
+                    {
+                        var csv = new Services.CsvReportService();
+                        var folder = csv.EnsureReportsFolder(targetGdbPath);
+                        var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
+                        var file = csv.WriteMigrationSummary(folder, "acueducto_lineas", listStats, noClase, noTarget);
+                        log.AppendLine($"   📁 CSV: {file}");
+                    }
+                    catch (Exception exCsv)
+                    {
+                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas ACU: {exCsv.Message}");
+                    }
                     return (true, log.ToString());
                 }
                 catch (Exception ex)
@@ -243,6 +267,7 @@ namespace EAABAddIn.Src.Application.UseCases
             return await QueuedTask.Run(() =>
             {
                 var log = new System.Text.StringBuilder();
+                var perClassStats = new Dictionary<string, (int attempts, int migrated, int failed)>(StringComparer.OrdinalIgnoreCase);
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourcePuntosPath) || string.IsNullOrWhiteSpace(targetGdbPath))
@@ -373,6 +398,16 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                             }
                         }
+
+                        // Actualizar stats por clase
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            if (!perClassStats.TryGetValue(targetClassName, out var stats))
+                                stats = (0, 0, 0);
+                            stats.attempts++;
+                            if (string.IsNullOrWhiteSpace(migrateErr)) stats.migrated++; else stats.failed++;
+                            perClassStats[targetClassName] = stats;
+                        }
                     }
 
                     log.AppendLine($"\n📊 Resumen puntos ACU:");
@@ -438,6 +473,19 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
+                    // Escribir CSV resumen
+                    try
+                    {
+                        var csv = new Services.CsvReportService();
+                        var folder = csv.EnsureReportsFolder(targetGdbPath);
+                        var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
+                        var file = csv.WriteMigrationSummary(folder, "acueducto_puntos", listStats, noClase, noTarget);
+                        log.AppendLine($"   📁 CSV: {file}");
+                    }
+                    catch (Exception exCsv)
+                    {
+                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos ACU: {exCsv.Message}");
+                    }
                     return (true, log.ToString());
                 }
                 catch (Exception ex)
@@ -480,7 +528,46 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     var conn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
                     var gdb = new Geodatabase(conn);
-                    return gdb.OpenDataset<FeatureClass>(fcName);
+
+                    // Intentar abrir directamente (raíz)
+                    try
+                    {
+                        var fc = gdb.OpenDataset<FeatureClass>(fcName);
+                        if (fc != null) return fc;
+                    }
+                    catch { }
+
+                    // Si viene con FD\FC, separar y abrir desde FD
+                    var parts = fcName.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                    var last = parts.Length > 0 ? parts[parts.Length - 1] : fcName;
+                    if (parts.Length >= 2)
+                    {
+                        var fdName = parts[0];
+                        try
+                        {
+                            var fd = gdb.OpenDataset<FeatureDataset>(fdName);
+                            var fcFromFd = fd.OpenDataset<FeatureClass>(last);
+                            if (fcFromFd != null) return fcFromFd;
+                        }
+                        catch { }
+                    }
+
+                    // Explorar todos los FeatureDatasets por si el nombre viene sin FD correcto
+                    try
+                    {
+                        var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
+                        foreach (var fdDef in fdDefs)
+                        {
+                            try
+                            {
+                                var fd = gdb.OpenDataset<FeatureDataset>(fdDef.GetName());
+                                var fcFromAnyFd = fd.OpenDataset<FeatureClass>(last);
+                                if (fcFromAnyFd != null) return fcFromAnyFd;
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
                 }
 
                 return null;
@@ -620,11 +707,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
                 if (insertOk)
                 {
-                    // Forzar refresco del mapa si hay vista activa
-                    if (MapView.Active != null)
-                    {
-                        MapView.Active.Redraw(true);
-                    }
+                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
@@ -658,8 +741,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                if (MapView.Active != null)
-                    MapView.Active.Redraw(true);
+                // (Sin auto refresco de mapa por requerimiento del usuario)
 
                 return true;
             }
@@ -710,11 +792,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
                 if (insertOk)
                 {
-                    // Forzar refresco del mapa si hay vista activa
-                    if (MapView.Active != null)
-                    {
-                        MapView.Active.Redraw(true);
-                    }
+                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
@@ -748,8 +826,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                if (MapView.Active != null)
-                    MapView.Active.Redraw(true);
+                // (Sin auto refresco de mapa por requerimiento del usuario)
 
                 return true;
             }
@@ -768,6 +845,19 @@ namespace EAABAddIn.Src.Application.UseCases
             try
             {
                 attrs["SUBTIPO"] = subtipo;
+                // Ubicación / Zona / UGA / IDSIG (agregado para paridad con alcantarillado)
+                var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
+                               ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
+                               ?? GetFieldValue<string>(source, "UBIC_TECNICA")
+                               ?? GetFieldValue<string>(source, "UBIC_TECN");
+                if (!string.IsNullOrWhiteSpace(ubicTec))
+                {
+                    attrs["UBICACIONTECNICA"] = ubicTec;
+                    attrs["UBICACION_TECNICA"] = ubicTec; // alias posible en esquema destino
+                }
+                attrs["ZONA"] = GetFieldValue<string>(source, "ZONA");
+                attrs["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
+                attrs["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
                 attrs["N_INICIAL"] = GetFieldValue<string>(source, "N_INICIAL");
                 attrs["N_FINAL"] = GetFieldValue<string>(source, "N_FINAL");
                 attrs["FECHAINST"] = GetFieldValue<DateTime?>(source, "FECHAINST");
@@ -802,6 +892,19 @@ namespace EAABAddIn.Src.Application.UseCases
         {
             var a = new Dictionary<string, object?>();
             a["SUBTIPO"] = subtipo;
+            // Ubicación / Zona / UGA / IDSIG (agregado)
+            var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
+                           ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
+                           ?? GetFieldValue<string>(source, "UBIC_TECNICA")
+                           ?? GetFieldValue<string>(source, "UBIC_TECN");
+            if (!string.IsNullOrWhiteSpace(ubicTec))
+            {
+                a["UBICACIONTECNICA"] = ubicTec;
+                a["UBICACION_TECNICA"] = ubicTec;
+            }
+            a["ZONA"] = GetFieldValue<string>(source, "ZONA");
+            a["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
+            a["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
             a["IDENTIFIC"] = GetFieldValue<string>(source, "IDENTIFIC");
             a["NORTE"] = GetFieldValue<double?>(source, "NORTE");
             a["ESTE"] = GetFieldValue<double?>(source, "ESTE");
@@ -982,46 +1085,58 @@ namespace EAABAddIn.Src.Application.UseCases
                         return (false, "Geometría nula o vacía al insertar");
                     }
                     
-                    // ✅ CORRECCIÓN: Eliminar valores Z/M si la FeatureClass no los soporta
+                    // ✅ PROYECCIÓN al SR de la clase destino y ajuste Z/M
                     if (geomValue is Geometry sourceGeom)
                     {
+                        var targetSR = def.GetSpatialReference();
+                        var sourceSR = sourceGeom.SpatialReference;
+                        // Proyectar si SR difiere
+                        if (targetSR != null && sourceSR != null && sourceSR.Wkid != targetSR.Wkid)
+                        {
+                            try
+                            {
+                                var projected = GeometryEngine.Instance.Project(sourceGeom, targetSR);
+                                sourceGeom = projected;
+                                dict[shapeField] = projected;
+                            }
+                            catch (Exception exProj)
+                            {
+                                return (false, $"Error proyectando geometría: {exProj.Message}");
+                            }
+                        }
+
                         bool targetHasZ = def.HasZ();
                         bool targetHasM = def.HasM();
                         bool sourceHasZ = sourceGeom.HasZ;
                         bool sourceHasM = sourceGeom.HasM;
-                        
-                        // Si hay mismatch en Z o M, crear geometría compatible
+
                         if ((sourceHasZ && !targetHasZ) || (sourceHasM && !targetHasM))
                         {
                             try
                             {
-                                // Recrear geometría sin Z/M usando coordenadas directas (más confiable)
                                 Geometry adjustedGeom = sourceGeom;
-                                
+
                                 if (sourceGeom is MapPoint point)
                                 {
-                                    // Para puntos, crear directamente sin Z
                                     adjustedGeom = MapPointBuilderEx.CreateMapPoint(point.X, point.Y, sourceGeom.SpatialReference);
                                 }
                                 else if (sourceGeom is Polyline line)
                                 {
-                                    // Para líneas, copiar puntos sin Z/M desde segmentos
                                     var builder = new PolylineBuilderEx(sourceGeom.SpatialReference);
                                     foreach (var part in line.Parts)
                                     {
                                         var points = new List<MapPoint>();
-                                        // Iterar sobre segmentos para extraer puntos
+                                        // Iterar segmentos del part (ReadOnlySegmentCollection) y tomar StartPoint + último EndPoint
+                                        MapPoint? lastEnd = null;
                                         foreach (var segment in part)
                                         {
-                                            var startPt = segment.StartPoint;
-                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                            var sp = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(sp.X, sp.Y, sourceGeom.SpatialReference));
+                                            lastEnd = segment.EndPoint;
                                         }
-                                        // Agregar el último punto (EndPoint del último segmento)
-                                        if (part.Count > 0)
+                                        if (lastEnd != null)
                                         {
-                                            var lastSegment = part[part.Count - 1];
-                                            var endPt = lastSegment.EndPoint;
-                                            points.Add(MapPointBuilderEx.CreateMapPoint(endPt.X, endPt.Y, sourceGeom.SpatialReference));
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(lastEnd.X, lastEnd.Y, sourceGeom.SpatialReference));
                                         }
                                         if (points.Count > 0)
                                             builder.AddPart(points);
@@ -1030,25 +1145,24 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                                 else if (sourceGeom is Polygon poly)
                                 {
-                                    // Para polígonos, copiar puntos sin Z/M desde segmentos
                                     var builder = new PolygonBuilderEx(sourceGeom.SpatialReference);
                                     foreach (var part in poly.Parts)
                                     {
                                         var points = new List<MapPoint>();
-                                        // Iterar sobre segmentos para extraer puntos
+                                        MapPoint? lastEnd = null;
                                         foreach (var segment in part)
                                         {
-                                            var startPt = segment.StartPoint;
-                                            points.Add(MapPointBuilderEx.CreateMapPoint(startPt.X, startPt.Y, sourceGeom.SpatialReference));
+                                            var sp = segment.StartPoint;
+                                            points.Add(MapPointBuilderEx.CreateMapPoint(sp.X, sp.Y, sourceGeom.SpatialReference));
+                                            lastEnd = segment.EndPoint;
                                         }
-                                        // Para polígonos cerrados, no necesitamos agregar el EndPoint del último segmento
-                                        // porque el StartPoint del primer segmento es igual al EndPoint del último
+                                        // Para polígonos el último EndPoint coincide con el primer StartPoint, no es necesario agregarlo adicionalmente
                                         if (points.Count > 0)
                                             builder.AddPart(points);
                                     }
                                     adjustedGeom = builder.ToGeometry();
                                 }
-                                
+
                                 dict[shapeField] = adjustedGeom;
                             }
                             catch (Exception ex)

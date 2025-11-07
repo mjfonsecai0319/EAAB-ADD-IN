@@ -93,18 +93,86 @@ namespace EAABAddIn.Src.Application.UseCases.Validation
             try
             {
                 if (string.IsNullOrWhiteSpace(path)) return (false, "Ruta vacía");
-                // Soporta FGDB y ruta de dataset dentro de la GDB: C:\foo\bar.gdb\FeatureClass
+
+                path = Path.GetFullPath(path);
+
+                // Soporte SHP directo
+                if (path.EndsWith(".shp", StringComparison.OrdinalIgnoreCase))
+                {
+                    var folder = Path.GetDirectoryName(path);
+                    var name = Path.GetFileNameWithoutExtension(path);
+                    if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(name))
+                        return (false, "Ruta SHP inválida");
+                    var fsConn = new FileSystemConnectionPath(new Uri(folder), FileSystemDatastoreType.Shapefile);
+                    using var fs = new FileSystemDatastore(fsConn);
+                    featureClass = fs.OpenDataset<FeatureClass>(name);
+                    return (featureClass != null, featureClass == null ? "No se pudo abrir SHP" : "");
+                }
+
+                // Soporta FGDB y ruta de dataset dentro de la GDB: C:\foo\bar.gdb\FC o C:\foo\bar.gdb\FD\FC
                 var idx = path.LastIndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
                 if (idx < 0)
                 {
-                    return (false, "Ruta no parece una feature class de FGDB (se espera .gdb) — soporte SHP pendiente");
+                    return (false, "Ruta no parece una feature class de FGDB (se espera .gdb)");
                 }
                 var gdbPath = path.Substring(0, idx + 4);
-                var dsPath = path.Substring(idx + 5).TrimStart('\\', '/');
+                var dsPath = path.Length > idx + 4 ? path.Substring(idx + 5).TrimStart('\\', '/') : string.Empty;
+                if (string.IsNullOrEmpty(dsPath))
+                    return (false, "No se especificó nombre de FeatureClass dentro de la GDB");
+
                 var conn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
                 using var gdb = new Geodatabase(conn);
-                featureClass = gdb.OpenDataset<FeatureClass>(dsPath);
-                return (featureClass != null, featureClass == null ? "No se pudo abrir la FC" : "");
+
+                // 1) Intento directo (funciona si está en la raíz o ArcGIS admite FD\FC)
+                try
+                {
+                    featureClass = gdb.OpenDataset<FeatureClass>(dsPath);
+                    if (featureClass != null)
+                        return (true, "");
+                }
+                catch { }
+
+                // 2) Si trae separadores, intentar abrir FD y luego FC
+                var parts = dsPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    var fdName = parts[0];
+                    var fcName = parts[parts.Length - 1];
+                    try
+                    {
+                        using var fd = gdb.OpenDataset<FeatureDataset>(fdName);
+                        var fcFromFd = fd.OpenDataset<FeatureClass>(fcName);
+                        if (fcFromFd != null)
+                        {
+                            featureClass = fcFromFd;
+                            return (true, "");
+                        }
+                    }
+                    catch { }
+                }
+
+                // 3) Escanear todos los FeatureDatasets por si el usuario omitió el FD correcto
+                try
+                {
+                    var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
+                    foreach (var fdDef in fdDefs)
+                    {
+                        try
+                        {
+                            using var fd = gdb.OpenDataset<FeatureDataset>(fdDef.GetName());
+                            var fc = fd.OpenDataset<FeatureClass>(dsPath); // probar nombre completo como último segmento
+                            if (fc != null)
+                            {
+                                featureClass = fc;
+                                return (true, "");
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                return (false, "No se pudo abrir la FeatureClass (verifique FD/FC)");
             }
             catch (Exception ex)
             {

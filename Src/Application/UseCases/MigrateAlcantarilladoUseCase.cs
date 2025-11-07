@@ -22,6 +22,7 @@ namespace EAABAddIn.Src.Application.UseCases
             return await QueuedTask.Run(() =>
             {
                 var log = new System.Text.StringBuilder();
+                var perClassStats = new Dictionary<string, (int attempts, int migrated, int failed)>(StringComparer.OrdinalIgnoreCase);
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourceLineasPath) || string.IsNullOrWhiteSpace(targetGdbPath))
@@ -129,6 +130,15 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                             }
                         }
+                        // Actualizar stats por clase
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            if (!perClassStats.TryGetValue(targetClassName, out var stats))
+                                stats = (0, 0, 0);
+                            stats.attempts++;
+                            if (string.IsNullOrWhiteSpace(migrateErr)) stats.migrated++; else stats.failed++;
+                            perClassStats[targetClassName] = stats;
+                        }
                     }
 
                     log.AppendLine($"\n📊 Resumen:");
@@ -138,6 +148,19 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
 
+                    // Escribir CSV resumen
+                    try
+                    {
+                        var csv = new Services.CsvReportService();
+                        var folder = csv.EnsureReportsFolder(targetGdbPath);
+                        var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
+                        var file = csv.WriteMigrationSummary(folder, "alcantarillado_lineas", listStats, noClase, noTarget);
+                        log.AppendLine($"   📁 CSV: {file}");
+                    }
+                    catch (Exception exCsv)
+                    {
+                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas: {exCsv.Message}");
+                    }
                     return (true, log.ToString());
                 }
                 catch (Exception ex)
@@ -153,6 +176,7 @@ namespace EAABAddIn.Src.Application.UseCases
             return await QueuedTask.Run(() =>
             {
                 var log = new System.Text.StringBuilder();
+                var perClassStats = new Dictionary<string, (int attempts, int migrated, int failed)>(StringComparer.OrdinalIgnoreCase);
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourcePuntosPath) || string.IsNullOrWhiteSpace(targetGdbPath))
@@ -259,6 +283,15 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                             }
                         }
+                        // Actualizar stats por clase
+                        if (!string.IsNullOrEmpty(targetClassName))
+                        {
+                            if (!perClassStats.TryGetValue(targetClassName, out var stats))
+                                stats = (0, 0, 0);
+                            stats.attempts++;
+                            if (string.IsNullOrWhiteSpace(migrateErr)) stats.migrated++; else stats.failed++;
+                            perClassStats[targetClassName] = stats;
+                        }
                     }
 
                     log.AppendLine($"\n📊 Resumen:");
@@ -268,6 +301,19 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
 
+                    // Escribir CSV resumen
+                    try
+                    {
+                        var csv = new Services.CsvReportService();
+                        var folder = csv.EnsureReportsFolder(targetGdbPath);
+                        var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
+                        var file = csv.WriteMigrationSummary(folder, "alcantarillado_puntos", listStats, noClase, noTarget);
+                        log.AppendLine($"   📁 CSV: {file}");
+                    }
+                    catch (Exception exCsv)
+                    {
+                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos: {exCsv.Message}");
+                    }
                     return (true, log.ToString());
                 }
                 catch (Exception ex)
@@ -496,11 +542,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 var (insertOk, insertErr) = TryInsertRowDirect(targetGdb, targetFC, dict, mapSpatialReference);
                 if (insertOk)
                 {
-                    // Forzar refresco del mapa si hay vista activa
-                    if (MapView.Active != null)
-                    {
-                        MapView.Active.Redraw(true);
-                    }
+                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
@@ -534,8 +576,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                if (MapView.Active != null)
-                    MapView.Active.Redraw(true);
+                // (Sin auto refresco de mapa por requerimiento del usuario)
 
                 return true;
             }
@@ -586,11 +627,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 var (insertOk, insertErr) = TryInsertRowDirect(targetGdb, targetFC, dict, mapSpatialReference);
                 if (insertOk)
                 {
-                    // Forzar refresco del mapa si hay vista activa
-                    if (MapView.Active != null)
-                    {
-                        MapView.Active.Redraw(true);
-                    }
+                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
@@ -624,8 +661,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                if (MapView.Active != null)
-                    MapView.Active.Redraw(true);
+                // (Sin auto refresco de mapa por requerimiento del usuario)
 
                 return true;
             }
@@ -811,40 +847,160 @@ namespace EAABAddIn.Src.Application.UseCases
 
         private Dictionary<string, object?> BuildLineAttributes(Feature source, FeatureClassDefinition def, int subtipo)
         {
-            var attrs = new Dictionary<string, object?>();
+            var a = new Dictionary<string, object?>();
+            // Construye un diccionario amplio con todos los posibles campos destino.
+            // Los que no existan en la FC de destino serán ignorados más adelante.
             try
             {
-                attrs["SUBTIPO"] = subtipo;
-                attrs["DOMMATERIAL"] = GetFieldValue<string>(source, "MATERIAL");
-                // Manejar SISTEMA como string (según propuesta)
+                // Valores base
+                a["SUBTIPO"] = subtipo;
                 var sistema = GetFieldValue<int?>(source, "SISTEMA");
-                attrs["DOMTIPOSISTEMA"] = sistema?.ToString();
-                attrs["FECHAINSTALACION"] = GetFieldValue<DateTime?>(source, "FECHAINST");
-                attrs["LONGITUD_M"] = GetFieldValue<double?>(source, "LONGITUD_M");
-                // Campos adicionales sugeridos
-                attrs["OBSERVACIONES"] = GetFieldValue<string>(source, "OBSERV");
-                attrs["CONTRATO_ID"] = GetFieldValue<string>(source, "CONTRATO_I");
-                attrs["DISENO_ID"] = GetFieldValue<string>(source, "NDISENO");
-                System.Diagnostics.Debug.WriteLine($"📋 Atributos construidos: SUBTIPO={subtipo}, SISTEMA={sistema}");
+                a["DOMTIPOSISTEMA"] = sistema?.ToString();
+                // Ubicación/Zona/UGA/IDSIG
+                var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
+                              ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
+                              ?? GetFieldValue<string>(source, "UBIC_TECNICA")
+                              ?? GetFieldValue<string>(source, "UBIC_TECN");
+                if (!string.IsNullOrWhiteSpace(ubicTec))
+                {
+                    a["UBICACIONTECNICA"] = ubicTec;
+                    a["UBICACION_TECNICA"] = ubicTec; // por si la FC usa este nombre
+                }
+                a["ZONA"] = GetFieldValue<string>(source, "ZONA");
+                a["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
+                a["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
+                a["FECHAINSTALACION"] = GetFieldValue<DateTime?>(source, "FECHAINST");
+                a["LONGITUD_M"] = GetFieldValue<double?>(source, "LONGITUD_M");
+                a["DOMMATERIAL"] = GetFieldValue<string>(source, "MATERIAL");
+                a["DOMMATERIAL2"] = GetFieldValue<string>(source, "MATERIAL2");
+                a["DOMDIAMETRONOMINAL"] = GetFieldValue<string>(source, "DIAMETRO");
+                a["DOMESTADOENRED"] = GetFieldValue<string>(source, "ESTADOENRED") ?? GetFieldValue<string>(source, "ESTADOENRE");
+                a["DOMCALIDADDATO"] = GetFieldValue<string>(source, "CALIDADDATO") ?? GetFieldValue<string>(source, "CALIDADDAT");
+                a["DOMESTADOLEGAL"] = GetFieldValue<string>(source, "ESTADOLEGAL") ?? GetFieldValue<string>(source, "ESTADOLEGA");
+                a["DOMTIPOSECCION"] = GetFieldValue<string>(source, "T_SECCION");
+                a["DOMCAMARACAIDA"] = GetFieldValue<string>(source, "CAM_CAIDA");
+                a["DOMMETODOINSTALACION"] = GetFieldValue<string>(source, "INSTALACI");
+                a["DOMMATERIALESPPUBLICO"] = GetFieldValue<string>(source, "MATESPPUBL");
+                a["DOMTIPOINSPECCION"] = GetFieldValue<string>(source, "TIPOINSPEC");
+                a["DOMGRADOESTRUCTURAL"] = GetFieldValue<string>(source, "GRADOEST");
+                a["DOMGRADOOPERACIONAL"] = GetFieldValue<string>(source, "GRADOOPER");
+                a["RUGOSIDAD"] = GetFieldValue<double?>(source, "RUGOSIDAD");
+                a["OBSERVACIONES"] = GetFieldValue<string>(source, "OBSERV") ?? GetFieldValue<string>(source, "OBSERVACIO") ?? GetFieldValue<string>(source, "OBSERVACIONES");
+                a["LONGITUD_M"] = GetFieldValue<double?>(source, "LONGITUD_M");
+                a["PENDIENTE"] = GetFieldValue<double?>(source, "PENDIENTE");
+                a["PROFUNDIDADMEDIA"] = GetFieldValue<double?>(source, "PROFUNDIDAD");
+                a["NUMEROCONDUCTOS"] = GetFieldValue<double?>(source, "NROCONDUCTOS");
+                a["BASE"] = GetFieldValue<double?>(source, "BASE");
+                a["ALTURA1"] = GetFieldValue<double?>(source, "ALTURA1");
+                a["ALTURA2"] = GetFieldValue<double?>(source, "ALTURA2");
+                a["TALUD1"] = GetFieldValue<double?>(source, "TALUD1");
+                a["TALUD2"] = GetFieldValue<double?>(source, "TALUD2");
+                a["ANCHOBERMA"] = GetFieldValue<double?>(source, "ANCHOBERMA");
+                a["NOMBRE"] = GetFieldValue<string>(source, "NOMBRE");
+                a["COTARASANTEINICIAL"] = GetFieldValue<double?>(source, "C_RASATEI");
+                a["COTARASANTEFINAL"] = GetFieldValue<double?>(source, "C_RASANTEF");
+                a["COTACLAVEINICIAL"] = GetFieldValue<double?>(source, "C_CLAVEI");
+                a["COTACLAVEFINAL"] = GetFieldValue<double?>(source, "C_CLAVEF");
+                a["COTABATEAINICIAL"] = GetFieldValue<double?>(source, "C_BATEAI");
+                a["COTABATEAFINAL"] = GetFieldValue<double?>(source, "C_BATEAF");
+                a["N_INICIAL"] = GetFieldValue<string>(source, "N_INICIAL");
+                a["N_FINAL"] = GetFieldValue<string>(source, "N_FINAL");
+                a["CODACTIVOS_FIJOS"] = GetFieldValue<string>(source, "CODACTIVOS_FIJOS") ?? GetFieldValue<string>(source, "CODACTIVO_FIJO");
+                System.Diagnostics.Debug.WriteLine($"📋 Atributos línea construidos: SUBTIPO={subtipo}, SISTEMA={sistema}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠ Error construyendo atributos: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"⚠ Error construyendo atributos (línea): {ex.Message}");
             }
-            return attrs;
+            return a;
         }
 
         private Dictionary<string, object?> BuildPointAttributes(Feature source, FeatureClassDefinition def, int subtipo)
         {
             var a = new Dictionary<string, object?>();
-            a["SUBTIPO"] = subtipo;
-            // Manejar SISTEMA como string (igual que en líneas)
-            var sistema = GetFieldValue<int?>(source, "SISTEMA");
-            a["DOMTIPOSISTEMA"] = sistema?.ToString();
-            a["FECHAINSTALACION"] = GetFieldValue<DateTime?>(source, "FECHADATO");
-            a["DOMESTADOENRED"] = GetFieldValue<string>(source, "ESTADOENRE");
-            a["DOMCALIDADDATO"] = GetFieldValue<string>(source, "CALIDADDAT");
-            System.Diagnostics.Debug.WriteLine($"📋 Atributos punto construidos: SUBTIPO={subtipo}, SISTEMA={sistema}");
+            try
+            {
+                a["SUBTIPO"] = subtipo;
+                var sistema = GetFieldValue<int?>(source, "SISTEMA");
+                a["DOMTIPOSISTEMA"] = sistema?.ToString();
+                // Ubicación/Zona/UGA/IDSIG
+                var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
+                              ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
+                              ?? GetFieldValue<string>(source, "UBIC_TECNICA")
+                              ?? GetFieldValue<string>(source, "UBIC_TECN");
+                if (!string.IsNullOrWhiteSpace(ubicTec))
+                {
+                    a["UBICACIONTECNICA"] = ubicTec;
+                    a["UBICACION_TECNICA"] = ubicTec;
+                }
+                a["ZONA"] = GetFieldValue<string>(source, "ZONA");
+                a["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
+                a["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
+                a["FECHAINSTALACION"] = GetFieldValue<DateTime?>(source, "FECHADATO") ?? GetFieldValue<DateTime?>(source, "FECHAINST");
+                a["DISENO_ID"] = GetFieldValue<string>(source, "NDISENO");
+                a["CONTRATO_ID"] = GetFieldValue<string>(source, "CONTRATO_ID") ?? GetFieldValue<string>(source, "CONTRATO_I");
+                a["DOMESTADOENRED"] = GetFieldValue<string>(source, "ESTADOENRED") ?? GetFieldValue<string>(source, "ESTADOENRE");
+                a["DOMCALIDADDATO"] = GetFieldValue<string>(source, "CALIDADDATO") ?? GetFieldValue<string>(source, "CALIDADDAT");
+                a["DOMMATERIAL"] = GetFieldValue<string>(source, "MATERIAL");
+                a["LOCALIZACIONRELATIVA"] = GetFieldValue<string>(source, "LOCALIZACIONRELATIVA") ?? GetFieldValue<string>(source, "LOCALIZACI");
+                a["ROTACIONSIMBOLO"] = GetFieldValue<double?>(source, "ROTACION");
+                a["DIRECCION"] = GetFieldValue<string>(source, "DIRECCION");
+                a["NOMBRE"] = GetFieldValue<string>(source, "NOMBRE");
+                a["OBSERVACIONES"] = GetFieldValue<string>(source, "OBSERV") ?? GetFieldValue<string>(source, "OBSERVACIO");
+                a["COTARASANTE"] = GetFieldValue<double?>(source, "C_RASANTE");
+                a["COTATERRENO"] = GetFieldValue<double?>(source, "C_TERRENO");
+                a["COTAFONDO"] = GetFieldValue<double?>(source, "C_FONDO");
+                a["PROFUNDIDAD"] = GetFieldValue<double?>(source, "PROFUNDIDA");
+                a["COTACRESTA"] = GetFieldValue<double?>(source, "COTACRESTA");
+                a["COTATECHOVERTEDERO"] = GetFieldValue<double?>(source, "C_TECHO_VE");
+                a["ALTURABOMBEO"] = GetFieldValue<double?>(source, "HBOMBEO");
+                a["COTABOMBEO"] = GetFieldValue<double?>(source, "COTABOMBE");
+                a["VOLUMENBOMBEO"] = GetFieldValue<double?>(source, "VOLBOMBEO");
+                a["CAUDALBOMBEO"] = GetFieldValue<double?>(source, "Q_BOMBEO");
+                a["LONGVERTEDERO"] = GetFieldValue<double?>(source, "LONGVERT");
+                a["LARGOESTRUCTURA"] = GetFieldValue<double?>(source, "LARGO");
+                a["ANCHOESTRUCTURA"] = GetFieldValue<double?>(source, "ANCHO");
+                a["ALTOESTRUCTURA"] = GetFieldValue<double?>(source, "ALTO");
+                a["UNIDADESBOMBEO"] = GetFieldValue<string>(source, "UNIDBOMBEO");
+                a["DOMTIPOBOMBEO"] = GetFieldValue<string>(source, "TIPOBOMB");
+                a["DOMINICIALVARIASCUENCAS"] = GetFieldValue<string>(source, "INICIAL_CUENCAS");
+                a["DOMCAMARASIFON"] = GetFieldValue<string>(source, "CAMARASIF");
+                a["DOMESTADOPOZO"] = GetFieldValue<string>(source, "EST_POZO");
+                a["DOMESTADOOPERACION"] = GetFieldValue<string>(source, "ESTOPERA");
+                a["DOMTIPOALMACENAMIENTO"] = GetFieldValue<string>(source, "TIPOALMAC");
+                a["DOMESTADOFISICO"] = GetFieldValue<string>(source, "EST_FISICO");
+                a["DOMTIPOVALVULAANTIRREFLUJO"] = GetFieldValue<string>(source, "TIPO_VALV_ANT");
+                a["DOMTIPOALIVIO"] = GetFieldValue<string>(source, "TIPO_ALIVI") ?? GetFieldValue<string>(source, "TIPO_ALIVIO");
+                a["DOMTIENECABEZAL"] = GetFieldValue<string>(source, "CABEZAL");
+                a["DOMESTADOTAPA"] = GetFieldValue<string>(source, "EST_TAPA");
+                a["DOMMATERIALESCALONES"] = GetFieldValue<string>(source, "MATESCALO");
+                a["DOMESTADOESCALON"] = GetFieldValue<string>(source, "ESTESCALON");
+                a["DOMESTADOCARGUE"] = GetFieldValue<string>(source, "ESTCARGUE");
+                a["DOMESTADOCILINDRO"] = GetFieldValue<string>(source, "ESTCILIND");
+                a["DOMESTADOCANUELA"] = GetFieldValue<string>(source, "ESTCANUE");
+                a["CONTINSPE"] = GetFieldValue<string>(source, "CONTINSPE");
+                a["FECHA_INSP"] = GetFieldValue<DateTime?>(source, "FECHA_INSP");
+                a["DOMTIPOINSPECCION"] = GetFieldValue<string>(source, "TIPOINSPEC");
+                a["DOMCONOREDUCCION"] = GetFieldValue<string>(source, "CONOREDUCC");
+                a["DOMMATERCONO"] = GetFieldValue<string>(source, "MATERCONO");
+                a["DOMTIPOCONO"] = GetFieldValue<string>(source, "TIPO_CONO");
+                a["DOMESTADOCONO"] = GetFieldValue<string>(source, "EST_CONO");
+                a["ESTREJILLA"] = GetFieldValue<string>(source, "ESTREJILLA");
+                a["MATREJILLA"] = GetFieldValue<string>(source, "MATREJILLA");
+                a["TAMREJILLA"] = GetFieldValue<string>(source, "TAMREJILLA");
+                a["DOMORIGENSECCION"] = GetFieldValue<string>(source, "ORIGENSEC");
+                a["DISTANCIADESDEORIGEN"] = GetFieldValue<double?>(source, "DISTORIGEN");
+                a["ABSCISA"] = GetFieldValue<string>(source, "ABSCISA");
+                a["IDENTIFIC"] = GetFieldValue<string>(source, "IDENTIFIC");
+                a["NORTE"] = GetFieldValue<double?>(source, "NORTE");
+                a["ESTE"] = GetFieldValue<double?>(source, "ESTE");
+                a["CODACTIVO_FIJO"] = GetFieldValue<string>(source, "CODACTIVO_FIJO");
+                System.Diagnostics.Debug.WriteLine($"📋 Atributos punto construidos: SUBTIPO={subtipo}, SISTEMA={sistema}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠ Error construyendo atributos (punto): {ex.Message}");
+            }
             return a;
         }
 
