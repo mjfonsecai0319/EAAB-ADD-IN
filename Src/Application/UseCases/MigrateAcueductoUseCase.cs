@@ -16,7 +16,7 @@ namespace EAABAddIn.Src.Application.UseCases
 {
     public class MigrateAcueductoUseCase
     {
-        public async Task<(bool ok, string message)> MigrateLines(string sourceLineasPath, string targetGdbPath)
+        public async Task<(bool ok, string message, int warnings)> MigrateLines(string sourceLineasPath, string targetGdbPath)
         {
             return await QueuedTask.Run(() =>
             {
@@ -25,14 +25,14 @@ namespace EAABAddIn.Src.Application.UseCases
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourceLineasPath) || string.IsNullOrWhiteSpace(targetGdbPath))
-                        return (false, "Parámetros inválidos");
+                        return (false, "Parámetros inválidos", 1);
 
                     if (!Directory.Exists(targetGdbPath))
-                        return (false, "La GDB de destino no existe");
+                        return (false, "La GDB de destino no existe", 1);
 
                     using var sourceFC = OpenFeatureClass(sourceLineasPath);
                     if (sourceFC == null)
-                        return (false, $"No se pudo abrir: {sourceLineasPath}");
+                        return (false, $"No se pudo abrir: {sourceLineasPath}", 1);
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
@@ -167,6 +167,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
+                    int warnings = noClase + noTarget + failed;
                     
                     if (migrated > 0)
                     {
@@ -217,6 +218,7 @@ namespace EAABAddIn.Src.Application.UseCases
                                     log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
                                     if (emptyGeoms > 0)
                                         log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
+                                    warnings += emptyGeoms;
                                 }
                             }
                         }
@@ -234,17 +236,17 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas ACU: {exCsv.Message}");
                     }
-                    return (true, log.ToString());
+                    return (true, log.ToString(), warnings);
                 }
                 catch (Exception ex)
                 {
                     log.AppendLine($"\n❌ Error: {ex.Message}");
-                    return (false, log.ToString());
+                    return (false, log.ToString(), 1);
                 }
             });
         }
 
-        public async Task<(bool ok, string message)> MigratePoints(string sourcePuntosPath, string targetGdbPath)
+        public async Task<(bool ok, string message, int warnings)> MigratePoints(string sourcePuntosPath, string targetGdbPath)
         {
             return await QueuedTask.Run(() =>
             {
@@ -253,14 +255,14 @@ namespace EAABAddIn.Src.Application.UseCases
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourcePuntosPath) || string.IsNullOrWhiteSpace(targetGdbPath))
-                        return (false, "Parámetros inválidos");
+                        return (false, "Parámetros inválidos", 1);
 
                     if (!Directory.Exists(targetGdbPath))
-                        return (false, "La GDB de destino no existe");
+                        return (false, "La GDB de destino no existe", 1);
 
                     using var sourceFC = OpenFeatureClass(sourcePuntosPath);
                     if (sourceFC == null)
-                        return (false, $"No se pudo abrir: {sourcePuntosPath}");
+                        return (false, $"No se pudo abrir: {sourcePuntosPath}", 1);
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
@@ -390,6 +392,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
+                    int warnings = noClase + noTarget + failed;
                     
                     if (migrated > 0)
                     {
@@ -438,6 +441,7 @@ namespace EAABAddIn.Src.Application.UseCases
                                     log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
                                     if (emptyGeoms > 0)
                                         log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
+                                    warnings += emptyGeoms;
                                 }
                             }
                         }
@@ -455,12 +459,12 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos ACU: {exCsv.Message}");
                     }
-                    return (true, log.ToString());
+                    return (true, log.ToString(), warnings);
                 }
                 catch (Exception ex)
                 {
                     log.AppendLine($"\n❌ Error: {ex.Message}");
-                    return (false, log.ToString());
+                    return (false, log.ToString(), 1);
                 }
             });
         }

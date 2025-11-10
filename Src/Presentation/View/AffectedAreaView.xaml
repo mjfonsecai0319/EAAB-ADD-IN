@@ -67,6 +67,27 @@
                 </Style.Triggers>
             </Style>
 
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button"
+                BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="FontWeight" Value="Medium" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="BorderBrush" Value="{DynamicResource Esri_Gray155}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Esri_Gray120}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox"
                 BasedOn="{StaticResource {x:Type ComboBox}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundContentBrush}" />
@@ -289,7 +310,7 @@
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
                     <Button
                         Content="Limpiar"
-                        Style="{StaticResource Esri_Button}"
+                        Style="{StaticResource SecondaryButtonStyle}"
                         Margin="0,0,10,0"
                         Command="{Binding ClearFormCommand}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"

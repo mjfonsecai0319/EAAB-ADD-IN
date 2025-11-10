@@ -2,7 +2,7 @@
 
 ## Descripción General
 
-AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE. Incluye también búsqueda de Puntos de Interés (POIs) y almacenamiento estructurado de resultados.
+AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE. Incluye también búsqueda de Puntos de Interés (POIs), almacenamiento estructurado de resultados y un sistema completo de migración de datos de redes de acueducto y alcantarillado con validación automática y transformación de geometrías.
 
 ## Stack Tecnológico
 
@@ -45,7 +45,14 @@ EAABAddIn/
 │   │   │   ├── AddressNormalizer.cs
 │   │   │   ├── AddressSearchService.cs
 │   │   │   ├── MassiveGeocodingService.cs
-│   │   │   └── PoiSearchService.cs
+│   │   │   ├── PoiSearchService.cs
+│   │   │   └── CsvReportService.cs
+│   │   ├── UseCases/
+│   │   │   ├── MigrateAlcantarilladoUseCase.cs
+│   │   │   ├── MigrateAcueductoUseCase.cs
+│   │   │   ├── CreateGdbFromXmlUseCase.cs
+│   │   │   └── Validation/
+│   │   │       └── ValidateDatasetsUseCase.cs
 │   │   └── DTOs/
 │   │
 │   ├── Core/                     # Transversal: conexión, capa de datos base, utilidades
@@ -71,7 +78,17 @@ EAABAddIn/
 │   └── Presentation/             # MVVM UI
 │       ├── Converters/
 │       ├── View/
+│       │   ├── AddressSearchView.xaml
+│       │   ├── MassiveGeocodingView.xaml
+│       │   ├── MigrationView.xaml
+│       │   └── Dockpanes/
+│       │       └── MigrationDockpaneView.xaml
 │       └── ViewModel/
+│           ├── AddressSearchViewModel.cs
+│           ├── MassiveGeocodingViewModel.cs
+│           ├── MigrationViewModel.cs
+│           └── Dockpanes/
+│               └── MigrationDockpaneViewModel.cs
 │
 ├── Images/                       # Recursos gráficos
 ├── Config.daml                   # Configuración AddIn / DAML (UI ArcGIS Pro)
@@ -115,16 +132,440 @@ EAABAddIn/
 5. Se inserta en capa `POIResults` o memoria y luego commit.  
 6. Selección de un resultado centra el mapa.
 
+### Flujo de Migración de Datos
+
+**Fase 1: Preparación y Validación**
+1. Usuario selecciona carpeta de salida, esquema XML y capas de origen (acueducto/alcantarillado).
+2. `ValidateDatasetsUseCase` ejecuta validación pre-migración:
+   - Verifica existencia de campos requeridos (CLASE, SUBTIPO, SISTEMA)
+   - Detecta features sin clasificación o con valores nulos
+   - Genera reportes CSV con advertencias por dataset
+3. Si hay advertencias y checkbox "Migrar con Advertencias" está desmarcado:
+   - Bloquea ejecución y muestra diálogo al usuario
+   - Usuario debe revisar reportes y decidir si continuar
+4. Si no hay advertencias o usuario autoriza continuar → pasa a Fase 2
+
+**Fase 2: Creación de Geodatabase Destino**
+1. `CreateGdbFromXmlUseCase` procesa el esquema XML:
+   - Verifica si ya existe GDB con nombre `Migracion_YYYYMMDD_HHmmss.gdb`
+   - Si existe: reutiliza (permite migraciones incrementales)
+   - Si no existe: crea nueva GDB usando ArcGIS Geoprocessing con el XML
+2. Valida que la creación fue exitosa antes de continuar
+
+**Fase 3: Migración de Features**
+1. Para cada capa de origen seleccionada:
+   - `MigrateAlcantarilladoUseCase` o `MigrateAcueductoUseCase` lee features
+2. Por cada feature:
+   - Lee campo CLASE para determinar tipo de elemento
+   - Lee campo SISTEMA para determinar red (sanitario/pluvial)
+   - Consulta mapping interno para obtener feature class destino
+   - Valida que FC destino existe en la GDB
+3. Transformación de geometría:
+   - Obtiene SR del mapa activo y SR del FC destino
+   - Si son diferentes: proyecta geometría automáticamente
+   - Detecta dimensiones Z/M incompatibles
+   - Reconstruye geometría sin Z/M si es necesario usando builders específicos (MapPointBuilderEx, PolylineBuilderEx, PolygonBuilderEx)
+4. Mapeo de atributos:
+   - `BuildLineAttributes()` o `BuildPointAttributes()` mapea campos origen → destino
+   - Aplica coerción de tipos según definición de campos destino
+   - Trunca strings que exceden longitud máxima del campo
+5. Inserción:
+   - Intenta inserción con `EditOperation` (método seguro ArcGIS)
+   - Si falla, registra error detallado
+   - Continúa con siguiente feature (no detiene proceso completo)
+
+**Fase 4: Post-Procesamiento**
+1. `CsvReportService` genera reportes de migración:
+   - Resumen por cada feature class destino
+   - Total intentado vs migrado vs fallido
+   - Features sin CLASE o sin clase destino
+2. `AddMigratedLayersToMap()` agrega capas al mapa:
+   - Verifica si capa ya existe en el mapa
+   - Si existe y apunta a la misma fuente: reutiliza y aplica simbología
+   - Si no existe: crea nueva capa con `LayerFactory`
+   - Aplica simbología predefinida (verde para líneas, naranja para puntos)
+   - Calcula extent combinado de todas las capas migradas
+   - Ejecuta ZoomTo con extent expandido 10%
+3. Muestra resumen final al usuario
+
+**Mapeo de Clasificaciones (Alcantarillado):**
+
+Líneas:
+- CLASE=1 + SISTEMA=0/2 → `als_RedLocal`
+- CLASE=1 + SISTEMA=1 → `alp_RedLocal`
+- CLASE=2 + SISTEMA=0/2 → `als_RedTroncal`
+- CLASE=2 + SISTEMA=1 → `alp_RedTroncal`
+- CLASE=3 + SISTEMA=0/2 → `als_LineaLateral`
+- CLASE=3 + SISTEMA=1 → `alp_LineaLateral`
+- CLASE=4 → igual que CLASE=1 (RedLocal)
+
+Puntos:
+- CLASE=1 → `als/alp_EstructuraRed`
+- CLASE=2 → `als/alp_Pozo`
+- CLASE=3 → `als/alp_Sumidero`
+- CLASE=4 → `als/alp_CajaDomiciliaria`
+- CLASE=5 → `als/alp_SeccionTransversal`
+- CLASE=6 → `als/alp_EstructuraRed`
+- CLASE=7 → `als/alp_Sumidero`
+
+Prefijos: `als_` (sanitario), `alp_` (pluvial)
+
 ### Patrones de Diseño Implementados
 
-(Se mantienen los ya descritos: MVVM, Factory, Repository, Singleton Controlado, Strategy (fallback), Lazy Initialization.)
+#### Patrones Principales
+- **MVVM** (Model-View-ViewModel): Separación de lógica de presentación
+- **Factory** (ConnectionPropertiesFactory): Creación de conexiones según motor de BD
+- **Repository** (PtAddressGralEntityRepository, PoiRepository): Abstracción de acceso a datos
+- **Singleton Controlado** (Module1, ConnectionService): Instancias únicas de servicios
+- **Strategy (fallback)**: Múltiples estrategias de búsqueda (exacta → LIKE → ESRI)
+- **Lazy Initialization**: Creación diferida de recursos (feature classes, capas)
 
-Se adicionan:
-- **Adapter** (normalización entre fuentes de resultados EAAB, Catastro, ESRI hacia `GeocodeResult`).
-- **Value Objects ligeros** para direcciones normalizadas (en evolución).
-- **Fail-Fast Validation** en masivo antes de consumir recursos.
+#### Patrones en Migración
+- **Use Case Pattern**: Cada operación de migración es un caso de uso aislado
+- **Template Method**: `MigrateLines()` y `MigratePoints()` siguen estructura común
+- **Builder Pattern**: Reconstrucción de geometrías con builders específicos
+- **Adapter**: Normalización entre fuentes de resultados EAAB, Catastro, ESRI hacia `GeocodeResult`
+- **Chain of Responsibility**: Validación → Creación GDB → Migración → Reportes
+- **Command Pattern**: EditOperation encapsula operaciones de edición
+- **Fail-Fast Validation**: Valida estructura antes de consumir recursos de migración
+- **Safe Fallback**: Si inserción directa falla, intenta con EditOperation
 
-## Componentes Principales (Resumen)
+## Componentes Principales de Migración
+
+### 1. MigrationViewModel.cs
+
+Orquesta el flujo completo de migración desde la interfaz de usuario.
+
+```csharp
+internal class MigrationViewModel : BusyViewModelBase
+{
+    // Propiedades vinculadas a UI
+    public bool MigrarConAdvertencias { get; set; }  // Checkbox crítico
+    public string? Workspace { get; set; }           // Carpeta salida
+    public string? XmlSchemaPath { get; set; }       // Esquema XML
+    public string? L_Acu_Origen { get; set; }        // Líneas acueducto
+    public string? P_Acu_Origen { get; set; }        // Puntos acueducto
+    // ... (6 capas posibles)
+    
+    private async Task RunAsync()
+    {
+        // 1. Validar parámetros
+        if (Workspace is null || XmlSchemaPath is null) return;
+        
+        // 2. Construir lista de datasets a validar
+        var datasetsToValidate = new List<DatasetInput>();
+        if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
+            datasetsToValidate.Add(new("L_ACU_ORIGEN", L_Acu_Origen));
+        // ... repite para cada capa
+        
+        // 3. Ejecutar validación
+        var validation = await _datasetValidatorUseCase.Invoke(new() {
+            OutputFolder = Workspace,
+            Datasets = datasetsToValidate
+        });
+        
+        // 4. Verificar advertencias vs checkbox
+        if (validation.TotalWarnings > 0 && !MigrarConAdvertencias)
+        {
+            // Bloquear con diálogo detallado
+            MessageBox.Show($"BLOQUEADO: {validation.TotalWarnings} advertencias...");
+            return;
+        }
+        
+        // 5. Crear GDB destino
+        var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase
+            .Invoke(Workspace, XmlSchemaPath);
+        
+        // 6. Migrar cada capa seleccionada
+        if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
+        {
+            var (ok, msg, warnings) = await _migrateAlcantarilladoUseCase
+                .MigrateLines(L_Alc_Origen, gdbPath);
+            mensajes.Add(msg);
+        }
+        // ... repite para cada tipo
+        
+        // 7. Agregar capas al mapa
+        await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
+        
+        // 8. Mostrar resumen
+        MessageBox.Show($"Completado:\n{string.Join("\n", mensajes)}");
+    }
+}
+```
+
+**Características clave:**
+- **Validación obligatoria** antes de migración
+- **Bloqueo de seguridad** si hay advertencias sin autorización explícita
+- **Procesamiento secuencial** de múltiples capas
+- **Reportes CSV** automáticos por cada dataset
+- **Gestión de errores** sin detener proceso completo
+
+### 2. ValidateDatasetsUseCase.cs
+
+Valida estructura y contenido de datos antes de migración.
+
+```csharp
+public class ValidateDatasetsUseCase
+{
+    public async Task<ValidationResult> Invoke(ValidationInput input)
+    {
+        var result = new ValidationResult
+        {
+            ReportFolder = Path.Combine(input.OutputFolder, "Reportes_Validacion"),
+            ReportFiles = new List<string>()
+        };
+        
+        foreach (var dataset in input.Datasets)
+        {
+            using var fc = OpenFeatureClass(dataset.Path);
+            var warnings = new List<ValidationWarning>();
+            
+            // Verificar campos requeridos
+            if (!HasField(fc, "CLASE"))
+                warnings.Add(new("Campo CLASE no encontrado", "CRITICAL"));
+            
+            // Validar contenido
+            using var cursor = fc.Search();
+            while (cursor.MoveNext())
+            {
+                var clase = GetFieldValue<int?>(feature, "CLASE");
+                if (!clase.HasValue || clase.Value == 0)
+                    warnings.Add(new("Feature sin CLASE válida", "WARNING"));
+                
+                var targetClass = GetTargetClassName(clase, sistema);
+                if (string.IsNullOrEmpty(targetClass))
+                    warnings.Add(new("Sin clase destino para CLASE=" + clase, "WARNING"));
+            }
+            
+            // Generar reporte CSV
+            var csvFile = WriteCsvReport(result.ReportFolder, dataset.Name, warnings);
+            result.ReportFiles.Add(csvFile);
+            result.TotalWarnings += warnings.Count;
+        }
+        
+        return result;
+    }
+}
+```
+
+**Validaciones ejecutadas:**
+- Existencia de campos `CLASE`, `SUBTIPO`, `SISTEMA`
+- Tipos de datos correctos
+- Features con CLASE nulo o cero
+- CLASE sin mapping a feature class destino
+- Geometrías nulas o vacías
+
+### 3. MigrateAlcantarilladoUseCase.cs
+
+Ejecuta la migración real de features de alcantarillado.
+
+```csharp
+public class MigrateAlcantarilladoUseCase
+{
+    public async Task<(bool ok, string message)> MigrateLines(
+        string sourceLineasPath, string targetGdbPath)
+    {
+        return await QueuedTask.Run(() =>
+        {
+            using var sourceFC = OpenFeatureClass(sourceLineasPath);
+            using var targetGdb = new Geodatabase(
+                new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
+            
+            var mapSpatialReference = MapView.Active?.Map?.SpatialReference;
+            int migrated = 0, failed = 0, noClase = 0, noTarget = 0;
+            
+            using var cursor = sourceFC.Search();
+            while (cursor.MoveNext())
+            {
+                var feature = cursor.Current as Feature;
+                var clase = GetFieldValue<int?>(feature, "CLASE");
+                var sistema = GetFieldValue<int?>(feature, "SISTEMA");
+                
+                if (!clase.HasValue) { noClase++; continue; }
+                
+                string targetClassName = GetTargetLineClassName(clase.Value, sistema?.ToString());
+                if (string.IsNullOrEmpty(targetClassName)) { noTarget++; continue; }
+                
+                if (MigrateLineFeature(feature, targetGdb, targetClassName, 
+                    subtipo, out var error, mapSpatialReference))
+                    migrated++;
+                else
+                    failed++;
+            }
+            
+            // Generar reporte CSV
+            var csv = new CsvReportService();
+            csv.WriteMigrationSummary(folder, "alcantarillado_lineas", stats);
+            
+            return (true, $"Migradas: {migrated}, Fallidas: {failed}");
+        });
+    }
+    
+    private bool MigrateLineFeature(Feature source, Geodatabase targetGdb,
+        string targetClassName, int subtipo, out string? error,
+        SpatialReference? mapSR)
+    {
+        using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
+        var geometry = source.GetShape();
+        
+        // Proyección si es necesaria
+        var targetSR = targetFC.GetDefinition().GetSpatialReference();
+        if (mapSR != null && geometry.SpatialReference.Wkid != targetSR.Wkid)
+        {
+            geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+        }
+        
+        // Ajuste Z/M si es necesario
+        if ((geometry.HasZ && !targetFC.GetDefinition().HasZ()) ||
+            (geometry.HasM && !targetFC.GetDefinition().HasM()))
+        {
+            geometry = RebuildGeometryWithoutZM(geometry);
+        }
+        
+        // Mapeo de atributos
+        var attributes = BuildLineAttributes(source, targetFC.GetDefinition(), subtipo);
+        
+        // Inserción con EditOperation
+        var editOp = new EditOperation { Name = "Migrar línea" };
+        editOp.Callback(context =>
+        {
+            using var rowBuffer = targetFC.CreateRowBuffer();
+            rowBuffer["SHAPE"] = geometry;
+            foreach (var attr in attributes)
+                rowBuffer[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
+            using var row = targetFC.CreateRow(rowBuffer);
+            context.Invalidate(row);
+        }, targetFC);
+        
+        bool success = editOp.Execute();
+        error = success ? null : editOp.ErrorMessage;
+        return success;
+    }
+    
+    private Geometry RebuildGeometryWithoutZM(Geometry geom)
+    {
+        if (geom is MapPoint pt)
+            return MapPointBuilderEx.CreateMapPoint(pt.X, pt.Y, geom.SpatialReference);
+        
+        if (geom is Polyline line)
+        {
+            var builder = new PolylineBuilderEx(geom.SpatialReference);
+            foreach (var part in line.Parts)
+            {
+                var points = new List<MapPoint>();
+                foreach (var segment in part)
+                {
+                    var startPt = segment.StartPoint;
+                    points.Add(MapPointBuilderEx.CreateMapPoint(
+                        startPt.X, startPt.Y, geom.SpatialReference));
+                }
+                // Agregar último punto
+                var lastSeg = part[part.Count - 1];
+                var endPt = lastSeg.EndPoint;
+                points.Add(MapPointBuilderEx.CreateMapPoint(
+                    endPt.X, endPt.Y, geom.SpatialReference));
+                
+                builder.AddPart(points);
+            }
+            return builder.ToGeometry();
+        }
+        
+        // Similar para Polygon...
+        return geom;
+    }
+    
+    public async Task<(bool ok, string message)> AddMigratedLayersToMap(string gdbPath)
+    {
+        var map = MapView.Active?.Map;
+        var combinedExtent = (Envelope?)null;
+        
+        var lineClasses = new[] { "als_RedLocal", "als_RedTroncal", ... };
+        foreach (var className in lineClasses)
+        {
+            using var fc = OpenFeatureClass(gdb, className);
+            if (fc == null || fc.GetCount() == 0) continue;
+            
+            // Calcular extent
+            using var cursor = fc.Search();
+            while (cursor.MoveNext())
+            {
+                var geom = (cursor.Current as Feature)?.GetShape();
+                if (geom?.Extent != null)
+                    combinedExtent = combinedExtent?.Union(geom.Extent) ?? geom.Extent;
+            }
+            
+            // Crear o reutilizar capa
+            var existingLayer = map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
+                .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+            
+            if (existingLayer == null)
+            {
+                var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(
+                    new FeatureLayerCreationParams(fc) { Name = className }, map);
+                ApplySymbology(layer, isLine: true);
+            }
+        }
+        
+        // Zoom a extent combinado
+        if (combinedExtent != null)
+        {
+            var expanded = new EnvelopeBuilderEx(
+                combinedExtent.XMin - width * 0.1,
+                combinedExtent.YMin - height * 0.1,
+                combinedExtent.XMax + width * 0.1,
+                combinedExtent.YMax + height * 0.1,
+                combinedExtent.SpatialReference
+            ).ToGeometry();
+            
+            MapView.Active.ZoomTo(expanded, TimeSpan.FromSeconds(1.5));
+        }
+        
+        return (true, "Capas agregadas exitosamente");
+    }
+}
+```
+
+**Operaciones críticas:**
+- **OpenFeatureClass()**: Maneja shapefiles, GDB, feature datasets automáticamente
+- **GetTargetLineClassName()**: Mapea CLASE+SISTEMA → nombre de FC destino
+- **RebuildGeometryWithoutZM()**: Reconstruye geometría eliminando dimensiones extra
+- **CoerceToFieldType()**: Convierte y trunca valores según tipo de campo destino
+- **EditOperation**: Método seguro para inserción en contexto de ArcGIS
+
+### 4. CsvReportService.cs
+
+Genera reportes CSV de validación y migración.
+
+```csharp
+public class CsvReportService
+{
+    public string WriteMigrationSummary(string folder, string prefix,
+        IEnumerable<(string className, int attempts, int migrated, int failed)> stats,
+        int noClase, int noTarget)
+    {
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var fileName = $"{prefix}_resumen_{timestamp}.csv";
+        var filePath = Path.Combine(folder, fileName);
+        
+        using var writer = new StreamWriter(filePath);
+        writer.WriteLine("Clase Destino,Intentos,Migradas,Fallidas");
+        
+        foreach (var (className, attempts, migrated, failed) in stats)
+        {
+            writer.WriteLine($"{className},{attempts},{migrated},{failed}");
+        }
+        
+        writer.WriteLine();
+        writer.WriteLine($"Sin campo CLASE,{noClase}");
+        writer.WriteLine($"Sin clase destino,{noTarget}");
+        
+        return filePath;
+    }
+}
+```
+
+## Componentes Principales Geocodificación
 
 ### 1. Module1.cs - Punto de Entrada
 
@@ -558,11 +999,124 @@ public class PostgresPoiRepository : IPoiRepository {
 }
 ```
 
+## Consideraciones Especiales de Migración
+
+### Transformación de Geometrías
+
+**Proyección automática:**
+```csharp
+if (sourceSR.Wkid != targetSR.Wkid)
+{
+    geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+}
+```
+
+**Eliminación de dimensiones Z/M:**
+```csharp
+// Si origen tiene Z pero destino no lo acepta
+if (sourceGeom.HasZ && !targetDef.HasZ())
+{
+    // Reconstruir sin Z usando builders
+    if (geom is Polyline)
+    {
+        var builder = new PolylineBuilderEx(SR);
+        foreach (var part in line.Parts)
+        {
+            var points2D = ExtractXYOnly(part);
+            builder.AddPart(points2D);
+        }
+        geometry = builder.ToGeometry();
+    }
+}
+```
+
+### Mapeo de Atributos
+
+**Líneas de alcantarillado (60+ campos mapeados):**
+- Campos técnicos: LONGITUD_M, PENDIENTE, PROFUNDIDADMEDIA, RUGOSIDAD
+- Diámetros: DOMDIAMETRONOMINAL, NUMEROCONDUCTOS
+- Secciones: DOMTIPOSECCION, BASE, ALTURA1, ALTURA2, TALUD1, TALUD2
+- Cotas: COTARASANTEINICIAL/FINAL, COTACLAVEINICIAL/FINAL, COTABATEAINICIAL/FINAL
+- Nodos: N_INICIAL, N_FINAL
+- Estados: DOMESTADOENRED, DOMCALIDADDATO, DOMESTADOLEGAL
+- Materiales: DOMMATERIAL, DOMMATERIAL2
+- Instalación: DOMMETODOINSTALACION, FECHAINSTALACION
+- Inspección: DOMTIPOINSPECCION, DOMGRADOESTRUCTURAL, DOMGRADOOPERACIONAL
+
+**Puntos de alcantarillado (80+ campos mapeados):**
+- Cotas: COTARASANTE, COTATERRENO, COTAFONDO, PROFUNDIDAD, COTACRESTA
+- Estructuras: LARGOESTRUCTURA, ANCHOESTRUCTURA, ALTOESTRUCTURA
+- Bombeo: ALTURABOMBEO, VOLUMENBOMBEO, CAUDALBOMBEO, UNIDADESBOMBEO
+- Estados: DOMESTADOPOZO, DOMESTADOFISICO, DOMESTADOTAPA, DOMESTADOESCALON
+- Componentes: DOMTIPOCONO, DOMESTADOCONO, ESTREJILLA, MATREJILLA
+- Georreferenciación: NORTE, ESTE, ABSCISA
+- Identificación: NOMBRE, IDENTIFIC, CODACTIVO_FIJO
+
+### Validación de Datos
+
+**Campos críticos validados:**
+```csharp
+// Validación pre-migración
+var warnings = new List<ValidationWarning>();
+
+// Campo CLASE obligatorio
+if (!HasField(fc, "CLASE"))
+    warnings.Add(new("Campo CLASE no encontrado", "CRITICAL"));
+
+// Valores válidos de CLASE
+if (clase == null || clase == 0)
+    warnings.Add(new($"Feature {oid}: CLASE nulo o cero", "WARNING"));
+
+// Mapping a clase destino
+var targetClass = GetTargetClassName(clase, sistema);
+if (string.IsNullOrEmpty(targetClass))
+    warnings.Add(new($"CLASE={clase}, SISTEMA={sistema} sin mapping", "WARNING"));
+```
+
+**Reporte CSV generado:**
+```
+Dataset,Campo,Problema,Severidad,Cantidad
+L_ALC_ORIGEN,CLASE,Valor nulo,WARNING,15
+L_ALC_ORIGEN,CLASE,Sin clase destino (CLASE=99),WARNING,3
+P_ALC_ORIGEN,SISTEMA,Valor nulo,WARNING,42
+```
+
+### Sistema de Reportes
+
+**Por cada migración se generan:**
+1. **Reporte de validación** (antes): `validacion_[dataset]_[timestamp].csv`
+2. **Reporte de migración** (después): `alcantarillado_lineas_resumen_[timestamp].csv`
+
+**Estructura reporte de migración:**
+```csv
+Clase Destino,Intentos,Migradas,Fallidas
+als_RedLocal,1250,1248,2
+als_RedTroncal,340,340,0
+als_LineaLateral,89,87,2
+
+Sin campo CLASE,15
+Sin clase destino,3
+```
+
 ## Notas de Mantenimiento
 
 - Revisar compatibilidad ArcGIS Pro antes de subir versión SDK.
 - Ejecutar pruebas de regresión después de cambios en repositorios.
 - Documentar nuevas columnas añadidas a Feature Class.
+- **Sincronizar mapeo de campos** si cambia esquema XML corporativo.
+- **Actualizar tablas de clasificación** si se agregan nuevos tipos de red.
+- **Validar proyecciones** si se cambia SR estándar del mapa.
+
+## Versión del Documento
+
+**Versión**: 1.2  
+**Última actualización**: 10 de noviembre de 2025  
+**Cambios principales:**
+- Documentación completa del sistema de migración
+- Flujos detallados de validación y transformación
+- Ejemplos de código de componentes de migración
+- Mapeo de atributos y clasificaciones
+- Consideraciones de rendimiento específicas de migración
 
 ---
 

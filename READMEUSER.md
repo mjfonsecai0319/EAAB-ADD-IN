@@ -162,14 +162,228 @@ La herramienta también permite localizar Puntos de Interés (instituciones, equ
    - Haz clic en **"Ubicar todos"** para agregar y centrar todos los resultados devueltos.
 6. (Alternativamente) Usa **"Buscar POI"** para refrescar/filtrar la lista si cambias el texto.
 
+
 **Resultados:**
 - Se listarán coincidencias con nombre, tipo y código.
 - Al seleccionar un POI y ubicarlo el mapa hace zoom y se agrega un punto a la capa `POIResults`.
 - Si eliges "Ubicar todos" se insertan todos los puntos visibles.
 
+### 4. Migración de Datos
+
+Esta herramienta permite migrar datos de redes de acueducto y alcantarillado desde formatos antiguos o externos hacia la estructura corporativa de la EAAB. Es especialmente útil para:
+- Integrar datos de proyectos nuevos al sistema corporativo
+- Actualizar datos de versiones antiguas del modelo de datos
+- Consolidar información de diferentes fuentes
+
+#### ¿Qué hace la migración?
+
+La migración **transforma y copia** las features (líneas y puntos) de capas de origen hacia una geodatabase de destino con la estructura estándar de la EAAB. Durante el proceso:
+
+1. **Valida la estructura** de los datos de origen
+2. **Clasifica automáticamente** cada feature según su tipo (CLASE, SUBTIPO, SISTEMA)
+3. **Mapea los atributos** desde los campos antiguos a los nuevos
+4. **Crea la geodatabase destino** usando un esquema XML predefinido
+5. **Proyecta las geometrías** al sistema de coordenadas del mapa activo si es necesario
+6. **Ajusta dimensiones Z/M** según los requisitos de las capas de destino
+7. **Agrega las capas al mapa** automáticamente con simbología apropiada
+
+#### Preparación antes de migrar
+
+**1. Archivos necesarios:**
+- **Capas de origen**: Tus shapefiles o feature classes con datos de acueducto/alcantarillado
+- **Esquema XML**: El archivo XML que define la estructura de la geodatabase destino (proporcionado por el administrador)
+- **Carpeta de salida**: Una carpeta donde se creará la geodatabase de migración
+
+**2. Estructura esperada de datos de origen:**
+
+Las capas de origen deben tener al menos estos campos clave:
+
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| CLASE | Entero | Tipo de elemento (1=Red, 2=Troncal, 3=Lateral, etc.) | Sí |
+| SUBTIPO | Entero | Subtipo específico del elemento | No |
+| SISTEMA | Entero | Tipo de sistema (0/2=Sanitario, 1=Pluvial) | No* |
+
+*Si SISTEMA está vacío, se asume sanitario por defecto.
 
 
-### 4. Cambiar la Configuración de Conexión
+#### Pasos para ejecutar la migración
+
+**Paso 1: Abrir la herramienta**
+
+1. Haz clic en el botón **"Migración"** en la pestaña EAAB Add-in
+2. Se abrirá un panel a la derecha con el formulario de migración
+
+**Paso 2: Seleccionar carpeta de salida**
+
+1. Haz clic en **"Examinar..."** junto a "Carpeta de Salida"
+2. Selecciona la carpeta donde se creará la geodatabase de migración
+3. La geodatabase se llamará automáticamente `GBD_Cargue.gdb`
+
+**Paso 3: Seleccionar esquema XML**
+
+1. Haz clic en **"Examinar..."** junto a "Esquema XML"
+2. Selecciona el archivo XML con la definición de la estructura destino
+3. Este archivo debe ser proporcionado por el área de sistemas de la EAAB
+
+**Paso 4: Seleccionar capas de origen**
+
+Selecciona las capas que deseas migrar (puedes elegir una o varias):
+
+**Para Acueducto:**
+- **Líneas ACU**: Haz clic en "Examinar..." y selecciona la capa de líneas de acueducto
+- **Puntos ACU**: Haz clic en "Examinar..." y selecciona la capa de puntos de acueducto
+
+**Para Alcantarillado Sanitario:**
+- **Líneas ALC**: Haz clic en "Examinar..." y selecciona la capa de líneas de alcantarillado sanitario
+- **Puntos ALC**: Haz clic en "Examinar..." y selecciona la capa de puntos de alcantarillado sanitario
+
+**Para Alcantarillado Pluvial:**
+- **Líneas ALC Pluvial**: Haz clic en "Examinar..." y selecciona la capa de líneas de alcantarillado pluvial
+- **Puntos ALC Pluvial**: Haz clic en "Examinar..." y selecciona la capa de puntos de alcantarillado pluvial
+
+**Paso 5: Validación automática**
+
+Antes de la migración, el sistema valida automáticamente:
+- ✓ Estructura de campos requeridos
+- ✓ Tipos de datos correctos
+- ✓ Valores en campos clave (CLASE, SUBTIPO, SISTEMA)
+- ⚠ Features sin clasificación
+- ⚠ Valores inesperados o nulos
+
+**Paso 6: Gestión de advertencias**
+
+Si la validación detecta advertencias:
+
+1. **Aparecerá un cuadro de diálogo** mostrando:
+   - Número total de advertencias
+   - Datasets que presentan problemas
+   - Ubicación de los reportes de validación (archivos CSV)
+
+2. **Opciones:**
+   - **Revisar reportes**: Abre los archivos CSV generados en la carpeta de salida
+   - **Corregir datos**: Edita las capas de origen y vuelve a intentar
+   - **Continuar con advertencias**: Marca el checkbox ☑ **"Migrar con Advertencias"** y ejecuta nuevamente
+
+**Nota importante:** Por seguridad, la migración **NO se ejecutará** si hay advertencias a menos que marques explícitamente el checkbox "Migrar con Advertencias".
+
+**Paso 7: Ejecutar migración**
+
+1. Haz clic en el botón **"Ejecutar"**
+2. Observa la barra de progreso y mensajes de estado
+3. El proceso puede tomar varios minutos dependiendo del volumen de datos
+
+#### Resultados de la migración
+
+**Geodatabase creada:**
+- Se crea automáticamente en la carpeta de salida
+- Nombre: `GDB.Cargue.gdb`
+- Contiene feature classes organizadas por tipo de red
+
+**Feature Classes de Acueducto:**
+- `acu_RedLocal`: Líneas de red local
+- `acu_RedMatriz`: Líneas de red matriz
+- `acu_Tanque`: Puntos de tanques
+- `acu_Valvula`: Puntos de válvulas
+- *(y otros según esquema XML)*
+
+**Feature Classes de Alcantarillado Sanitario:**
+- `als_RedLocal`: Líneas de red local sanitaria
+- `als_RedTroncal`: Líneas de red troncal sanitaria
+- `als_LineaLateral`: Líneas laterales sanitarias
+- `als_Pozo`: Puntos de pozos sanitarios
+- `als_Sumidero`: Puntos de sumideros sanitarios
+- `als_EstructuraRed`: Estructuras de red sanitaria
+- `als_CajaDomiciliaria`: Cajas domiciliarias sanitarias
+- `als_SeccionTransversal`: Secciones transversales sanitarias
+
+**Feature Classes de Alcantarillado Pluvial:**
+- `alp_RedLocal`: Líneas de red local pluvial
+- `alp_RedTroncal`: Líneas de red troncal pluvial
+- `alp_LineaLateral`: Líneas laterales pluviales
+- `alp_Pozo`: Puntos de pozos pluviales
+- `alp_Sumidero`: Puntos de sumideros pluviales
+- `alp_EstructuraRed`: Estructuras de red pluvial
+- `alp_CajaDomiciliaria`: Cajas domiciliarias pluviales
+- `alp_SeccionTransversal`: Secciones transversales pluviales
+
+**Capas agregadas al mapa:**
+- Todas las capas con datos se agregan automáticamente al mapa activo
+- Líneas aparecen en color verde
+- Puntos aparecen en color naranja
+- El mapa hace zoom automático al extent de los datos migrados
+
+**Reportes de migración:**
+En la carpeta de salida se generan reportes CSV con:
+- Resumen por clase de feature migrada
+- Número de features procesadas exitosamente
+- Features que no pudieron migrarse y razón
+- Features sin campo CLASE o sin clase destino
+
+#### Mapeo de clasificaciones
+
+El sistema mapea automáticamente según el campo CLASE:
+
+**Líneas (según CLASE y SISTEMA):**
+| CLASE | SISTEMA | Capa Destino |
+|-------|---------|--------------|
+| 1 | 0 o 2 | als_RedLocal (sanitario) |
+| 1 | 1 | alp_RedLocal (pluvial) |
+| 2 | 0 o 2 | als_RedTroncal (sanitario) |
+| 2 | 1 | alp_RedTroncal (pluvial) |
+| 3 | 0 o 2 | als_LineaLateral (sanitario) |
+| 3 | 1 | alp_LineaLateral (pluvial) |
+| 4 | 0 o 2 | als_RedLocal (sanitario) |
+| 4 | 1 | alp_RedLocal (pluvial) |
+
+**Puntos (según CLASE y SISTEMA):**
+| CLASE | SISTEMA | Capa Destino |
+|-------|---------|--------------|
+| 1 | 0 o 2 | als_EstructuraRed (sanitario) |
+| 1 | 1 | alp_EstructuraRed (pluvial) |
+| 2 | 0 o 2 | als_Pozo (sanitario) |
+| 2 | 1 | alp_Pozo (pluvial) |
+| 3 | 0 o 2 | als_Sumidero (sanitario) |
+| 3 | 1 | alp_Sumidero (pluvial) |
+| 4 | 0 o 2 | als_CajaDomiciliaria (sanitario) |
+| 4 | 1 | alp_CajaDomiciliaria (pluvial) |
+| 5 | 0 o 2 | als_SeccionTransversal (sanitario) |
+| 5 | 1 | alp_SeccionTransversal (pluvial) |
+| 6 | 0 o 2 | als_EstructuraRed (sanitario) |
+| 6 | 1 | alp_EstructuraRed (pluvial) |
+| 7 | 0 o 2 | als_Sumidero (sanitario) |
+| 7 | 1 | alp_Sumidero (pluvial) |
+
+#### Atributos migrados
+
+**Para líneas se migran:**
+- SUBTIPO, DOMTIPOSISTEMA, FECHAINSTALACION
+- LONGITUD_M, PENDIENTE, PROFUNDIDADMEDIA
+- DOMMATERIAL, DOMMATERIAL2, DOMDIAMETRONOMINAL
+- DOMTIPOSECCION, NUMEROCONDUCTOS
+- BASE, ALTURA1, ALTURA2, TALUD1, TALUD2, ANCHOBERMA
+- DOMESTADOENRED, DOMCALIDADDATO, DOMESTADOLEGAL
+- COTARASANTEINICIAL, COTARASANTEFINAL
+- COTACLAVEINICIAL, COTACLAVEFINAL
+- COTABATEAINICIAL, COTABATEAFINAL
+- N_INICIAL, N_FINAL, NOMBRE
+- OBSERVACIONES, CODACTIVOS_FIJOS
+- *(y otros según esquema)*
+
+**Para puntos se migran:**
+- SUBTIPO, DOMTIPOSISTEMA, FECHAINSTALACION
+- COTARASANTE, COTATERRENO, COTAFONDO, PROFUNDIDAD
+- DOMMATERIAL, LOCALIZACIONRELATIVA
+- DOMESTADOENRED, DOMCALIDADDATO
+- LARGOESTRUCTURA, ANCHOESTRUCTURA, ALTOESTRUCTURA
+- ROTACIONSIMBOLO, DIRECCION, NOMBRE
+- OBSERVACIONES, CODACTIVO_FIJO
+- NORTE, ESTE, ABSCISA, IDENTIFIC
+- *(y otros según esquema)*
+
+
+
+### 5. Cambiar la Configuración de Conexión
 
 Si necesitas cambiar de base de datos o actualizar tus credenciales:
 
@@ -180,7 +394,7 @@ Si necesitas cambiar de base de datos o actualizar tus credenciales:
 
 Los cambios se guardan automáticamente mientras editas los campos.
 
-### 5. Exportar Resultados
+### 6. Exportar Resultados
 
 Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 
@@ -196,7 +410,7 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 - `Source` / `ScoreText`: Origen y calidad
 - `FechaHora`: Marca de tiempo de la operación
 
-### 6. Buenas Prácticas de Uso
+### 7. Buenas Prácticas de Uso
 
 - Revisa que tu Excel no tenga filas totalmente vacías al final.
 - Evita caracteres especiales innecesarios (ej: múltiples espacios, tabs).
@@ -204,7 +418,7 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 - No lances procesos masivos mientras ArcGIS Pro ejecuta otras ediciones complejas.
 - Guarda el proyecto antes de una geocodificación masiva grande.
 
-### 7. Interpretación de la Calidad (Score / Etiquetas)
+### 8. Interpretación de la Calidad (Score / Etiquetas)
 
 La columna `ScoreText` sintetiza la procedencia/calidad:
 - `Exacta`: Coincidencia directa registrada en EAAB.
@@ -212,7 +426,82 @@ La columna `ScoreText` sintetiza la procedencia/calidad:
 - `ESRI <valor>`: Resultado proveniente del servicio ESRI con score numérico.
 - Otros valores pueden representar transformaciones adicionales.
 
-## Solución de Problemas Comunes
+## Solución de Problemas Comunes de Migración
+
+### La migración se detiene con mensaje de advertencias
+
+**Causa:**
+- El sistema detectó features sin campo CLASE o con valores inesperados
+- Features que no tienen una clase destino asignada
+
+**Solución:**
+1. Revisa los archivos CSV generados en la carpeta de reportes
+2. Corrige los datos de origen si es posible
+3. O marca el checkbox ☑ "Migrar con Advertencias" para continuar ignorando estas features
+
+### Error: "Editing in the application is not enabled"
+
+**Causa:**
+- La edición no está habilitada en ArcGIS Pro
+
+**Solución:**
+1. Ve a **Proyecto → Opciones → Edición**
+2. Marca **"Habilitar edición"**
+3. Reinicia la migración
+
+### Features no se migran correctamente
+
+**Causas posibles:**
+- Geometría nula o vacía en origen
+- Incompatibilidad de sistemas de coordenadas
+- Diferencias en dimensiones Z/M
+
+**Solución:**
+- Verifica que las features tengan geometría válida
+- El sistema intentará proyectar automáticamente al SR del mapa
+- Revisa el reporte CSV para ver qué features fallaron y por qué
+
+### Las capas migradas no aparecen en el mapa
+
+**Causa:**
+- Las feature classes están vacías (todas las features fueron rechazadas)
+
+**Solución:**
+- Revisa los reportes CSV de migración
+- Verifica que los datos de origen tengan el campo CLASE con valores válidos
+
+### No se puede abrir la capa de origen
+
+**Causas posibles:**
+- Ruta incorrecta al archivo
+- Formato no soportado
+- Feature class dentro de un feature dataset
+
+**Solución:**
+- Verifica la ruta completa del archivo
+- Asegúrate de usar Shapefile (.shp) o Feature Class de GDB (.gdb)
+- El sistema buscará automáticamente en feature datasets si es necesario
+
+### La geodatabase de destino ya existe
+
+**Comportamiento:**
+- El sistema reutiliza la GDB existente si ya existe con el mismo nombre
+- Esto permite ejecutar migraciones incrementales
+
+**Nota:**
+- Si deseas empezar desde cero, renombra o elimina la GDB existente antes de ejecutar
+
+### Errores de truncamiento de texto
+
+**Causa:**
+- Valores de texto en origen más largos que el límite del campo destino
+
+**Solución:**
+- El sistema trunca automáticamente y registra una advertencia
+- Revisa el output de debug para ver qué campos fueron truncados
+- Considera ajustar el esquema XML si es necesario
+
+## Solución de Problemas Comunes Generales
 
 ### El AddIn no aparece en ArcGIS Pro
 
@@ -270,17 +559,67 @@ Si una dirección no se encuentra:
 - Prueba con un término más general.
 - Evita abreviaturas poco comunes.
 
+### La migración es muy lenta
+
+**Causas:**
+- Gran volumen de datos (más de 50,000 features)
+- Proyecciones complejas entre sistemas de coordenadas
+
+**Solución:**
+- Divide los datos de origen en lotes más pequeños
+- Ejecuta migraciones por separado (primero líneas, luego puntos)
+- Cierra otras aplicaciones que puedan consumir recursos
+
 ## Preguntas Frecuentes (FAQ)
 
-**¿Necesito conexión a Internet?**  Solo para servicios ESRI complementarios; la base principal usa red corporativa.
+### Generales
 
-**¿Se sobrescriben los puntos anteriores?**  No, la capa acumula resultados hasta que la limpies manualmente.
+**¿Necesito conexión a Internet?**  
+Solo para servicios ESRI complementarios; la base principal usa red corporativa.
 
-**¿Puedo cancelar una ejecución masiva?**  Versión actual: no. Recomendado dividir archivos grandes (>10 mil filas).
+**¿Se sobrescriben los puntos anteriores?**  
+No, la capa acumula resultados hasta que la limpies manualmente.
 
-**¿Qué formato de coordenadas usa?**  WGS84 (EPSG:4326) para puntos internos; el mapa reproyecta según tu vista.
+**¿Puedo cancelar una ejecución masiva?**  
+Versión actual: no. Recomendado dividir archivos grandes (>10 mil filas).
 
-**¿Puedo usar CSV en vez de Excel?**  No en esta versión (solo `.xlsx` / `.xls`).
+**¿Qué formato de coordenadas usa?**  
+WGS84 (EPSG:4326) para puntos internos; el mapa reproyecta según tu vista.
+
+**¿Puedo usar CSV en vez de Excel para geocodificación masiva?**  
+No en esta versión (solo `.xlsx` / `.xls`).
+
+### Sobre Migración
+
+**¿La migración modifica mis datos originales?**  
+No, la migración solo **lee** de las capas de origen. Crea una copia transformada en la nueva geodatabase sin tocar los archivos originales.
+
+**¿Puedo migrar datos parcialmente?**  
+Sí, puedes seleccionar solo las capas que necesites (por ejemplo, solo líneas de alcantarillado o solo puntos de acueducto).
+
+**¿Qué pasa con las features que no tienen CLASE?**  
+Se registran en el reporte CSV como "sin CLASE" y **no se migran** a la geodatabase destino.
+
+**¿Puedo ejecutar la migración varias veces?**  
+Sí, si la geodatabase destino ya existe, el sistema la reutiliza y agrega las nuevas features. Sin embargo, puede haber duplicados si migras los mismos datos varias veces.
+
+**¿Se mantienen los ObjectID originales?**  
+No, se generan nuevos ObjectID en la geodatabase destino según las reglas de ArcGIS.
+
+**¿Qué sistemas de coordenadas soporta?**  
+La migración soporta cualquier sistema de coordenadas. Si el SR de origen es diferente al del mapa activo, el sistema proyecta automáticamente las geometrías.
+
+**¿Qué pasa con campos que no existen en el esquema destino?**  
+Solo se migran campos que existen en el esquema XML destino. Los campos adicionales del origen se ignoran.
+
+**¿Se pueden migrar datos de múltiples fuentes a la misma GDB?**  
+Sí, pero asegúrate de usar la misma carpeta de salida y el mismo esquema XML para todas las ejecuciones.
+
+**¿El proceso de migración genera respaldos?**  
+No automáticamente. Se recomienda hacer respaldo manual de los datos de origen antes de cualquier proceso importante.
+
+**¿Qué tan grandes pueden ser los archivos de origen?**  
+No hay límite estricto, pero archivos con más de 100,000 features pueden tomar tiempo considerable. Considera dividirlos en lotes.
 
 ## Glosario Rápido
 
@@ -291,12 +630,35 @@ Si una dirección no se encuentra:
 | SDE | Archivo de conexión a geodatabase corporativa |
 | Score | Valor numérico de confianza del servicio (cuando aplica) |
 | Exacta | Coincidencia directa en la base interna |
+| Migración | Proceso de transformar y copiar datos de una estructura a otra |
+| Geodatabase (GDB) | Base de datos geográfica de Esri para almacenar datos espaciales |
+| Feature Class | Tabla de datos espaciales (puntos, líneas o polígonos) en una geodatabase |
+| Feature Dataset | Contenedor para agrupar feature classes relacionadas |
+| Sistema de Referencia (SR) | Sistema de coordenadas geográfico o proyectado |
+| CLASE | Campo que identifica el tipo principal de elemento de red |
+| SUBTIPO | Campo que identifica la variante específica dentro de una clase |
+| SISTEMA | Campo que indica el tipo de red (0/2=Sanitario, 1=Pluvial) |
+| Esquema XML | Archivo que define la estructura de una geodatabase |
+| Proyección | Transformación de geometrías entre diferentes sistemas de coordenadas |
+| Z/M | Dimensiones adicionales de geometría (Z=elevación, M=medida lineal) |
 
 ## Información de Versión
 
-**Versión**: 1.1  
-**Última actualización**: 29 de septiembre de 2025  
+**Versión**: 1.2  
+**Última actualización**: 10 de noviembre de 2025  
 **Compatible con**: ArcGIS Pro 3.4 o superior
+
+**Novedades de la versión 1.2:**
+- ✨ **Nueva herramienta de migración** de datos de acueducto y alcantarillado
+- Validación automática de estructura de datos antes de migración
+- Sistema de advertencias con opción de continuar bajo responsabilidad del usuario
+- Proyección automática de geometrías entre sistemas de coordenadas
+- Ajuste automático de dimensiones Z/M en geometrías
+- Mapeo inteligente de atributos desde campos antiguos a nuevos
+- Generación de reportes CSV detallados por clase migrada
+- Agregado automático de capas al mapa con simbología predefinida
+- Zoom automático al extent de datos migrados
+- Soporte para reutilización de geodatabases existentes
 
 **Novedades de la versión 1.1:**
 - Soporte para conexiones PostgreSQL SDE y Oracle SDE

@@ -11,7 +11,9 @@ namespace EAABAddIn.Src.Application.UseCases
 {
     public class CreateGdbFromXmlUseCase
     {
-        // Crea o sobrescribe una FGDB llamada "migracion.gdb" en outFolder y carga el esquema desde xmlPath
+        // Crea o reutiliza una FGDB llamada "GDB_Cargue.gdb" en outFolder
+        // Si la GDB ya existe, la reutiliza sin recrearla
+        // Si no existe, la crea y carga el esquema desde xmlPath
         // Retorna: ok, ruta completa de la GDB, mensaje
         public async Task<(bool ok, string gdbPath, string message)> Invoke(string outFolder, string xmlPath)
         {
@@ -30,78 +32,33 @@ namespace EAABAddIn.Src.Application.UseCases
                 const string gdbName = "GDB_Cargue";
                 var gdbPath = Path.Combine(outFolder, $"{gdbName}.gdb");
                 
-                // Si la GDB ya existe, intentar limpiar de forma segura (manejo de locks)
+                // Si la GDB ya existe, reutilizarla sin recrear
                 if (Directory.Exists(gdbPath))
                 {
-                    // Forzar recolección de objetos que puedan retener handles
-                    try { GC.Collect(); GC.WaitForPendingFinalizers(); } catch { }
-
-                    bool deleted = false;
-                    Exception? lastEx = null;
-
-                    // Reintentos controlados de borrado (p. ej., si hay .lock)
-                    for (int attempt = 1; attempt <= 3 && !deleted; attempt++)
+                    System.Diagnostics.Debug.WriteLine($"📂 GDB existente encontrada: {gdbPath}");
+                    System.Diagnostics.Debug.WriteLine($"   ✓ Reutilizando GDB existente - NO se recreará");
+                    
+                    // Asegurar que existe la carpeta de reportes
+                    var reportsFolder = Path.Combine(gdbPath, "reportes");
+                    if (!Directory.Exists(reportsFolder))
                     {
                         try
                         {
-                            Directory.Delete(gdbPath, recursive: true);
-                            deleted = true;
-                            break;
+                            Directory.CreateDirectory(reportsFolder);
+                            System.Diagnostics.Debug.WriteLine($"   ✓ Carpeta 'reportes' creada en la GDB");
                         }
                         catch (Exception ex)
                         {
-                            lastEx = ex;
-                            await Task.Delay(attempt * 250);
+                            System.Diagnostics.Debug.WriteLine($"   ⚠ No se pudo crear carpeta reportes: {ex.Message}");
                         }
                     }
-
-                    if (!deleted)
-                    {
-                        // Intentar renombrar como fallback para liberar el nombre
-                        try
-                        {
-                            var backupName = $"{gdbName}_old_{DateTime.Now:yyyyMMdd_HHmmss}.gdb";
-                            var backupPath = Path.Combine(outFolder, backupName);
-                            Directory.Move(gdbPath, backupPath);
-                            // Intentar borrar el backup en background (best effort)
-                            _ = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    await Task.Delay(1000);
-                                    Directory.Delete(backupPath, true);
-                                }
-                                catch { }
-                            });
-                        }
-                        catch (Exception moveEx)
-                        {
-                            // Último recurso: crear con nombre único para no bloquear el flujo
-                            var uniqueName = $"{gdbName}_{DateTime.Now:yyyyMMdd_HHmmss}";
-                            var uniqueGdbPath = Path.Combine(outFolder, uniqueName + ".gdb");
-                            var createParamsUnique = Geoprocessing.MakeValueArray(outFolder, uniqueName);
-                            var createResultUnique = await Geoprocessing.ExecuteToolAsync("management.CreateFileGDB", createParamsUnique);
-                            if (createResultUnique.IsFailed)
-                                return (false, string.Empty, $"La GDB existente está bloqueada y no se pudo crear una nueva: {(lastEx ?? moveEx).Message}");
-
-                            // Importar esquema al nombre único
-                            var importParamsUnique = Geoprocessing.MakeValueArray(
-                                uniqueGdbPath,
-                                xmlPath,
-                                "SCHEMA_ONLY"
-                            );
-                            var importResultUnique = await Geoprocessing.ExecuteToolAsync("management.ImportXMLWorkspaceDocument", importParamsUnique);
-                            if (importResultUnique.IsFailed)
-                            {
-                                var errorMessagesU = string.Join("; ", importResultUnique.Messages.Select(m => m.Text));
-                                return (false, uniqueGdbPath, $"Creada GDB única, pero falló la importación del XML: {errorMessagesU}");
-                            }
-
-                            return (true, uniqueGdbPath, $"GDB existente bloqueada (.lock). Se creó y usará '{uniqueName}.gdb'.");
-                        }
-                    }
+                    
+                    return (true, gdbPath, $"✓ Reutilizando GDB existente '{gdbName}.gdb' - Los datos se actualizarán/agregarán.");
                 }
-
+                
+                // Si NO existe, crear nueva GDB con esquema
+                System.Diagnostics.Debug.WriteLine($"📂 GDB NO existe - Creando nueva: {gdbPath}");
+                
                 // Step 1: Create empty File Geodatabase
                 var createParams = Geoprocessing.MakeValueArray(outFolder, gdbName);
                 var createResult = await Geoprocessing.ExecuteToolAsync("management.CreateFileGDB", createParams);
@@ -128,7 +85,20 @@ namespace EAABAddIn.Src.Application.UseCases
                     return (false, gdbPath, $"Error al importar esquema XML: {errorMessages}");
                 }
                 
-                return (true, gdbPath, "GDB 'GDB_Cargue' creada y esquema XML importado exitosamente.");
+                // Crear carpeta de reportes en la nueva GDB
+                var newReportsFolder = Path.Combine(gdbPath, "reportes");
+                try
+                {
+                    Directory.CreateDirectory(newReportsFolder);
+                    System.Diagnostics.Debug.WriteLine($"   ✓ Carpeta 'reportes' creada en la nueva GDB");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   ⚠ No se pudo crear carpeta reportes: {ex.Message}");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"   ✓ GDB '{gdbName}.gdb' creada exitosamente con esquema XML");
+                return (true, gdbPath, $"✓ GDB '{gdbName}.gdb' creada nueva con esquema XML importado.");
             }
             catch (Exception ex)
             {
