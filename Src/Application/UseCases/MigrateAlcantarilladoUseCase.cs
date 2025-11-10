@@ -142,7 +142,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
 
-                    // Escribir CSV resumen
                     try
                     {
                         var csv = new Services.CsvReportService();
@@ -479,8 +478,8 @@ namespace EAABAddIn.Src.Application.UseCases
                 3 => prefix + "Sumidero",
                 4 => prefix + "CajaDomiciliaria",
                 5 => prefix + "SeccionTransversal",
-                6 => prefix + "EstructuraRed", // CLASE=6
-                7 => prefix + "Sumidero",      // CLASE=7
+                6 => prefix + "EstructuraRed", 
+                7 => prefix + "Sumidero",      
                 _ => string.Empty
             };
         }
@@ -1291,7 +1290,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (isLine)
                 {
                     var lineSymbol = SymbolFactory.Instance.ConstructLineSymbol(
-                        ColorFactory.Instance.CreateRGBColor(34, 139, 34), // Verde
+                        ColorFactory.Instance.CreateRGBColor(34, 139, 34), 
                         1.2,
                         SimpleLineStyle.Solid
                     );
@@ -1307,7 +1306,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 else
                 {
                     var pointSymbol = SymbolFactory.Instance.ConstructPointSymbol(
-                        ColorFactory.Instance.CreateRGBColor(255, 140, 0), // Naranja
+                        ColorFactory.Instance.CreateRGBColor(255, 140, 0), 
                         4,
                         SimpleMarkerStyle.Circle
                     );

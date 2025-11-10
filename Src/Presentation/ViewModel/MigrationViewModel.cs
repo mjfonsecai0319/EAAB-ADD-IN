@@ -49,10 +49,8 @@ internal class MigrationViewModel : BusyViewModelBase
         BrowseLAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Pluv_Origen = path));
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
         RunCommand = new AsyncRelayCommand(RunAsync);
-        // OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
     }
 
-    // Checkbox: Migrar con advertencias
     private bool _migrarConAdvertencias = false;
     public bool MigrarConAdvertencias
     {
@@ -253,7 +251,6 @@ internal class MigrationViewModel : BusyViewModelBase
 
         try
         {
-            // ✅ SIEMPRE ejecutar validación (como en el script Python)
             StatusMessage = "Validando estructura de los datos...";
             
             var validation = await _datasetValidatorUseCase.Invoke(new()
@@ -275,13 +272,8 @@ internal class MigrationViewModel : BusyViewModelBase
             System.Diagnostics.Debug.WriteLine($"📊 Total advertencias detectadas: {totalWarnings}");
             System.Diagnostics.Debug.WriteLine($"☑ Checkbox 'Migrar con advertencias': {MigrarConAdvertencias}");
 
-            // ✅ LÓGICA EXACTA DEL SCRIPT PYTHON:
-            // Si migr_adver == 'true' (checkbox marcado) → SIEMPRE migra
-            // Si migr_adver == 'false' (checkbox NO marcado) → Solo migra si NO hay errores
-            
             if (!MigrarConAdvertencias && totalWarnings > 0)
             {
-                // Checkbox NO marcado Y hay advertencias → BLOQUEAR
                 StatusMessage = $"⚠ Se encontraron {totalWarnings} advertencia(s). Marque 'Migrar con advertencias' para continuar.";
                 
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
@@ -301,7 +293,6 @@ internal class MigrationViewModel : BusyViewModelBase
                 return;
             }
             
-            // Si llegamos aquí, continuar con la migración
             if (MigrarConAdvertencias && totalWarnings > 0)
             {
                 StatusMessage = $"⚠ ADVERTENCIA: Migrando con {totalWarnings} problema(s) detectado(s) (checkbox activo).";
@@ -311,7 +302,6 @@ internal class MigrationViewModel : BusyViewModelBase
                 StatusMessage = "✓ Validación exitosa sin advertencias. Iniciando migración...";
             }
 
-            // Crear la GDB "migracion" e importar el esquema XML
             var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace, XmlSchemaPath);
 
             if (!okGdb)
@@ -328,7 +318,6 @@ internal class MigrationViewModel : BusyViewModelBase
             
             StatusMessage = $"GDB 'migracion' creada exitosamente. Iniciando migración de datos...";
 
-            // Migrar datos de Acueducto si se especificaron
             var mensajesMigracion = new List<string>();
             bool acueductoMigrated = false;
             bool alcantarilladoMigrated = false;
@@ -363,7 +352,6 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // Agregar capas de acueducto al mapa
             if (acueductoMigrated)
             {
                 StatusMessage = "Agregando capas de acueducto al mapa...";
@@ -374,7 +362,6 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // Migrar datos de Alcantarillado si se especificaron
 
             if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
             {
@@ -436,7 +423,6 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // Agregar capas de alcantarillado al mapa
             if (alcantarilladoMigrated)
             {
                 StatusMessage = "Agregando capas de alcantarillado al mapa...";
@@ -447,12 +433,10 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // Mensaje final
             var mensajeFinal = mensajesMigracion.Count > 0 
                 ? string.Join("\n", mensajesMigracion) 
                 : "No se especificaron datos de alcantarillado para migrar.";
 
-            // Mostrar detalle SOLO en ventana modal, no en el panel de estado
             StatusMessage = "✓ Proceso finalizado.";
             
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(

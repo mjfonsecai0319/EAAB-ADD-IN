@@ -20,8 +20,7 @@ namespace EAABAddIn.Src.Application.Services
         {
             var file = Path.Combine(reportsFolder, $"{Sanitize(datasetName)}_validacion.csv");
             using var stream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.Read);
-            using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)); // con BOM para Excel
-            // encabezado simple
+            using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)); 
             writer.WriteLine("Tipo,Mensaje,Detalle");
             foreach (var r in rows ?? Enumerable.Empty<string[]>())
             {
@@ -31,9 +30,6 @@ namespace EAABAddIn.Src.Application.Services
             return file;
         }
 
-        /// <summary>
-        /// Escribe un resumen de migración por clase de destino.
-        /// </summary>
         public string WriteMigrationSummary(
             string reportsFolder,
             string datasetName,
@@ -50,7 +46,6 @@ namespace EAABAddIn.Src.Application.Services
                 var row = new[] { Escape(s.className), s.attempts.ToString(), s.migrated.ToString(), s.failed.ToString() };
                 writer.WriteLine(string.Join(",", row));
             }
-            // Filas de resumen global
             writer.WriteLine(string.Join(",", new[] { Escape("_SinCLASE"), sinClase.ToString(), "0", "0" }));
             writer.WriteLine(string.Join(",", new[] { Escape("_SinDestino"), sinDestino.ToString(), "0", "0" }));
             return file;
