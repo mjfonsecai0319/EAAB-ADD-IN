@@ -14,10 +14,6 @@ using ArcGIS.Core.CIM;
 
 namespace EAABAddIn.Src.Application.UseCases
 {
-    /// <summary>
-    /// Migra líneas y puntos de Acueducto desde shapefiles/GDB origen a la GDB de cargue.
-    /// Basado en Cargue_Acueducto.py con mapeos completos de atributos.
-    /// </summary>
     public class MigrateAcueductoUseCase
     {
         public async Task<(bool ok, string message)> MigrateLines(string sourceLineasPath, string targetGdbPath)
@@ -40,7 +36,6 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
-                    // Asegurar que las capas de destino estén presentes en el mapa (ayuda a iniciar sesión de edición del workspace)
                     var map = MapView.Active?.Map;
                     var ensuredLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -61,8 +56,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         {
                             log.AppendLine($"📋 Primera feature (línea ACU): CLASE={clase}, SUBTIPO={subtipo}");
                             log.AppendLine($"   Campos disponibles: {string.Join(", ", GetFieldNames(feature))}");
-                            
-                            // Verificar geometría de primera feature
                             var geom = feature.GetShape();
                             if (geom != null && !geom.IsEmpty)
                             {
@@ -70,25 +63,21 @@ namespace EAABAddIn.Src.Application.UseCases
                                 string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
                                 log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
                                 log.AppendLine($"   SR Origen: {srInfo}");
-                                
                                 if (geom is Polyline polyline)
                                 {
                                     log.AppendLine($"   Longitud: {polyline.Length:F2} m, Puntos: {polyline.PointCount}");
                                     var extent = polyline.Extent;
                                     log.AppendLine($"   Extent: XMin={extent.XMin:F2}, YMin={extent.YMin:F2}, XMax={extent.XMax:F2}, YMax={extent.YMax:F2}");
                                 }
-                                
-                                // Verificar SR del destino
                                 if (clase.HasValue)
                                 {
-                                    using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
-                                    if (targetFC != null)
+                                    using var targetFC0 = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
+                                    if (targetFC0 != null)
                                     {
-                                        using var targetDef = targetFC.GetDefinition();
+                                        using var targetDef = targetFC0.GetDefinition();
                                         var targetSR = targetDef.GetSpatialReference();
                                         string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
                                         log.AppendLine($"   SR Destino: {targetSRInfo}");
-                                        
                                         if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
                                         {
                                             bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
@@ -132,7 +121,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             continue;
                         }
 
-                        // Garantizar capa en mapa (solo una vez por clase)
                         if (map != null && !ensuredLayers.Contains(targetClassName))
                         {
                             EnsureLayerForTargetClass(map, targetGdb, targetClassName, isLine: true);
@@ -163,7 +151,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             }
                         }
 
-                        // Actualizar stats por clase
                         if (!string.IsNullOrEmpty(targetClassName))
                         {
                             if (!perClassStats.TryGetValue(targetClassName, out var stats))
@@ -181,11 +168,10 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
                     
-                    // Verificar que las features se insertaron
                     if (migrated > 0)
                     {
                         log.AppendLine($"\n🔍 Verificando features insertadas...");
-                        var targetClassName = GetTargetLineClassName(4); // Usar una clase común para verificar
+                        var targetClassName = GetTargetLineClassName(4);
                         if (!string.IsNullOrEmpty(targetClassName))
                         {
                             using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
@@ -193,14 +179,11 @@ namespace EAABAddIn.Src.Application.UseCases
                             {
                                 var count = targetFC.GetCount();
                                 log.AppendLine($"   Features en {targetClassName}: {count}");
-                                
-                                // Verificar las geometrías insertadas
                                 if (count > 0)
                                 {
                                     using var def = targetFC.GetDefinition();
                                     var sr = def.GetSpatialReference();
                                     log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
-                                    
                                     using var verifyCursor = targetFC.Search(null, false);
                                     int checkedCount = 0;
                                     int validGeoms = 0;
@@ -239,7 +222,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    // Escribir CSV resumen
                     try
                     {
                         var csv = new Services.CsvReportService();
@@ -282,7 +264,6 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
-                    // Asegurar que las capas de destino estén presentes en el mapa (ayuda a iniciar sesión de edición del workspace)
                     var map = MapView.Active?.Map;
                     var ensuredLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -303,8 +284,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         {
                             log.AppendLine($"📋 Primera feature (punto ACU): CLASE={clase}, SUBTIPO={subtipo}");
                             log.AppendLine($"   Campos: {string.Join(", ", GetFieldNames(feature))}");
-                            
-                            // Verificar geometría de primera feature
                             var geom = feature.GetShape();
                             if (geom != null && !geom.IsEmpty)
                             {
@@ -312,21 +291,17 @@ namespace EAABAddIn.Src.Application.UseCases
                                 string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
                                 log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
                                 log.AppendLine($"   SR Origen: {srInfo}");
-                                
                                 if (geom is MapPoint point)
                                 {
                                     log.AppendLine($"   Coordenadas: X={point.X:F2}, Y={point.Y:F2}");
                                 }
-                                
-                                // Verificar SR del destino
-                                using var targetFC = OpenTargetFeatureClass(targetGdb, GetTargetPointClassName(clase.Value));
-                                if (targetFC != null)
+                                using var targetFC0 = OpenTargetFeatureClass(targetGdb, GetTargetPointClassName(clase.Value));
+                                if (targetFC0 != null)
                                 {
-                                    using var targetDef = targetFC.GetDefinition();
+                                    using var targetDef = targetFC0.GetDefinition();
                                     var targetSR = targetDef.GetSpatialReference();
                                     string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
                                     log.AppendLine($"   SR Destino: {targetSRInfo}");
-                                    
                                     if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
                                     {
                                         bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
@@ -399,7 +374,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             }
                         }
 
-                        // Actualizar stats por clase
                         if (!string.IsNullOrEmpty(targetClassName))
                         {
                             if (!perClassStats.TryGetValue(targetClassName, out var stats))
@@ -417,11 +391,10 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
                     
-                    // Verificar que las features se insertaron
                     if (migrated > 0)
                     {
                         log.AppendLine($"\n🔍 Verificando features insertadas...");
-                        var targetClassName = GetTargetPointClassName(7); // Usar una clase común para verificar
+                        var targetClassName = GetTargetPointClassName(7);
                         if (!string.IsNullOrEmpty(targetClassName))
                         {
                             using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
@@ -429,14 +402,11 @@ namespace EAABAddIn.Src.Application.UseCases
                             {
                                 var count = targetFC.GetCount();
                                 log.AppendLine($"   Features en {targetClassName}: {count}");
-                                
-                                // Verificar las geometrías insertadas
                                 if (count > 0)
                                 {
                                     using var def = targetFC.GetDefinition();
                                     var sr = def.GetSpatialReference();
                                     log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
-                                    
                                     using var verifyCursor = targetFC.Search(null, false);
                                     int checkedCount = 0;
                                     int validGeoms = 0;
@@ -473,7 +443,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    // Escribir CSV resumen
                     try
                     {
                         var csv = new Services.CsvReportService();
@@ -495,8 +464,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 }
             });
         }
-
-        #region Helpers
 
         private FeatureClass? OpenFeatureClass(string path)
         {
@@ -529,7 +496,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     var conn = new FileGeodatabaseConnectionPath(new Uri(gdbPath));
                     var gdb = new Geodatabase(conn);
 
-                    // Intentar abrir directamente (raíz)
                     try
                     {
                         var fc = gdb.OpenDataset<FeatureClass>(fcName);
@@ -537,7 +503,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                     catch { }
 
-                    // Si viene con FD\FC, separar y abrir desde FD
                     var parts = fcName.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
                     var last = parts.Length > 0 ? parts[parts.Length - 1] : fcName;
                     if (parts.Length >= 2)
@@ -552,7 +517,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         catch { }
                     }
 
-                    // Explorar todos los FeatureDatasets por si el nombre viene sin FD correcto
                     try
                     {
                         var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
@@ -621,8 +585,6 @@ namespace EAABAddIn.Src.Application.UseCases
             }
         }
 
-        // Mapeo de CLASE a nombre de FeatureClass (acueducto líneas)
-        // 1=RedMatriz, 2=Conduccion, 3=Conduccion, 4=RedMenor, 5=LineaLateral
         private string GetTargetLineClassName(int clase)
         {
             return clase switch
@@ -636,22 +598,18 @@ namespace EAABAddIn.Src.Application.UseCases
             };
         }
 
-        // Mapeo de CLASE a nombre de FeatureClass (acueducto puntos)
-        // Según script Python: 1-21 diferentes tipos
-        // Nota: CLASE 3 puede ir a acd_Accesorio o acd_CodosPasivos según atributo,
-        // aquí simplificamos a acd_Accesorio
         private string GetTargetPointClassName(int clase)
         {
             return clase switch
             {
                 1 => "acd_ValvulaSistema",
                 2 => "acd_ValvulaControl",
-                3 => "acd_Accesorio",       // ACCESORIO_CODO (o CodosPasivos si atributo[29]!='1')
-                4 => "acd_Accesorio",       // ACCESORIO_REDUCCION
-                5 => "acd_Accesorio",       // ACCESORIO_TAPON
-                6 => "acd_Accesorio",       // ACCESORIO_TEE
-                7 => "acd_Accesorio",       // ACCESORIO_UNION
-                8 => "acd_Accesorio",       // ACCESORIO_OTROS
+                3 => "acd_Accesorio",
+                4 => "acd_Accesorio",
+                5 => "acd_Accesorio",
+                6 => "acd_Accesorio",
+                7 => "acd_Accesorio",
+                8 => "acd_Accesorio",
                 9 => "acd_Hidrante",
                 10 => "acd_MacroMedidor",
                 11 => "acd_PuntoAcometida",
@@ -663,8 +621,8 @@ namespace EAABAddIn.Src.Application.UseCases
                 17 => "acd_Tanque",
                 18 => "acd_Portal",
                 19 => "acd_CamaraAcceso",
-                20 => "acd_ValvulaControl", // ESTRUCTURA_CONTROL -> ValvulaControl según Python
-                21 => "acd_CamaraAcceso",   // INSTRUMENTOS_MEDICION -> CamaraAcceso según Python
+                20 => "acd_ValvulaControl",
+                21 => "acd_CamaraAcceso",
                 _ => string.Empty
             };
         }
@@ -703,15 +661,12 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
-                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
                 var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
                 if (insertOk)
                 {
-                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
-                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
                 var editOp = new EditOperation
                 {
                     Name = $"Migrar línea -> {targetClassName}",
@@ -741,8 +696,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                // (Sin auto refresco de mapa por requerimiento del usuario)
-
                 return true;
             }
             catch (Exception ex)
@@ -751,7 +704,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 return false;
             }
         }
-
 
         private bool MigratePointFeature(Feature sourceFeature, Geodatabase targetGdb, string targetClassName, int subtipo, out string? error)
         {
@@ -774,7 +726,6 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 using var featureClassDef = targetFC.GetDefinition();
 
-                // Atributos
                 var attributes = BuildPointAttributes(sourceFeature, featureClassDef, subtipo);
                 var dict = new Dictionary<string, object?>();
                 string shapeField = featureClassDef.GetShapeField();
@@ -788,15 +739,12 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
-                // ✅ PRIMERO: Intentar inserción directa (más confiable y no depende de sesión de edición)
                 var (insertOk, insertErr) = TryInsertRowDirect(targetFC, dict);
                 if (insertOk)
                 {
-                    // (Sin auto refresco de mapa por requerimiento del usuario)
                     return true;
                 }
 
-                // ⚠️ FALLBACK: Si falla inserción directa, intentar con EditOperation
                 var editOp = new EditOperation
                 {
                     Name = $"Migrar punto -> {targetClassName}",
@@ -826,8 +774,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     return false;
                 }
 
-                // (Sin auto refresco de mapa por requerimiento del usuario)
-
                 return true;
             }
             catch (Exception ex)
@@ -837,27 +783,12 @@ namespace EAABAddIn.Src.Application.UseCases
             }
         }
 
-
-        // Mapeo de atributos líneas acueducto (según Python: atrib_l_ecu_shp -> atrib_l_ecu_gdb)
         private Dictionary<string, object?> BuildLineAttributes(Feature source, FeatureClassDefinition def, int subtipo)
         {
             var attrs = new Dictionary<string, object?>();
             try
             {
                 attrs["SUBTIPO"] = subtipo;
-                // Ubicación / Zona / UGA / IDSIG (agregado para paridad con alcantarillado)
-                var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
-                               ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
-                               ?? GetFieldValue<string>(source, "UBIC_TECNICA")
-                               ?? GetFieldValue<string>(source, "UBIC_TECN");
-                if (!string.IsNullOrWhiteSpace(ubicTec))
-                {
-                    attrs["UBICACIONTECNICA"] = ubicTec;
-                    attrs["UBICACION_TECNICA"] = ubicTec; // alias posible en esquema destino
-                }
-                attrs["ZONA"] = GetFieldValue<string>(source, "ZONA");
-                attrs["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
-                attrs["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
                 attrs["N_INICIAL"] = GetFieldValue<string>(source, "N_INICIAL");
                 attrs["N_FINAL"] = GetFieldValue<string>(source, "N_FINAL");
                 attrs["FECHAINST"] = GetFieldValue<DateTime?>(source, "FECHAINST");
@@ -887,24 +818,10 @@ namespace EAABAddIn.Src.Application.UseCases
             return attrs;
         }
 
-        // Mapeo de atributos puntos acueducto (según Python: atrib_p_acu_shp -> atrib_p_acu_gdb)
         private Dictionary<string, object?> BuildPointAttributes(Feature source, FeatureClassDefinition def, int subtipo)
         {
             var a = new Dictionary<string, object?>();
             a["SUBTIPO"] = subtipo;
-            // Ubicación / Zona / UGA / IDSIG (agregado)
-            var ubicTec = GetFieldValue<string>(source, "UBICACIONTECNICA")
-                           ?? GetFieldValue<string>(source, "UBICACION_TECNICA")
-                           ?? GetFieldValue<string>(source, "UBIC_TECNICA")
-                           ?? GetFieldValue<string>(source, "UBIC_TECN");
-            if (!string.IsNullOrWhiteSpace(ubicTec))
-            {
-                a["UBICACIONTECNICA"] = ubicTec;
-                a["UBICACION_TECNICA"] = ubicTec;
-            }
-            a["ZONA"] = GetFieldValue<string>(source, "ZONA");
-            a["UGA"] = GetFieldValue<string>(source, "UGA") ?? GetFieldValue<string>(source, "UGA_ID");
-            a["IDSIG"] = GetFieldValue<string>(source, "IDSIG") ?? GetFieldValue<string>(source, "ID_SIG");
             a["IDENTIFIC"] = GetFieldValue<string>(source, "IDENTIFIC");
             a["NORTE"] = GetFieldValue<double?>(source, "NORTE");
             a["ESTE"] = GetFieldValue<double?>(source, "ESTE");
@@ -1076,7 +993,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 using var def = targetFC.GetDefinition();
                 var fieldMap = def.GetFields().ToDictionary(f => f.Name, f => f, StringComparer.OrdinalIgnoreCase);
                 
-                // Verificar que la geometría está en el diccionario
                 string shapeField = def.GetShapeField();
                 if (dict.TryGetValue(shapeField, out var geomValue))
                 {
@@ -1085,12 +1001,10 @@ namespace EAABAddIn.Src.Application.UseCases
                         return (false, "Geometría nula o vacía al insertar");
                     }
                     
-                    // ✅ PROYECCIÓN al SR de la clase destino y ajuste Z/M
                     if (geomValue is Geometry sourceGeom)
                     {
                         var targetSR = def.GetSpatialReference();
                         var sourceSR = sourceGeom.SpatialReference;
-                        // Proyectar si SR difiere
                         if (targetSR != null && sourceSR != null && sourceSR.Wkid != targetSR.Wkid)
                         {
                             try
@@ -1126,7 +1040,6 @@ namespace EAABAddIn.Src.Application.UseCases
                                     foreach (var part in line.Parts)
                                     {
                                         var points = new List<MapPoint>();
-                                        // Iterar segmentos del part (ReadOnlySegmentCollection) y tomar StartPoint + último EndPoint
                                         MapPoint? lastEnd = null;
                                         foreach (var segment in part)
                                         {
@@ -1156,7 +1069,6 @@ namespace EAABAddIn.Src.Application.UseCases
                                             points.Add(MapPointBuilderEx.CreateMapPoint(sp.X, sp.Y, sourceGeom.SpatialReference));
                                             lastEnd = segment.EndPoint;
                                         }
-                                        // Para polígonos el último EndPoint coincide con el primer StartPoint, no es necesario agregarlo adicionalmente
                                         if (points.Count > 0)
                                             builder.AddPart(points);
                                     }
@@ -1173,7 +1085,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                // ✅ Inserción directa sin verificar transacciones (más simple y robusto)
                 using var rowBuffer = targetFC.CreateRowBuffer();
                 foreach (var kv in dict)
                 {
@@ -1194,9 +1105,6 @@ namespace EAABAddIn.Src.Application.UseCases
             }
         }
 
-        /// <summary>
-        /// Diagnóstico: verifica cuántas features hay en cada clase de destino
-        /// </summary>
         public async Task<string> DiagnoseTargetGdb(string targetGdbPath)
         {
             return await QueuedTask.Run(() =>
@@ -1222,7 +1130,6 @@ namespace EAABAddIn.Src.Application.UseCases
                                 string srInfo = sr != null ? $"WKID={sr.Wkid}" : "Sin SR";
                                 log.AppendLine($"   {className}: {count} features ({srInfo})");
                                 
-                                // Verificar una muestra con más detalle
                                 if (count > 0)
                                 {
                                     using var cursor = fc.Search(null, false);
@@ -1277,9 +1184,6 @@ namespace EAABAddIn.Src.Application.UseCases
             });
         }
 
-        /// <summary>
-        /// Agrega las capas migradas al mapa activo con simbología visible
-        /// </summary>
         public async Task<(bool ok, string message)> AddMigratedLayersToMap(string targetGdbPath, bool linesOnly = false, bool pointsOnly = false)
         {
             return await QueuedTask.Run(() =>
@@ -1315,7 +1219,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     var layersAdded = new List<string>();
                     Envelope? combinedExtent = null;
 
-                    // Clases de líneas
                     if (!pointsOnly)
                     {
                         var lineClasses = new[] { "acd_RedMatriz", "acd_Conduccion", "acd_RedMenor", "acd_LineaLateral" };
@@ -1331,7 +1234,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    // Clases de puntos
                     if (!linesOnly)
                     {
                         var pointClasses = new[] { "acd_Accesorio", "acd_ValvulaControl", "acd_ValvulaSistema", "acd_Hidrante", "acd_CamaraAcceso" };
@@ -1351,15 +1253,12 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         log.AppendLine($"✓ Capas agregadas: {string.Join(", ", layersAdded)}");
                         
-                        // Hacer zoom al extent combinado
                         if (combinedExtent != null && MapView.Active != null)
                         {
                             log.AppendLine($"📍 Extent: XMin={combinedExtent.XMin:F2}, YMin={combinedExtent.YMin:F2}, XMax={combinedExtent.XMax:F2}, YMax={combinedExtent.YMax:F2}");
                             
-                            // Validar que el extent sea válido
                             if (!double.IsNaN(combinedExtent.XMin) && !double.IsNaN(combinedExtent.YMin))
                             {
-                                // Expandir el extent un 10% para dar margen
                                 var width = combinedExtent.Width;
                                 var height = combinedExtent.Height;
                                 var expandedExtent = new EnvelopeBuilderEx(
@@ -1373,7 +1272,6 @@ namespace EAABAddIn.Src.Application.UseCases
                                 MapView.Active.ZoomTo(expandedExtent, TimeSpan.FromSeconds(1.5));
                                 log.AppendLine($"✓ Zoom aplicado (expandido 10%)");
                                 
-                                // Forzar refresh del mapa
                                 MapView.Active.Redraw(true);
                             }
                             else
@@ -1419,13 +1317,12 @@ namespace EAABAddIn.Src.Application.UseCases
 
                 System.Diagnostics.Debug.WriteLine($"📊 {className}: {count} features encontradas");
 
-                // Calcular extent real desde las geometrías
                 Envelope? calculatedExtent = null;
                 try
                 {
                     using var cursor = fc.Search();
                     int geomCount = 0;
-                    while (cursor.MoveNext() && geomCount < 100) // Limitar a 100 para performance
+                    while (cursor.MoveNext() && geomCount < 100)
                     {
                         using var feature = cursor.Current as Feature;
                         if (feature != null)
@@ -1455,7 +1352,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     System.Diagnostics.Debug.WriteLine($"⚠ {className}: Error calculando extent - {ex.Message}");
                 }
 
-                // Verificar si la capa ya existe y si apunta a la misma fuente de datos
                 var existingLayer = map.GetLayersAsFlattenedList()
                     .OfType<FeatureLayer>()
                     .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
@@ -1492,14 +1388,9 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                // Obtener la ruta completa
                 using var fcDef = fc.GetDefinition();
                 var gdbPath = gdb.GetPath().LocalPath;
-                
-                // Buscar si está dentro de un FeatureDataset
                 string fullPath = Path.Combine(gdbPath, className);
-                
-                // Intentar encontrar en feature datasets
                 try
                 {
                     var fdDefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
@@ -1521,7 +1412,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 }
                 catch { }
 
-                // Crear y agregar la capa directamente desde el FeatureClass (más robusto que por URI)
                 System.Diagnostics.Debug.WriteLine($"🎨 Creando capa {className} desde FeatureClass...");
                 var flParams = new FeatureLayerCreationParams(fc)
                 {
@@ -1535,12 +1425,10 @@ namespace EAABAddIn.Src.Application.UseCases
                     System.Diagnostics.Debug.WriteLine($"✓ {className}: Capa creada exitosamente");
                     ApplySymbology(layer, isLine);
                     EnsureLayerIsVisibleAndSelectable(layer, fc);
-                    
-                    // Forzar recálculo de extent de la capa
                     try
                     {
-                        layer.SetDefinitionQuery("1=1"); // Forzar refresh
-                        layer.SetDefinitionQuery(""); // Limpiar query
+                        layer.SetDefinitionQuery("1=1");
+                        layer.SetDefinitionQuery("");
                     }
                     catch { }
                     
@@ -1567,10 +1455,9 @@ namespace EAABAddIn.Src.Application.UseCases
             {
                 if (isLine)
                 {
-                    // Simbología para líneas
                     var lineSymbol = SymbolFactory.Instance.ConstructLineSymbol(
-                        ColorFactory.Instance.CreateRGBColor(0, 112, 255), // Azul
-                        3.0, // Grosor ligeramente mayor para asegurarnos de verlo
+                        ColorFactory.Instance.CreateRGBColor(0, 112, 255),
+                        1.2,
                         SimpleLineStyle.Solid
                     );
                     
@@ -1584,10 +1471,9 @@ namespace EAABAddIn.Src.Application.UseCases
                 }
                 else
                 {
-                    // Simbología para puntos
                     var pointSymbol = SymbolFactory.Instance.ConstructPointSymbol(
-                        ColorFactory.Instance.CreateRGBColor(255, 0, 0), // Rojo
-                        12, // Tamaño mayor para visibilidad inmediata
+                        ColorFactory.Instance.CreateRGBColor(255, 0, 0),
+                        4,
                         SimpleMarkerStyle.Circle
                     );
                     
@@ -1602,22 +1488,16 @@ namespace EAABAddIn.Src.Application.UseCases
             }
             catch
             {
-                // Si falla la simbología, la capa se agrega con la simbología por defecto
             }
         }
 
-        /// <summary>
-        /// Asegura que la capa esté visible a cualquier escala y resalta una pequeña muestra de features.
-        /// </summary>
         private void EnsureLayerIsVisibleAndSelectable(FeatureLayer layer, FeatureClass fc)
         {
             try
             {
-                // Visibilidad y sin definición
                 try { layer.SetVisibility(true); } catch { }
                 try { layer.SetDefinitionQuery(""); } catch { }
 
-                // Quitar restricciones de escala
                 try
                 {
                     var cim = layer.GetDefinition() as CIMFeatureLayer;
@@ -1630,7 +1510,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 }
                 catch { }
 
-                // Seleccionar una pequeña muestra para resaltar
                 try
                 {
                     using var def = fc.GetDefinition();
@@ -1665,15 +1544,10 @@ namespace EAABAddIn.Src.Application.UseCases
             catch { }
         }
 
-        /// <summary>
-        /// Garantiza que exista una capa para la clase de destino en el mapa, incluso si está vacía.
-        /// Esto ayuda a que Pro inicialice la sesión de edición para el workspace de la GDB.
-        /// </summary>
         private void EnsureLayerForTargetClass(Map map, Geodatabase gdb, string className, bool isLine)
         {
             try
             {
-                // Si ya hay una capa con este nombre y apunta a la misma fuente, no hacer nada
                 var existingLayer = map.GetLayersAsFlattenedList().OfType<FeatureLayer>()
                     .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
                 if (existingLayer != null)
@@ -1715,7 +1589,5 @@ namespace EAABAddIn.Src.Application.UseCases
             }
             catch { }
         }
-
-        #endregion
     }
 }

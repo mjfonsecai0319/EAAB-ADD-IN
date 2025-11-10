@@ -2,10 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
@@ -38,8 +36,6 @@ internal class MigrationViewModel : BusyViewModelBase
     public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
     public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
     public ICommand RunCommand { get; private set; }
-    public ICommand ClearFormCommand { get; private set; }
-    public ICommand OpenReportsFolderCommand { get; private set; }
 
     public MigrationViewModel()
     {
@@ -52,12 +48,11 @@ internal class MigrationViewModel : BusyViewModelBase
         BrowsePAlcOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Origen = path));
         BrowseLAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Alc_Pluv_Origen = path));
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
-        RunCommand = new AsyncRelayCommand(RunAsync, CanRun);
-        ClearFormCommand = new RelayCommand(ClearForm);
-        OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
+        RunCommand = new AsyncRelayCommand(RunAsync);
+        // OpenReportsFolderCommand = new RelayCommand(OpenReportsFolder);
     }
 
-    // ✅ FIX 1: Checkbox notifica cambios correctamente
+    // Checkbox: Migrar con advertencias
     private bool _migrarConAdvertencias = false;
     public bool MigrarConAdvertencias
     {
@@ -68,8 +63,6 @@ internal class MigrationViewModel : BusyViewModelBase
             {
                 _migrarConAdvertencias = value;
                 NotifyPropertyChanged(nameof(MigrarConAdvertencias));
-                // 🔥 CRÍTICO: Actualizar estado de comandos cuando cambia el checkbox
-                RaiseCommandsCanExecute();
             }
         }
     }
@@ -111,6 +104,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (_lAcuOrigen != value)
             {
                 _lAcuOrigen = value;
+
                 NotifyPropertyChanged(nameof(L_Acu_Origen));
             }
         }
@@ -148,6 +142,7 @@ internal class MigrationViewModel : BusyViewModelBase
     public string? P_Alc_Origen
     {
         get => _pAlcOrigen;
+
         set
         {
             if (_pAlcOrigen != value)
@@ -258,80 +253,86 @@ internal class MigrationViewModel : BusyViewModelBase
 
         try
         {
+            // ✅ SIEMPRE ejecutar validación (como en el script Python)
+            StatusMessage = "Validando estructura de los datos...";
+            
             var validation = await _datasetValidatorUseCase.Invoke(new()
             {
                 OutputFolder = Workspace,
                 Datasets = new()
-                {
-                    new DatasetInput("L_ACU_ORIGEN", L_Acu_Origen),
-                    new DatasetInput("P_ACU_ORIGEN", P_Acu_Origen),
-                    new DatasetInput("L_ALC_ORIGEN", L_Alc_Origen),
-                    new DatasetInput("P_ALC_ORIGEN", P_Alc_Origen),
-                    new DatasetInput("L_ALC_PLUV_ORIGEN", L_Alc_Pluv_Origen),
-                    new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen),
-                }
+                    {
+                        new DatasetInput("L_ACU_ORIGEN", L_Acu_Origen),
+                        new DatasetInput("P_ACU_ORIGEN", P_Acu_Origen),
+                        new DatasetInput("L_ALC_ORIGEN", L_Alc_Origen),
+                        new DatasetInput("P_ALC_ORIGEN", P_Alc_Origen),
+                        new DatasetInput("L_ALC_PLUV_ORIGEN", L_Alc_Pluv_Origen),
+                        new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen),
+                    }
             });
 
-            // ✅ FIX 2: Actualizar estado ANTES de verificar advertencias
-            TotalWarnings = validation.TotalWarnings;
-            ReportsFolder = validation.ReportFolder ?? string.Empty;
-            ReportFiles = new ObservableCollection<string>(validation.ReportFiles ?? new List<string>());
-            HasWarnings = TotalWarnings > 0;
+            int totalWarnings = validation.TotalWarnings;
             
-            // 🔥 CRÍTICO: Notificar cambios DESPUÉS de actualizar HasWarnings
-            RaiseCommandsCanExecute();
+            System.Diagnostics.Debug.WriteLine($"📊 Total advertencias detectadas: {totalWarnings}");
+            System.Diagnostics.Debug.WriteLine($"☑ Checkbox 'Migrar con advertencias': {MigrarConAdvertencias}");
 
-            // Gating estilo Python
-            if (HasWarnings && !MigrarConAdvertencias)
+            // ✅ LÓGICA EXACTA DEL SCRIPT PYTHON:
+            // Si migr_adver == 'true' (checkbox marcado) → SIEMPRE migra
+            // Si migr_adver == 'false' (checkbox NO marcado) → Solo migra si NO hay errores
+            
+            if (!MigrarConAdvertencias && totalWarnings > 0)
             {
-                StatusMessage = $"Hay {TotalWarnings} advertencias. Activa 'Migrar con advertencias' para continuar.";
+                // Checkbox NO marcado Y hay advertencias → BLOQUEAR
+                StatusMessage = $"⚠ Se encontraron {totalWarnings} advertencia(s). Marque 'Migrar con advertencias' para continuar.";
+                
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Se detectaron {TotalWarnings} advertencias. Revisa los reportes y activa 'Migrar con advertencias' si deseas continuar.\n\nCarpeta de reportes:\n{ReportsFolder}",
-                    caption: "Advertencias detectadas",
+                    messageText: $"❌ No se puede continuar con la migración.\n\n" +
+                                 $"Se detectaron {totalWarnings} advertencia(s) en la validación.\n\n" +
+                                 $"📁 Revise los reportes en:\n{validation.ReportFolder}\n\n" +
+                                 $"Archivos generados:\n" + string.Join("\n", validation.ReportFiles.Select(f => $"  • {Path.GetFileName(f)}")) + "\n\n" +
+                                 "✅ Para continuar con la migración:\n" +
+                                 "   1. Active el checkbox 'Migrar con Advertencias'\n" +
+                                 "   2. Pulse el botón 'Ejecutar' nuevamente",
+                    caption: "Advertencias de validación",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Warning
                 );
+                
                 IsBusy = false;
                 return;
             }
-            else if (HasWarnings && MigrarConAdvertencias)
+            
+            // Si llegamos aquí, continuar con la migración
+            if (MigrarConAdvertencias && totalWarnings > 0)
             {
-                var res = ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Continuar a pesar de {TotalWarnings} advertencias?\n\nPuedes abrir los reportes en: {ReportsFolder}",
-                    caption: "Confirmar migración con advertencias",
-                    button: System.Windows.MessageBoxButton.YesNo,
-                    icon: System.Windows.MessageBoxImage.Question
-                );
-                if (res != System.Windows.MessageBoxResult.Yes)
-                {
-                    IsBusy = false;
-                    return;
-                }
+                StatusMessage = $"⚠ ADVERTENCIA: Migrando con {totalWarnings} problema(s) detectado(s) (checkbox activo).";
+            }
+            else
+            {
+                StatusMessage = "✓ Validación exitosa sin advertencias. Iniciando migración...";
             }
 
-            // Crear GDB
+            // Crear la GDB "migracion" e importar el esquema XML
             var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace, XmlSchemaPath);
 
             if (!okGdb)
             {
-                StatusMessage = $"Error creando GDB: {msgGdb}";
+                StatusMessage = $"Error creando GDB de migración: {msgGdb}";
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Error creando GDB desde XML: {msgGdb}",
+                    messageText: $"Error creando GDB 'migracion' desde XML: {msgGdb}",
                     caption: "Error",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Error
                 );
-                IsBusy = false;
                 return;
             }
+            
+            StatusMessage = $"GDB 'migracion' creada exitosamente. Iniciando migración de datos...";
 
-            StatusMessage = "GDB creada. Iniciando migración...";
-
+            // Migrar datos de Acueducto si se especificaron
             var mensajesMigracion = new List<string>();
             bool acueductoMigrated = false;
             bool alcantarilladoMigrated = false;
 
-            // ========== ACUEDUCTO ==========
             if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
             {
                 StatusMessage = "Migrando líneas de acueducto...";
@@ -362,22 +363,19 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // ✅ FIX 3: Agregar capas de acueducto SOLO si se migró algo
+            // Agregar capas de acueducto al mapa
             if (acueductoMigrated)
             {
                 StatusMessage = "Agregando capas de acueducto al mapa...";
                 var (okAdd, msgAdd) = await _migrateAcueductoUseCase.AddMigratedLayersToMap(gdbPath);
                 if (okAdd)
                 {
-                    mensajesMigracion.Add("✓ Capas de acueducto agregadas al mapa");
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Error agregando capas ACU: {msgAdd}");
+                    mensajesMigracion.Add(msgAdd);
                 }
             }
 
-            // ========== ALCANTARILLADO ==========
+            // Migrar datos de Alcantarillado si se especificaron
+
             if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
             {
                 StatusMessage = "Migrando líneas de alcantarillado...";
@@ -389,7 +387,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
                 else
                 {
-                    mensajesMigracion.Add($"⚠ Líneas ALC: {msgLines}");
+                    mensajesMigracion.Add($"⚠ Líneas: {msgLines}");
                 }
             }
 
@@ -404,7 +402,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
                 else
                 {
-                    mensajesMigracion.Add($"⚠ Puntos ALC: {msgPoints}");
+                    mensajesMigracion.Add($"⚠ Puntos: {msgPoints}");
                 }
             }
 
@@ -438,30 +436,27 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            // 🔥 FIX 4: Agregar capas de alcantarillado INDEPENDIENTEMENTE de acueducto
+            // Agregar capas de alcantarillado al mapa
             if (alcantarilladoMigrated)
             {
                 StatusMessage = "Agregando capas de alcantarillado al mapa...";
                 var (okAdd, msgAdd) = await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
                 if (okAdd)
                 {
-                    mensajesMigracion.Add("✓ Capas de alcantarillado agregadas al mapa");
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Error agregando capas ALC: {msgAdd}");
+                    mensajesMigracion.Add(msgAdd);
                 }
             }
 
             // Mensaje final
-            var mensajeFinal = mensajesMigracion.Count > 0
-                ? string.Join("\n\n", mensajesMigracion)
-                : "No se especificaron datos para migrar.";
+            var mensajeFinal = mensajesMigracion.Count > 0 
+                ? string.Join("\n", mensajesMigracion) 
+                : "No se especificaron datos de alcantarillado para migrar.";
 
+            // Mostrar detalle SOLO en ventana modal, no en el panel de estado
             StatusMessage = "✓ Proceso finalizado.";
-
+            
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                messageText: $"Migración completada:\n\n{mensajeFinal}\n\nGDB: {gdbPath}",
+                messageText: $"Migración completada:\n\n{mensajeFinal}",
                 caption: "Migración Exitosa",
                 button: System.Windows.MessageBoxButton.OK,
                 icon: System.Windows.MessageBoxImage.Information
@@ -470,121 +465,7 @@ internal class MigrationViewModel : BusyViewModelBase
         catch (Exception ex)
         {
             StatusMessage = $"Error: {ex.Message}";
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                messageText: $"Error durante la migración:\n\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}",
-                caption: "Error",
-                button: System.Windows.MessageBoxButton.OK,
-                icon: System.Windows.MessageBoxImage.Error
-            );
         }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private void ClearForm()
-    {
-        if (IsBusy) return;
-        Workspace = null;
-        XmlSchemaPath = null;
-        L_Acu_Origen = null;
-        P_Acu_Origen = null;
-        L_Alc_Origen = null;
-        P_Alc_Origen = null;
-        L_Alc_Pluv_Origen = null;
-        P_Alc_Pluv_Origen = null;
-        MigrarConAdvertencias = false;
-        HasWarnings = false;
-        TotalWarnings = 0;
-        ReportsFolder = string.Empty;
-        ReportFiles.Clear();
-        StatusMessage = "Formulario limpio. Seleccione origen y destino.";
-        RaiseCommandsCanExecute();
-    }
-
-    // Reportes / Advertencias
-    public int TotalWarnings
-    {
-        get => _totalWarnings;
-        private set
-        {
-            if (_totalWarnings != value)
-            {
-                _totalWarnings = value;
-                NotifyPropertyChanged(nameof(TotalWarnings));
-            }
-        }
-    }
-    private int _totalWarnings = 0;
-
-    public bool HasWarnings
-    {
-        get => _hasWarnings;
-        private set
-        {
-            if (_hasWarnings != value)
-            {
-                _hasWarnings = value;
-                NotifyPropertyChanged(nameof(HasWarnings));
-            }
-        }
-    }
-    private bool _hasWarnings = false;
-
-    public string ReportsFolder
-    {
-        get => _reportsFolder;
-        private set
-        {
-            if (_reportsFolder != value)
-            {
-                _reportsFolder = value;
-                NotifyPropertyChanged(nameof(ReportsFolder));
-            }
-        }
-    }
-    private string _reportsFolder = string.Empty;
-
-    public ObservableCollection<string> ReportFiles { get; private set; } = new();
-
-    private void OpenReportsFolder()
-    {
-        try
-        {
-            var folder = string.IsNullOrWhiteSpace(ReportsFolder) ? Workspace : ReportsFolder;
-            if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "explorer.exe",
-                    Arguments = folder,
-                    UseShellExecute = true
-                };
-                Process.Start(psi);
-            }
-        }
-        catch { /* ignorar */ }
-    }
-
-    private bool CanRun()
-    {
-        // ✅ FIX 5: Lógica correcta para habilitar/deshabilitar botón
-        if (IsBusy) return false;
-        
-        // Si hay advertencias y el checkbox NO está marcado, deshabilitar
-        if (HasWarnings && !MigrarConAdvertencias)
-        {
-            return false;
-        }
-        
-        return true;
-    }
-
-    private void RaiseCommandsCanExecute()
-    {
-        (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-        (ClearFormCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        (OpenReportsFolderCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        finally { IsBusy = false; }
     }
 }

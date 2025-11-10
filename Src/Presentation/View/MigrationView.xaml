@@ -18,7 +18,9 @@
                     Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
             <Style x:Key="HeaderTextStyle" TargetType="TextBlock"
                 BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -44,8 +46,11 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- Base button style fallback for design time -->
+            <Style x:Key="Esri_Button" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}" />
+            
             <Style x:Key="PrimaryButtonStyle" TargetType="Button"
-                BasedOn="{StaticResource Esri_Button}">
+                BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderThickness" Value="0" />
@@ -297,20 +302,10 @@
                 Margin="0,20,0,8"
                 TextWrapping="Wrap"
                 Style="{DynamicResource Esri_TextBlockRegular}"/>
-            <!-- Advertencias -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
-                <CheckBox Content="Migrar con advertencias"
-                          Margin="0,0,10,0"
-                          IsChecked="{Binding MigrarConAdvertencias, Mode=TwoWay}"/>
-                <TextBlock Text="{Binding TotalWarnings, StringFormat=Se detectaron {0} advertencias}"
-                           Foreground="{DynamicResource Esri_Orange}"
-                           Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVis}}"
-                           Margin="0,3,10,0"/>
-                <Button Content="Abrir reportes"
-                        Style="{StaticResource Esri_Button}"
-                        Command="{Binding OpenReportsFolderCommand}"
-                        Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVis}}"/>
-            </StackPanel>
+            <!-- Checkbox migrar con advertencias -->
+            <CheckBox Content="Migrar con advertencias"
+                      Margin="0,0,0,10"
+                      IsChecked="{Binding MigrarConAdvertencias, Mode=TwoWay}"/>
             <ProgressBar
                 Height="4"
                 IsIndeterminate="True"
@@ -320,11 +315,11 @@
                         Orientation="Horizontal"
                         Margin="0,10,0,0">
                 <Button Content="Limpiar"
-                        Style="{StaticResource Esri_Button}"
+                        Style="{DynamicResource Esri_Button}"
                         Margin="0,0,10,0"
                         Command="{Binding ClearFormCommand}"/>
                 <Button Content="Ejecutar"
-                        Style="{StaticResource PrimaryButtonStyle}"
+                        Style="{DynamicResource PrimaryButtonStyle}"
                         Command="{Binding RunCommand}"/>
             </StackPanel>
 

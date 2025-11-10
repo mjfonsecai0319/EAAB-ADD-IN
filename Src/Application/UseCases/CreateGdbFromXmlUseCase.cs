@@ -11,8 +11,6 @@ namespace EAABAddIn.Src.Application.UseCases
 {
     public class CreateGdbFromXmlUseCase
     {
-        // Crea o sobrescribe una FGDB llamada "migracion.gdb" en outFolder y carga el esquema desde xmlPath
-        // Retorna: ok, ruta completa de la GDB, mensaje
         public async Task<(bool ok, string gdbPath, string message)> Invoke(string outFolder, string xmlPath)
         {
             if (string.IsNullOrWhiteSpace(outFolder) || string.IsNullOrWhiteSpace(xmlPath))
@@ -23,23 +21,19 @@ namespace EAABAddIn.Src.Application.UseCases
 
             try
             {
-                // Validate and prepare paths
                 if (!Directory.Exists(outFolder))
                     Directory.CreateDirectory(outFolder);
 
                 const string gdbName = "GDB_Cargue";
                 var gdbPath = Path.Combine(outFolder, $"{gdbName}.gdb");
                 
-                // Si la GDB ya existe, intentar limpiar de forma segura (manejo de locks)
                 if (Directory.Exists(gdbPath))
                 {
-                    // Forzar recolección de objetos que puedan retener handles
                     try { GC.Collect(); GC.WaitForPendingFinalizers(); } catch { }
 
                     bool deleted = false;
                     Exception? lastEx = null;
 
-                    // Reintentos controlados de borrado (p. ej., si hay .lock)
                     for (int attempt = 1; attempt <= 3 && !deleted; attempt++)
                     {
                         try
@@ -57,13 +51,11 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     if (!deleted)
                     {
-                        // Intentar renombrar como fallback para liberar el nombre
                         try
                         {
                             var backupName = $"{gdbName}_old_{DateTime.Now:yyyyMMdd_HHmmss}.gdb";
                             var backupPath = Path.Combine(outFolder, backupName);
                             Directory.Move(gdbPath, backupPath);
-                            // Intentar borrar el backup en background (best effort)
                             _ = Task.Run(async () =>
                             {
                                 try
@@ -76,7 +68,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                         catch (Exception moveEx)
                         {
-                            // Último recurso: crear con nombre único para no bloquear el flujo
                             var uniqueName = $"{gdbName}_{DateTime.Now:yyyyMMdd_HHmmss}";
                             var uniqueGdbPath = Path.Combine(outFolder, uniqueName + ".gdb");
                             var createParamsUnique = Geoprocessing.MakeValueArray(outFolder, uniqueName);
@@ -84,7 +75,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             if (createResultUnique.IsFailed)
                                 return (false, string.Empty, $"La GDB existente está bloqueada y no se pudo crear una nueva: {(lastEx ?? moveEx).Message}");
 
-                            // Importar esquema al nombre único
                             var importParamsUnique = Geoprocessing.MakeValueArray(
                                 uniqueGdbPath,
                                 xmlPath,
@@ -102,28 +92,20 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                // Step 1: Create empty File Geodatabase
                 var createParams = Geoprocessing.MakeValueArray(outFolder, gdbName);
                 var createResult = await Geoprocessing.ExecuteToolAsync("management.CreateFileGDB", createParams);
                 
                 if (createResult.IsFailed)
                     return (false, string.Empty, $"Error al crear la GDB: {createResult.Messages}");
-
-                // Step 2: Import XML schema into GDB
-                // Parámetros de ImportXMLWorkspaceDocument:
-                // 1. target_geodatabase - ruta a la GDB
-                // 2. import_type - "DATA" (datos), "SCHEMA_ONLY" (solo esquema), o "DATA_AND_SCHEMA" (ambos)
-                // 3. import_file - ruta al archivo XML
                 var importParams = Geoprocessing.MakeValueArray(
-                    gdbPath,                    // target_geodatabase
-                    xmlPath,                    // import_file
-                    "SCHEMA_ONLY"               // import_type - solo esquema, sin datos
+                    gdbPath,                    
+                    xmlPath,                    
+                    "SCHEMA_ONLY"               
                 );
                 var importResult = await Geoprocessing.ExecuteToolAsync("management.ImportXMLWorkspaceDocument", importParams);
 
                 if (importResult.IsFailed)
                 {
-                    // Obtener los mensajes detallados del error
                     var errorMessages = string.Join("; ", importResult.Messages.Select(m => m.Text));
                     return (false, gdbPath, $"Error al importar esquema XML: {errorMessages}");
                 }
