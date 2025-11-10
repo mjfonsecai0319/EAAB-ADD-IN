@@ -17,7 +17,7 @@ namespace EAABAddIn.Src.Application.UseCases
 {
     public class MigrateAlcantarilladoUseCase
     {
-        public async Task<(bool ok, string message, int warnings)> MigrateLines(string sourceLineasPath, string targetGdbPath)
+        public async Task<(bool ok, string message)> MigrateLines(string sourceLineasPath, string targetGdbPath)
         {
             return await QueuedTask.Run(() =>
             {
@@ -26,14 +26,14 @@ namespace EAABAddIn.Src.Application.UseCases
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourceLineasPath) || string.IsNullOrWhiteSpace(targetGdbPath))
-                        return (false, "Parámetros inválidos", 1);
+                        return (false, "Parámetros inválidos");
 
                     if (!Directory.Exists(targetGdbPath))
-                        return (false, "La GDB de destino no existe", 1);
+                        return (false, "La GDB de destino no existe");
 
                     using var sourceFC = OpenFeatureClass(sourceLineasPath);
                     if (sourceFC == null)
-                        return (false, $"No se pudo abrir: {sourceLineasPath}", 1);
+                        return (false, $"No se pudo abrir: {sourceLineasPath}");
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
@@ -58,7 +58,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     int migrated = 0, total = 0, noClase = 0, noTarget = 0, failed = 0;
 
                     using var cursor = sourceFC.Search();
-                    bool editingDisabledDetected = false;
                     while (cursor.MoveNext())
                     {
                         total++;
@@ -112,17 +111,7 @@ namespace EAABAddIn.Src.Application.UseCases
                             failed++;
                             if (!string.IsNullOrWhiteSpace(migrateErr))
                             {
-                                if (editingDisabledDetected == false)
-                                {
-                                    log.AppendLine($"   ✖ Error de edición: {migrateErr}");
-                                }
-                                if (migrateErr != null && migrateErr.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                                {
-                                    editingDisabledDetected = true;
-                                    log.AppendLine("   👉 Habilita la edición en ArcGIS Pro: Proyecto > Opciones > Edición > Habilitar edición.");
-                                    log.AppendLine("   Se detuvo la migración para evitar mensajes repetidos.");
-                                    break;
-                                }
+                                log.AppendLine($"   ✖ Error: {migrateErr}");
                             }
                         }
                         if (!string.IsNullOrEmpty(targetClassName))
@@ -141,7 +130,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin clase destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
-                    int warnings = noClase + noTarget + failed; 
 
                     try
                     {
@@ -155,17 +143,17 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas: {exCsv.Message}");
                     }
-                    return (true, log.ToString(), warnings);
+                    return (true, log.ToString());
                 }
                 catch (Exception ex)
                 {
                     log.AppendLine($"\n❌ Error: {ex.Message}");
-                    return (false, log.ToString(), 1);
+                    return (false, log.ToString());
                 }
             });
         }
 
-        public async Task<(bool ok, string message, int warnings)> MigratePoints(string sourcePuntosPath, string targetGdbPath)
+        public async Task<(bool ok, string message)> MigratePoints(string sourcePuntosPath, string targetGdbPath)
         {
             return await QueuedTask.Run(() =>
             {
@@ -174,14 +162,14 @@ namespace EAABAddIn.Src.Application.UseCases
                 try
                 {
                     if (string.IsNullOrWhiteSpace(sourcePuntosPath) || string.IsNullOrWhiteSpace(targetGdbPath))
-                        return (false, "Parámetros inválidos", 1);
+                        return (false, "Parámetros inválidos");
 
                     if (!Directory.Exists(targetGdbPath))
-                        return (false, "La GDB de destino no existe", 1);
+                        return (false, "La GDB de destino no existe");
 
                     using var sourceFC = OpenFeatureClass(sourcePuntosPath);
                     if (sourceFC == null)
-                        return (false, $"No se pudo abrir: {sourcePuntosPath}", 1);
+                        return (false, $"No se pudo abrir: {sourcePuntosPath}");
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
 
@@ -206,7 +194,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     int migrated = 0, total = 0, noClase = 0, noTarget = 0, failed = 0;
 
                     using var cursor = sourceFC.Search();
-                    bool editingDisabledDetected = false;
                     while (cursor.MoveNext())
                     {
                         total++;
@@ -260,17 +247,7 @@ namespace EAABAddIn.Src.Application.UseCases
                             failed++;
                             if (!string.IsNullOrWhiteSpace(migrateErr))
                             {
-                                if (editingDisabledDetected == false)
-                                {
-                                    log.AppendLine($"   ✖ Error de edición: {migrateErr}");
-                                }
-                                if (migrateErr != null && migrateErr.IndexOf("Editing in the application is not enabled", StringComparison.OrdinalIgnoreCase) >= 0)
-                                {
-                                    editingDisabledDetected = true;
-                                    log.AppendLine("   👉 Habilita la edición en ArcGIS Pro: Proyecto > Opciones > Edición > Habilitar edición.");
-                                    log.AppendLine("   Se detuvo la migración para evitar mensajes repetidos.");
-                                    break;
-                                }
+                                log.AppendLine($"   ✖ Error: {migrateErr}");
                             }
                         }
                         if (!string.IsNullOrEmpty(targetClassName))
@@ -289,7 +266,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     log.AppendLine($"   Sin CLASE: {noClase}");
                     log.AppendLine($"   Sin destino: {noTarget}");
                     log.AppendLine($"   Fallos: {failed}");
-                    int warnings = noClase + noTarget + failed; 
 
                     try
                     {
@@ -303,12 +279,12 @@ namespace EAABAddIn.Src.Application.UseCases
                     {
                         log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos: {exCsv.Message}");
                     }
-                    return (true, log.ToString(), warnings);
+                    return (true, log.ToString());
                 }
                 catch (Exception ex)
                 {
                     log.AppendLine($"\n❌ Error: {ex.Message}");
-                    return (false, log.ToString(), 1);
+                    return (false, log.ToString());
                 }
             });
         }
@@ -520,41 +496,13 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
+                // Inserción directa sin EditOperation
                 var (insertOk, insertErr) = TryInsertRowDirect(targetGdb, targetFC, dict, mapSpatialReference);
-                if (insertOk)
+                if (!insertOk)
                 {
-                    return true;
-                }
-
-                var editOp = new EditOperation
-                {
-                    Name = $"Migrar línea -> {targetClassName}",
-                    SelectNewFeatures = false
-                };
-
-                editOp.Callback(context =>
-                {
-                    using (var rowBuffer = targetFC.CreateRowBuffer())
-                    {
-                        foreach (var kv in dict)
-                            rowBuffer[kv.Key] = kv.Value;
-
-                        using (var row = targetFC.CreateRow(rowBuffer))
-                        {
-                            context.Invalidate(row);
-                        }
-                    }
-                }, targetFC);
-
-                bool ok = editOp.Execute();
-
-                if (!ok)
-                {
-                    var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
+                    error = insertErr;
                     return false;
                 }
-
 
                 return true;
             }
@@ -600,41 +548,13 @@ namespace EAABAddIn.Src.Application.UseCases
                     dict[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
                 }
 
+                // Inserción directa sin EditOperation
                 var (insertOk, insertErr) = TryInsertRowDirect(targetGdb, targetFC, dict, mapSpatialReference);
-                if (insertOk)
+                if (!insertOk)
                 {
-                    return true;
-                }
-
-                var editOp = new EditOperation
-                {
-                    Name = $"Migrar punto -> {targetClassName}",
-                    SelectNewFeatures = false
-                };
-
-                editOp.Callback(context =>
-                {
-                    using (var rowBuffer = targetFC.CreateRowBuffer())
-                    {
-                        foreach (var kv in dict)
-                            rowBuffer[kv.Key] = kv.Value;
-
-                        using (var row = targetFC.CreateRow(rowBuffer))
-                        {
-                            context.Invalidate(row);
-                        }
-                    }
-                }, targetFC);
-
-                bool ok = editOp.Execute();
-
-                if (!ok)
-                {
-                    var msg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) ? "Edit operation failed." : editOp.ErrorMessage;
-                    error = $"Inserción directa falló: {insertErr} | EditOperation falló: {msg}";
+                    error = insertErr;
                     return false;
                 }
-
 
                 return true;
             }
@@ -758,13 +678,8 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                 }
 
-                var editOp = new EditOperation
-                {
-                    Name = "Insertar feature migrado",
-                    SelectNewFeatures = false
-                };
-
-                editOp.Callback(context =>
+                // Inserción directa con EditSession - funciona sin edición habilitada en la UI
+                targetGdb.ApplyEdits(() =>
                 {
                     using var rowBuffer = targetFC.CreateRowBuffer();
                     foreach (var kv in dict)
@@ -778,24 +693,15 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
 
                     using var row = targetFC.CreateRow(rowBuffer);
-                    context.Invalidate(row);
-                }, targetFC);
-
-                bool success = editOp.Execute();
-                if (!success)
-                {
-                    string errMsg = string.IsNullOrWhiteSpace(editOp.ErrorMessage) 
-                        ? "EditOperation falló sin mensaje de error" 
-                        : editOp.ErrorMessage;
-                    System.Diagnostics.Debug.WriteLine($"❌ Inserción con EditOperation falló: {errMsg}");
-                    return (false, errMsg);
-                }
-
+                    row.Store();
+                });
+                
+                System.Diagnostics.Debug.WriteLine($"✓ Feature insertado exitosamente");
                 return (true, null);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Inserción directa falló: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Inserción falló: {ex.Message}");
                 return (false, ex.Message);
             }
         }

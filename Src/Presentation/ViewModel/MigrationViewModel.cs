@@ -384,7 +384,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
             {
                 StatusMessage = "Migrando líneas de acueducto...";
-                var (okLines, msgLines, warningsLines) = await _migrateAcueductoUseCase.MigrateLines(L_Acu_Origen, gdbPath);
+                var (okLines, msgLines) = await _migrateAcueductoUseCase.MigrateLines(L_Acu_Origen, gdbPath);
                 if (okLines)
                 {
                     mensajesMigracion.Add(msgLines);
@@ -399,7 +399,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
             {
                 StatusMessage = "Migrando puntos de acueducto...";
-                var (okPoints, msgPoints, warningsPoints) = await _migrateAcueductoUseCase.MigratePoints(P_Acu_Origen, gdbPath);
+                var (okPoints, msgPoints) = await _migrateAcueductoUseCase.MigratePoints(P_Acu_Origen, gdbPath);
                 if (okPoints)
                 {
                     mensajesMigracion.Add(msgPoints);
@@ -425,7 +425,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
             {
                 StatusMessage = "Migrando líneas de alcantarillado...";
-                var (okLines, msgLines, warningsLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
+                var (okLines, msgLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
                 if (okLines)
                 {
                     mensajesMigracion.Add(msgLines);
@@ -440,7 +440,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
             {
                 StatusMessage = "Migrando puntos de alcantarillado...";
-                var (okPoints, msgPoints, warningsPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
+                var (okPoints, msgPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
                 if (okPoints)
                 {
                     mensajesMigracion.Add(msgPoints);
@@ -455,7 +455,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
             {
                 StatusMessage = "Migrando líneas de alcantarillado pluvial...";
-                var (okLinesPluv, msgLinesPluv, warningsLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
+                var (okLinesPluv, msgLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
                 if (okLinesPluv)
                 {
                     mensajesMigracion.Add(msgLinesPluv);
@@ -470,7 +470,7 @@ internal class MigrationViewModel : BusyViewModelBase
             if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
             {
                 StatusMessage = "Migrando puntos de alcantarillado pluvial...";
-                var (okPointsPluv, msgPointsPluv, warningsPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
+                var (okPointsPluv, msgPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
                 if (okPointsPluv)
                 {
                     mensajesMigracion.Add(msgPointsPluv);
