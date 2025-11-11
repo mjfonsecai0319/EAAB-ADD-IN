@@ -4,6 +4,19 @@
 
 AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE. Incluye también búsqueda de Puntos de Interés (POIs), almacenamiento estructurado de resultados y un sistema completo de migración de datos de redes de acueducto y alcantarillado con validación automática y transformación de geometrías.
 
+### Conformidad con Norma NS-046
+
+El módulo de migración de datos está diseñado conforme a la **Norma Técnica NS-046 de la Empresa de Acueducto y Alcantarillado de Bogotá (EAAB-ESP)**, que establece:
+
+- **Estructura de datos espaciales** para redes de acueducto y alcantarillado
+- **Clasificación de elementos** según tipos de red (sanitario, pluvial, acueducto)
+- **Nomenclatura y códigos** de feature classes y dominios
+- **Atributos mínimos requeridos** para cada tipo de elemento de red
+- **Sistemas de referencia espacial** MAGNA-SIRGAS / Colombia Bogotá (WKID: 102233, EPSG: 6247)
+- **Topología y conectividad** de redes de infraestructura hidráulica
+
+El sistema implementa los mapeos de clasificación, nomenclatura de feature classes, estructura de atributos y validaciones especificadas en la norma NS-046.
+
 ## Stack Tecnológico
 
 - **.NET 8**
@@ -134,11 +147,14 @@ EAABAddIn/
 
 ### Flujo de Migración de Datos
 
+**Conformidad NS-046**: El proceso de migración implementa la estructura de datos y clasificaciones definidas en la Norma Técnica NS-046 de la EAAB-ESP.
+
 **Fase 1: Preparación y Validación**
-1. Usuario selecciona carpeta de salida, esquema XML y capas de origen (acueducto/alcantarillado).
+1. Usuario selecciona carpeta de salida, esquema XML (conforme NS-046) y capas de origen (acueducto/alcantarillado).
 2. `ValidateDatasetsUseCase` ejecuta validación pre-migración:
-   - Verifica existencia de campos requeridos (CLASE, SUBTIPO, SISTEMA)
+   - Verifica existencia de campos requeridos según NS-046 (CLASE, SUBTIPO, SISTEMA)
    - Detecta features sin clasificación o con valores nulos
+   - Valida valores de dominios contra catálogos normativos
    - Genera reportes CSV con advertencias por dataset
 3. Si hay advertencias y checkbox "Migrar con Advertencias" está desmarcado:
    - Bloquea ejecución y muestra diálogo al usuario
@@ -146,29 +162,31 @@ EAABAddIn/
 4. Si no hay advertencias o usuario autoriza continuar → pasa a Fase 2
 
 **Fase 2: Creación de Geodatabase Destino**
-1. `CreateGdbFromXmlUseCase` procesa el esquema XML:
+1. `CreateGdbFromXmlUseCase` procesa el esquema XML (estructura NS-046):
    - Verifica si ya existe GDB con nombre `Migracion_YYYYMMDD_HHmmss.gdb`
    - Si existe: reutiliza (permite migraciones incrementales)
-   - Si no existe: crea nueva GDB usando ArcGIS Geoprocessing con el XML
+   - Si no existe: crea nueva GDB usando ArcGIS Geoprocessing con el XML normativo
+   - El XML define feature classes, dominios y relaciones según estándar NS-046
 2. Valida que la creación fue exitosa antes de continuar
 
 **Fase 3: Migración de Features**
 1. Para cada capa de origen seleccionada:
    - `MigrateAlcantarilladoUseCase` o `MigrateAcueductoUseCase` lee features
 2. Por cada feature:
-   - Lee campo CLASE para determinar tipo de elemento
-   - Lee campo SISTEMA para determinar red (sanitario/pluvial)
-   - Consulta mapping interno para obtener feature class destino
-   - Valida que FC destino existe en la GDB
+   - Lee campo CLASE para determinar tipo de elemento (conforme catálogo NS-046)
+   - Lee campo SISTEMA para determinar red (0=sanitario, 1=pluvial, 2=sanitario según NS-046)
+   - Consulta mapping interno NS-046 para obtener feature class destino
+   - Valida que FC destino existe en la GDB con estructura normativa
 3. Transformación de geometría:
-   - Obtiene SR del mapa activo y SR del FC destino
-   - Si son diferentes: proyecta geometría automáticamente
-   - Detecta dimensiones Z/M incompatibles
+   - Obtiene SR del mapa activo y SR del FC destino (NS-046 requiere MAGNA-SIRGAS Bogotá)
+   - Si son diferentes: proyecta geometría automáticamente a WKID 102233/6247
+   - Detecta dimensiones Z/M incompatibles con especificación NS-046
    - Reconstruye geometría sin Z/M si es necesario usando builders específicos (MapPointBuilderEx, PolylineBuilderEx, PolygonBuilderEx)
-4. Mapeo de atributos:
-   - `BuildLineAttributes()` o `BuildPointAttributes()` mapea campos origen → destino
-   - Aplica coerción de tipos según definición de campos destino
-   - Trunca strings que exceden longitud máxima del campo
+4. Mapeo de atributos (conforme NS-046):
+   - `BuildLineAttributes()` o `BuildPointAttributes()` mapea campos origen → destino según estructura normativa
+   - Aplica coerción de tipos según definición de campos destino en NS-046
+   - Trunca strings que exceden longitud máxima especificada en la norma
+   - Mapea códigos de dominios a valores válidos del catálogo NS-046
 5. Inserción:
    - Intenta inserción con `EditOperation` (método seguro ArcGIS)
    - Si falla, registra error detallado
@@ -188,27 +206,36 @@ EAABAddIn/
    - Ejecuta ZoomTo con extent expandido 10%
 3. Muestra resumen final al usuario
 
-**Mapeo de Clasificaciones (Alcantarillado):**
+**Mapeo de Clasificaciones (Alcantarillado - Conforme NS-046):**
 
-Líneas:
-- CLASE=1 + SISTEMA=0/2 → `als_RedLocal`
-- CLASE=1 + SISTEMA=1 → `alp_RedLocal`
-- CLASE=2 + SISTEMA=0/2 → `als_RedTroncal`
-- CLASE=2 + SISTEMA=1 → `alp_RedTroncal`
-- CLASE=3 + SISTEMA=0/2 → `als_LineaLateral`
-- CLASE=3 + SISTEMA=1 → `alp_LineaLateral`
-- CLASE=4 → igual que CLASE=1 (RedLocal)
+**Nomenclatura según NS-046**:
+- Prefijo `als_`: Alcantarillado Sanitario
+- Prefijo `alp_`: Alcantarillado Pluvial
+- Campo SISTEMA: 0 o 2 = Sanitario, 1 = Pluvial
 
-Puntos:
-- CLASE=1 → `als/alp_EstructuraRed`
-- CLASE=2 → `als/alp_Pozo`
-- CLASE=3 → `als/alp_Sumidero`
-- CLASE=4 → `als/alp_CajaDomiciliaria`
-- CLASE=5 → `als/alp_SeccionTransversal`
-- CLASE=6 → `als/alp_EstructuraRed`
-- CLASE=7 → `als/alp_Sumidero`
+**Líneas (NS-046 Tabla de Clasificación de Redes):**
+- CLASE=1 + SISTEMA=0/2 → `als_RedLocal` (red distribución local sanitaria)
+- CLASE=1 + SISTEMA=1 → `alp_RedLocal` (red distribución local pluvial)
+- CLASE=2 + SISTEMA=0/2 → `als_RedTroncal` (colector principal sanitario)
+- CLASE=2 + SISTEMA=1 → `alp_RedTroncal` (colector principal pluvial)
+- CLASE=3 + SISTEMA=0/2 → `als_LineaLateral` (acometida sanitaria)
+- CLASE=3 + SISTEMA=1 → `alp_LineaLateral` (acometida pluvial)
+- CLASE=4 → igual que CLASE=1 (RedLocal - equivalencia normativa)
 
-Prefijos: `als_` (sanitario), `alp_` (pluvial)
+**Puntos (NS-046 Catálogo de Estructuras):**
+- CLASE=1 → `als/alp_EstructuraRed` (estructura especial)
+- CLASE=2 → `als/alp_Pozo` (cámara de inspección)
+- CLASE=3 → `als/alp_Sumidero` (captación aguas lluvia)
+- CLASE=4 → `als/alp_CajaDomiciliaria` (punto de conexión)
+- CLASE=5 → `als/alp_SeccionTransversal` (punto de medición)
+- CLASE=6 → `als/alp_EstructuraRed` (estructura auxiliar)
+- CLASE=7 → `als/alp_Sumidero` (captación vial)
+
+**Valores de dominios NS-046**:
+- DOMTIPOSISTEMA: "0"=Sanitario, "1"=Pluvial, "2"=Sanitario (legacy)
+- DOMESTADOENRED: Según catálogo de estados operacionales NS-046
+- DOMMATERIAL: Códigos de materiales estándar EAAB
+- DOMTIPOSECCION: Circular, Rectangular, Ovoide, etc. (catálogo NS-046)
 
 ### Patrones de Diseño Implementados
 
