@@ -70,8 +70,7 @@ namespace EAABAddIn.Src.Application.UseCases
 
                         if (total == 1)
                         {
-                            log.AppendLine($"📋 Primera feature: CLASE={clase}, SUBTIPO={subtipo}, SISTEMA={tipoSistema}");
-                            log.AppendLine($"   Campos disponibles: {string.Join(", ", GetFieldNames(feature))}");
+                            log.AppendLine($"Iniciando migración de líneas ALC...");
                         }
 
                         if (!clase.HasValue || clase.Value == 0)
@@ -101,9 +100,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             ensuredLayers.Add(targetClassName);
                         }
 
-                        if (total <= 5)
-                            log.AppendLine($"→ Feature {total}: {targetClassName}");
-
                         if (MigrateLineFeature(feature, targetGdb, targetClassName, subtipo ?? 0, out var migrateErr, mapSpatialReference))
                             migrated++;
                         else
@@ -124,12 +120,8 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    log.AppendLine($"\n📊 Resumen:");
-                    log.AppendLine($"   Total features: {total}");
-                    log.AppendLine($"   Migradas: {migrated}");
-                    log.AppendLine($"   Sin CLASE: {noClase}");
-                    log.AppendLine($"   Sin clase destino: {noTarget}");
-                    log.AppendLine($"   Fallos: {failed}");
+                    log.AppendLine($"✓ Líneas ALC: {migrated} migradas de {total}");
+                    if (failed > 0) log.AppendLine($"  ⚠ {failed} con errores");
 
                     try
                     {
@@ -137,11 +129,11 @@ namespace EAABAddIn.Src.Application.UseCases
                         var folder = csv.EnsureReportsFolder(targetGdbPath);
                         var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
                         var file = csv.WriteMigrationSummary(folder, "alcantarillado_lineas", listStats, noClase, noTarget);
-                        log.AppendLine($"   📁 CSV: {file}");
+                        log.AppendLine($"  Reporte: {Path.GetFileName(file)}");
                     }
                     catch (Exception exCsv)
                     {
-                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas: {exCsv.Message}");
+                        log.AppendLine($"  ⚠ Error CSV: {exCsv.Message}");
                     }
                     return (true, log.ToString());
                 }
@@ -206,8 +198,7 @@ namespace EAABAddIn.Src.Application.UseCases
 
                         if (total == 1)
                         {
-                            log.AppendLine($"📋 Primera feature: CLASE={clase}, SUBTIPO={subtipo}, SISTEMA={tipoSistema}");
-                            log.AppendLine($"   Campos: {string.Join(", ", GetFieldNames(feature))}");
+                            log.AppendLine($"Iniciando migración de puntos ALC...");
                         }
 
                         if (!clase.HasValue || clase.Value == 0)
@@ -237,9 +228,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             ensuredLayers.Add(targetClassName);
                         }
 
-                        if (total <= 5)
-                            log.AppendLine($"→ Feature {total}: {targetClassName}");
-
                         if (MigratePointFeature(feature, targetGdb, targetClassName, subtipo ?? 0, out var migrateErr, mapSpatialReference))
                             migrated++;
                         else
@@ -260,12 +248,8 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    log.AppendLine($"\n📊 Resumen:");
-                    log.AppendLine($"   Total: {total}");
-                    log.AppendLine($"   Migradas: {migrated}");
-                    log.AppendLine($"   Sin CLASE: {noClase}");
-                    log.AppendLine($"   Sin destino: {noTarget}");
-                    log.AppendLine($"   Fallos: {failed}");
+                    log.AppendLine($"✓ Puntos ALC: {migrated} migrados de {total}");
+                    if (failed > 0) log.AppendLine($"  ⚠ {failed} con errores");
 
                     try
                     {
@@ -273,11 +257,11 @@ namespace EAABAddIn.Src.Application.UseCases
                         var folder = csv.EnsureReportsFolder(targetGdbPath);
                         var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
                         var file = csv.WriteMigrationSummary(folder, "alcantarillado_puntos", listStats, noClase, noTarget);
-                        log.AppendLine($"   📁 CSV: {file}");
+                        log.AppendLine($"  Reporte: {Path.GetFileName(file)}");
                     }
                     catch (Exception exCsv)
                     {
-                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos: {exCsv.Message}");
+                        log.AppendLine($"  ⚠ Error CSV: {exCsv.Message}");
                     }
                     return (true, log.ToString());
                 }
@@ -941,24 +925,12 @@ namespace EAABAddIn.Src.Application.UseCases
                         return (false, "No hay un mapa activo");
                     }
 
-                    log.AppendLine($"🗺️ Mapa activo: {map.Name}");
-                    try
-                    {
-                        var mapSR = map.SpatialReference;
-                        if (mapSR != null)
-                            log.AppendLine($"   SR del mapa: WKID={mapSR.Wkid}, Name={mapSR.Name}");
-                    }
-                    catch { }
-                    log.AppendLine($"📂 GDB: {targetGdbPath}");
-
                     if (!Directory.Exists(targetGdbPath))
                     {
-                        return (false, $"La GDB no existe: {targetGdbPath}");
+                        return (false, $"GDB no existe: {targetGdbPath}");
                     }
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
-                    
-                    log.AppendLine("🗺️ Agregando capas de alcantarillado al mapa...");
 
                     var layersAdded = new List<string>();
                     Envelope? combinedExtent = null;
@@ -990,12 +962,10 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     if (layersAdded.Count > 0)
                     {
-                        log.AppendLine($"✓ Capas agregadas: {string.Join(", ", layersAdded)}");
+                        log.AppendLine($"✓ {layersAdded.Count} capas agregadas al mapa");
                         
                         if (combinedExtent != null && MapView.Active != null)
                         {
-                            log.AppendLine($"� Extent: XMin={combinedExtent.XMin:F2}, YMin={combinedExtent.YMin:F2}, XMax={combinedExtent.XMax:F2}, YMax={combinedExtent.YMax:F2}");
-                            
                             if (!double.IsNaN(combinedExtent.XMin) && !double.IsNaN(combinedExtent.YMin))
                             {
                                 var width = combinedExtent.Width;
@@ -1009,13 +979,7 @@ namespace EAABAddIn.Src.Application.UseCases
                                 ).ToGeometry();
                                 
                                 MapView.Active.ZoomTo(expandedExtent, TimeSpan.FromSeconds(1.5));
-                                log.AppendLine($"✓ Zoom aplicado (expandido 10%)");
-                                
                                 MapView.Active.Redraw(true);
-                            }
-                            else
-                            {
-                                log.AppendLine($"⚠ Extent inválido (contiene NaN), no se puede hacer zoom");
                             }
                         }
                         
@@ -1023,7 +987,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                     else
                     {
-                        log.AppendLine("⚠ No se agregó ninguna capa. Revisa la ventana Output > Debug para más detalles.");
+                        log.AppendLine("⚠ No se agregaron capas.");
                         return (false, log.ToString());
                     }
                 }

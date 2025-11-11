@@ -53,50 +53,7 @@ namespace EAABAddIn.Src.Application.UseCases
 
                         if (total == 1)
                         {
-                            log.AppendLine($"📋 Primera feature (línea ACU): CLASE={clase}, SUBTIPO={subtipo}");
-                            log.AppendLine($"   Campos disponibles: {string.Join(", ", GetFieldNames(feature))}");
-                            var geom = feature.GetShape();
-                            if (geom != null && !geom.IsEmpty)
-                            {
-                                var sr = geom.SpatialReference;
-                                string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
-                                log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
-                                log.AppendLine($"   SR Origen: {srInfo}");
-                                if (geom is Polyline polyline)
-                                {
-                                    log.AppendLine($"   Longitud: {polyline.Length:F2} m, Puntos: {polyline.PointCount}");
-                                    var extent = polyline.Extent;
-                                    log.AppendLine($"   Extent: XMin={extent.XMin:F2}, YMin={extent.YMin:F2}, XMax={extent.XMax:F2}, YMax={extent.YMax:F2}");
-                                }
-                                if (clase.HasValue)
-                                {
-                                    using var targetFC0 = OpenTargetFeatureClass(targetGdb, GetTargetLineClassName(clase.Value));
-                                    if (targetFC0 != null)
-                                    {
-                                        using var targetDef = targetFC0.GetDefinition();
-                                        var targetSR = targetDef.GetSpatialReference();
-                                        string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
-                                        log.AppendLine($"   SR Destino: {targetSRInfo}");
-                                        if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
-                                        {
-                                            bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
-                                            bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
-                                            if (isMagnaSource && isMagnaTarget)
-                                            {
-                                                log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
-                                            }
-                                            else
-                                            {
-                                                log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                log.AppendLine($"   ⚠ Geometría nula o vacía en primera feature");
-                            }
+                            log.AppendLine($"Iniciando migración de líneas ACU...");
                         }
 
                         if (!clase.HasValue || clase.Value == 0)
@@ -126,9 +83,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             ensuredLayers.Add(targetClassName);
                         }
 
-                        if (total <= 5)
-                            log.AppendLine($"→ Feature {total}: {targetClassName}");
-
                         if (MigrateLineFeature(feature, targetGdb, targetClassName, subtipo ?? 0, out var migrateErr))
                             migrated++;
                         else
@@ -150,78 +104,20 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    log.AppendLine($"\n📊 Resumen líneas ACU:");
-                    log.AppendLine($"   Total: {total}");
-                    log.AppendLine($"   Migradas: {migrated}");
-                    log.AppendLine($"   Sin CLASE: {noClase}");
-                    log.AppendLine($"   Sin clase destino: {noTarget}");
-                    log.AppendLine($"   Fallos: {failed}");
+                    log.AppendLine($"✓ Líneas ACU: {migrated} migradas de {total}");
+                    if (failed > 0) log.AppendLine($"  ⚠ {failed} con errores");
                     
-                    if (migrated > 0)
-                    {
-                        log.AppendLine($"\n🔍 Verificando features insertadas...");
-                        var targetClassName = GetTargetLineClassName(4);
-                        if (!string.IsNullOrEmpty(targetClassName))
-                        {
-                            using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
-                            if (targetFC != null)
-                            {
-                                var count = targetFC.GetCount();
-                                log.AppendLine($"   Features en {targetClassName}: {count}");
-                                if (count > 0)
-                                {
-                                    using var def = targetFC.GetDefinition();
-                                    var sr = def.GetSpatialReference();
-                                    log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
-                                    using var verifyCursor = targetFC.Search(null, false);
-                                    int checkedCount = 0;
-                                    int validGeoms = 0;
-                                    int emptyGeoms = 0;
-                                    while (verifyCursor.MoveNext() && checkedCount < 5)
-                                    {
-                                        using var feat = verifyCursor.Current as Feature;
-                                        if (feat != null)
-                                        {
-                                            var geom = feat.GetShape();
-                                            checkedCount++;
-                                            if (geom != null && !geom.IsEmpty)
-                                            {
-                                                validGeoms++;
-                                                if (checkedCount == 1 && geom is Polyline pl)
-                                                {
-                                                    var ext = pl.Extent;
-                                                    var geomSR = geom.SpatialReference;
-                                                    log.AppendLine($"   Primera feature insertada:");
-                                                    log.AppendLine($"     Extent: XMin={ext.XMin:F2}, YMin={ext.YMin:F2}, XMax={ext.XMax:F2}, YMax={ext.YMax:F2}");
-                                                    log.AppendLine($"     SR: WKID={geomSR?.Wkid}");
-                                                    log.AppendLine($"     Longitud: {pl.Length:F2}, Puntos: {pl.PointCount}");
-                                                }
-                                            }
-                                            else
-                                            {
-                                                emptyGeoms++;
-                                            }
-                                        }
-                                    }
-                                    log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
-                                    if (emptyGeoms > 0)
-                                        log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
-                                }
-                            }
-                        }
-                    }
-
                     try
                     {
                         var csv = new Services.CsvReportService();
                         var folder = csv.EnsureReportsFolder(targetGdbPath);
                         var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
                         var file = csv.WriteMigrationSummary(folder, "acueducto_lineas", listStats, noClase, noTarget);
-                        log.AppendLine($"   📁 CSV: {file}");
+                        log.AppendLine($"  Reporte: {Path.GetFileName(file)}");
                     }
                     catch (Exception exCsv)
                     {
-                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración líneas ACU: {exCsv.Message}");
+                        log.AppendLine($"  ⚠ Error CSV: {exCsv.Message}");
                     }
                     return (true, log.ToString());
                 }
@@ -270,45 +166,7 @@ namespace EAABAddIn.Src.Application.UseCases
 
                         if (total == 1)
                         {
-                            log.AppendLine($"📋 Primera feature (punto ACU): CLASE={clase}, SUBTIPO={subtipo}");
-                            log.AppendLine($"   Campos: {string.Join(", ", GetFieldNames(feature))}");
-                            var geom = feature.GetShape();
-                            if (geom != null && !geom.IsEmpty)
-                            {
-                                var sr = geom.SpatialReference;
-                                string srInfo = sr != null ? $"WKID={sr.Wkid}, Name={sr.Name}" : "SIN SR";
-                                log.AppendLine($"   Geometría origen: Tipo={geom.GeometryType}, HasZ={geom.HasZ}, HasM={geom.HasM}");
-                                log.AppendLine($"   SR Origen: {srInfo}");
-                                if (geom is MapPoint point)
-                                {
-                                    log.AppendLine($"   Coordenadas: X={point.X:F2}, Y={point.Y:F2}");
-                                }
-                                using var targetFC0 = OpenTargetFeatureClass(targetGdb, GetTargetPointClassName(clase.Value));
-                                if (targetFC0 != null)
-                                {
-                                    using var targetDef = targetFC0.GetDefinition();
-                                    var targetSR = targetDef.GetSpatialReference();
-                                    string targetSRInfo = targetSR != null ? $"WKID={targetSR.Wkid}, Name={targetSR.Name}" : "SIN SR";
-                                    log.AppendLine($"   SR Destino: {targetSRInfo}");
-                                    if (sr != null && targetSR != null && !sr.IsEqual(targetSR))
-                                    {
-                                        bool isMagnaSource = sr.Wkid == 102233 || sr.Wkid == 6247;
-                                        bool isMagnaTarget = targetSR.Wkid == 102233 || targetSR.Wkid == 6247;
-                                        if (isMagnaSource && isMagnaTarget)
-                                        {
-                                            log.AppendLine($"   ✓ Ambos son MAGNA Bogotá - Se mantendrán coordenadas exactas");
-                                        }
-                                        else
-                                        {
-                                            log.AppendLine($"   ⚠ Sistemas diferentes - Se reproyectará");
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                log.AppendLine($"   ⚠ Geometría nula o vacía en primera feature");
-                            }
+                            log.AppendLine($"Iniciando migración de puntos ACU...");
                         }
 
                         if (!clase.HasValue || clase.Value == 0)
@@ -338,9 +196,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             ensuredLayers.Add(targetClassName);
                         }
 
-                        if (total <= 5)
-                            log.AppendLine($"→ Feature {total}: {targetClassName}");
-
                         if (MigratePointFeature(feature, targetGdb, targetClassName, subtipo ?? 0, out var migrateErr))
                             migrated++;
                         else
@@ -362,76 +217,20 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                     }
 
-                    log.AppendLine($"\n📊 Resumen puntos ACU:");
-                    log.AppendLine($"   Total: {total}");
-                    log.AppendLine($"   Migradas: {migrated}");
-                    log.AppendLine($"   Sin CLASE: {noClase}");
-                    log.AppendLine($"   Sin destino: {noTarget}");
-                    log.AppendLine($"   Fallos: {failed}");
+                    log.AppendLine($"✓ Puntos ACU: {migrated} migrados de {total}");
+                    if (failed > 0) log.AppendLine($"  ⚠ {failed} con errores");
                     
-                    if (migrated > 0)
-                    {
-                        log.AppendLine($"\n🔍 Verificando features insertadas...");
-                        var targetClassName = GetTargetPointClassName(7);
-                        if (!string.IsNullOrEmpty(targetClassName))
-                        {
-                            using var targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
-                            if (targetFC != null)
-                            {
-                                var count = targetFC.GetCount();
-                                log.AppendLine($"   Features en {targetClassName}: {count}");
-                                if (count > 0)
-                                {
-                                    using var def = targetFC.GetDefinition();
-                                    var sr = def.GetSpatialReference();
-                                    log.AppendLine($"   SR de la clase: WKID={sr?.Wkid}, Name={sr?.Name}");
-                                    using var verifyCursor = targetFC.Search(null, false);
-                                    int checkedCount = 0;
-                                    int validGeoms = 0;
-                                    int emptyGeoms = 0;
-                                    while (verifyCursor.MoveNext() && checkedCount < 5)
-                                    {
-                                        using var feat = verifyCursor.Current as Feature;
-                                        if (feat != null)
-                                        {
-                                            var geom = feat.GetShape();
-                                            checkedCount++;
-                                            if (geom != null && !geom.IsEmpty)
-                                            {
-                                                validGeoms++;
-                                                if (checkedCount == 1 && geom is MapPoint mp)
-                                                {
-                                                    var geomSR = geom.SpatialReference;
-                                                    log.AppendLine($"   Primera feature insertada:");
-                                                    log.AppendLine($"     Coordenadas: X={mp.X:F2}, Y={mp.Y:F2}");
-                                                    log.AppendLine($"     SR: WKID={geomSR?.Wkid}");
-                                                }
-                                            }
-                                            else
-                                            {
-                                                emptyGeoms++;
-                                            }
-                                        }
-                                    }
-                                    log.AppendLine($"   ✓ Geometrías válidas: {validGeoms}/{checkedCount}");
-                                    if (emptyGeoms > 0)
-                                        log.AppendLine($"   ⚠ Geometrías vacías: {emptyGeoms}");
-                                }
-                            }
-                        }
-                    }
-
                     try
                     {
                         var csv = new Services.CsvReportService();
                         var folder = csv.EnsureReportsFolder(targetGdbPath);
                         var listStats = perClassStats.Select(kv => (kv.Key, kv.Value.attempts, kv.Value.migrated, kv.Value.failed));
                         var file = csv.WriteMigrationSummary(folder, "acueducto_puntos", listStats, noClase, noTarget);
-                        log.AppendLine($"   📁 CSV: {file}");
+                        log.AppendLine($"  Reporte: {Path.GetFileName(file)}");
                     }
                     catch (Exception exCsv)
                     {
-                        log.AppendLine($"   ⚠ No se pudo escribir CSV de migración puntos ACU: {exCsv.Message}");
+                        log.AppendLine($"  ⚠ Error CSV: {exCsv.Message}");
                     }
                     return (true, log.ToString());
                 }
@@ -1127,24 +926,12 @@ namespace EAABAddIn.Src.Application.UseCases
                         return (false, "No hay un mapa activo. Abre un mapa en ArcGIS Pro primero.");
                     }
 
-                    log.AppendLine($"🗺️ Mapa activo: {map.Name}");
-                    try
-                    {
-                        var mapSR = map.SpatialReference;
-                        if (mapSR != null)
-                            log.AppendLine($"   SR del mapa: WKID={mapSR.Wkid}, Name={mapSR.Name}");
-                    }
-                    catch { }
-                    log.AppendLine($"📂 GDB: {targetGdbPath}");
-
                     if (!Directory.Exists(targetGdbPath))
                     {
-                        return (false, $"La GDB no existe: {targetGdbPath}");
+                        return (false, $"GDB no existe: {targetGdbPath}");
                     }
 
                     using var targetGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(targetGdbPath)));
-                    
-                    log.AppendLine("🗺️ Agregando capas al mapa...");
 
                     var layersAdded = new List<string>();
                     Envelope? combinedExtent = null;
@@ -1181,12 +968,10 @@ namespace EAABAddIn.Src.Application.UseCases
 
                     if (layersAdded.Count > 0)
                     {
-                        log.AppendLine($"✓ Capas agregadas: {string.Join(", ", layersAdded)}");
+                        log.AppendLine($"✓ {layersAdded.Count} capas agregadas al mapa");
                         
                         if (combinedExtent != null && MapView.Active != null)
                         {
-                            log.AppendLine($"📍 Extent: XMin={combinedExtent.XMin:F2}, YMin={combinedExtent.YMin:F2}, XMax={combinedExtent.XMax:F2}, YMax={combinedExtent.YMax:F2}");
-                            
                             if (!double.IsNaN(combinedExtent.XMin) && !double.IsNaN(combinedExtent.YMin))
                             {
                                 var width = combinedExtent.Width;
@@ -1200,13 +985,7 @@ namespace EAABAddIn.Src.Application.UseCases
                                 ).ToGeometry();
                                 
                                 MapView.Active.ZoomTo(expandedExtent, TimeSpan.FromSeconds(1.5));
-                                log.AppendLine($"✓ Zoom aplicado (expandido 10%)");
-                                
                                 MapView.Active.Redraw(true);
-                            }
-                            else
-                            {
-                                log.AppendLine($"⚠ Extent inválido (contiene NaN), no se puede hacer zoom");
                             }
                         }
                         
@@ -1214,7 +993,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     }
                     else
                     {
-                        log.AppendLine("⚠ No se agregó ninguna capa. Revisa la ventana Output > Debug para más detalles.");
+                        log.AppendLine("⚠ No se agregaron capas.");
                         return (false, log.ToString());
                     }
                 }

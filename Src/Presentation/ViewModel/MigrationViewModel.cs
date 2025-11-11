@@ -243,32 +243,32 @@ internal class MigrationViewModel : BusyViewModelBase
         L_Alc_Pluv_Origen = null;
         P_Alc_Pluv_Origen = null;
         MigrarConAdvertencias = false;
-        StatusMessage = "Seleccione origen y destino y pulse Migrar.";
+        StatusMessage = "Seleccione datos de origen y ejecute.";
     }
 
     private async Task RunAsync()
     {
         IsBusy = true;
-        StatusMessage = "Validando y migrando...";
+        StatusMessage = "Validando datos...";
         System.Diagnostics.Debug.WriteLine($"⚙ Estado inicial del checkbox: {MigrarConAdvertencias}");
 
         if (Workspace is null)
         {
-            StatusMessage = "Error: Debes seleccionar una carpeta de salida.";
+            StatusMessage = "Error: Seleccione carpeta de salida.";
             IsBusy = false;
             return;
         }
 
         if (XmlSchemaPath is null)
         {
-            StatusMessage = "Error: Debes seleccionar un XML de esquema.";
+            StatusMessage = "Error: Seleccione XML de esquema.";
             IsBusy = false;
             return;
         }
 
         try
         {
-            StatusMessage = "Validando estructura de los datos...";
+            StatusMessage = "Validando estructura...";
             
             var datasetsToValidate = new List<DatasetInput>();
             
@@ -287,7 +287,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (datasetsToValidate.Count == 0)
             {
-                StatusMessage = "Error: Debe seleccionar al menos un dataset de origen para migrar.";
+                StatusMessage = "Error: Seleccione al menos un dataset de origen.";
                 IsBusy = false;
                 return;
             }
@@ -314,26 +314,20 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (totalWarnings > 0 && !MigrarConAdvertencias)
             {
-                StatusMessage = $"⚠ MIGRACIÓN BLOQUEADA: {totalWarnings} advertencia(s) detectada(s). Active el checkbox para continuar.";
+                StatusMessage = $"⚠ Migración bloqueada: {totalWarnings} advertencia(s) detectada(s).";
                 
                 System.Diagnostics.Debug.WriteLine($"🚫 BLOQUEANDO MIGRACIÓN:");
                 System.Diagnostics.Debug.WriteLine($"   ❌ Checkbox desmarcado con {totalWarnings} advertencias");
                 System.Diagnostics.Debug.WriteLine($"   📋 Mostrando diálogo de bloqueo al usuario");
                 
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"🚫 MIGRACIÓN BLOQUEADA\n\n" +
-                                 $"Se detectaron {totalWarnings} advertencia(s) en la validación de los datos seleccionados.\n\n" +
-                                 $"Datasets validados:\n" + string.Join("\n", datasetsToValidate.Select(d => $"  • {d.Name}")) + "\n\n" +
-                                 $"📁 Revise los reportes de validación en:\n{validation.ReportFolder}\n\n" +
-                                 $"Archivos generados:\n" + string.Join("\n", validation.ReportFiles.Select(f => $"  • {Path.GetFileName(f)}")) + "\n\n" +
-                                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "✅ Para continuar con la migración:\n" +
-                                 "   1. Revise los reportes CSV generados\n" +
-                                 "   2. Active el checkbox ☑ 'Migrar con Advertencias'\n" +
-                                 "   3. Presione el botón 'Ejecutar' nuevamente\n\n" +
-                                 "⚠ IMPORTANTE: La migración NO se ejecutará hasta que\n" +
-                                 "   active el checkbox y confirme que desea continuar.",
-                    caption: $"⚠ {totalWarnings} Advertencia(s) Detectada(s)",
+                    messageText: $"⚠ {totalWarnings} advertencia(s) detectada(s)\n\n" +
+                                 $"📁 Reportes en: {validation.ReportFolder}\n\n" +
+                                 $"Para continuar:\n" +
+                                 $"  1. Revise los reportes CSV\n" +
+                                 $"  2. Active ☑ 'Migrar con Advertencias'\n" +
+                                 $"  3. Ejecute nuevamente",
+                    caption: "Validación con Advertencias",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Warning
                 );
@@ -345,14 +339,14 @@ internal class MigrationViewModel : BusyViewModelBase
             
             if (totalWarnings > 0 && MigrarConAdvertencias)
             {
-                StatusMessage = $"⚠ ADVERTENCIA: Continuando migración con {totalWarnings} problema(s) detectado(s) (checkbox activo).";
+                StatusMessage = $"⚠ Continuando con {totalWarnings} advertencia(s)...";
                 System.Diagnostics.Debug.WriteLine($"⚠ MIGRACIÓN PERMITIDA CON ADVERTENCIAS:");
                 System.Diagnostics.Debug.WriteLine($"   ✓ Checkbox marcado - Usuario autorizó continuar");
                 System.Diagnostics.Debug.WriteLine($"   ⚠ Se procederá con {totalWarnings} advertencias");
             }
             else if (totalWarnings == 0)
             {
-                StatusMessage = "✓ Validación exitosa sin advertencias. Iniciando migración...";
+                StatusMessage = "✓ Validación exitosa. Iniciando migración...";
                 System.Diagnostics.Debug.WriteLine($"✓ VALIDACIÓN EXITOSA - Sin advertencias detectadas");
             }
 
@@ -361,9 +355,9 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!okGdb)
             {
-                StatusMessage = $"Error preparando GDB de migración: {msgGdb}";
+                StatusMessage = $"Error: {msgGdb}";
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Error al preparar la GDB de destino: {msgGdb}",
+                    messageText: $"Error al preparar GDB: {msgGdb}",
                     caption: "Error",
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Error
@@ -373,9 +367,7 @@ internal class MigrationViewModel : BusyViewModelBase
             }
             
             System.Diagnostics.Debug.WriteLine($"📂 {msgGdb}");
-            StatusMessage = msgGdb.Contains("Reutilizando") 
-                ? "✓ GDB existente preparada. Iniciando migración de datos..." 
-                : "✓ GDB nueva creada. Iniciando migración de datos...";
+            StatusMessage = "✓ GDB preparada. Iniciando migración...";
 
             var mensajesMigracion = new List<string>();
             bool acueductoMigrated = false;
@@ -383,7 +375,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
             {
-                StatusMessage = "Migrando líneas de acueducto...";
+                StatusMessage = "Migrando acueducto (líneas)...";
                 var (okLines, msgLines) = await _migrateAcueductoUseCase.MigrateLines(L_Acu_Origen, gdbPath);
                 if (okLines)
                 {
@@ -398,7 +390,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
             {
-                StatusMessage = "Migrando puntos de acueducto...";
+                StatusMessage = "Migrando acueducto (puntos)...";
                 var (okPoints, msgPoints) = await _migrateAcueductoUseCase.MigratePoints(P_Acu_Origen, gdbPath);
                 if (okPoints)
                 {
@@ -413,7 +405,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (acueductoMigrated)
             {
-                StatusMessage = "Agregando capas de acueducto al mapa...";
+                StatusMessage = "Agregando acueducto al mapa...";
                 var (okAdd, msgAdd) = await _migrateAcueductoUseCase.AddMigratedLayersToMap(gdbPath);
                 if (okAdd)
                 {
@@ -424,7 +416,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
             {
-                StatusMessage = "Migrando líneas de alcantarillado...";
+                StatusMessage = "Migrando alcantarillado (líneas)...";
                 var (okLines, msgLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
                 if (okLines)
                 {
@@ -439,7 +431,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
             {
-                StatusMessage = "Migrando puntos de alcantarillado...";
+                StatusMessage = "Migrando alcantarillado (puntos)...";
                 var (okPoints, msgPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
                 if (okPoints)
                 {
@@ -454,7 +446,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
             {
-                StatusMessage = "Migrando líneas de alcantarillado pluvial...";
+                StatusMessage = "Migrando pluvial (líneas)...";
                 var (okLinesPluv, msgLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
                 if (okLinesPluv)
                 {
@@ -469,7 +461,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
             {
-                StatusMessage = "Migrando puntos de alcantarillado pluvial...";
+                StatusMessage = "Migrando pluvial (puntos)...";
                 var (okPointsPluv, msgPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
                 if (okPointsPluv)
                 {
@@ -484,7 +476,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (alcantarilladoMigrated)
             {
-                StatusMessage = "Agregando capas de alcantarillado al mapa...";
+                StatusMessage = "Agregando alcantarillado al mapa...";
                 var (okAdd, msgAdd) = await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
                 if (okAdd)
                 {
@@ -494,13 +486,13 @@ internal class MigrationViewModel : BusyViewModelBase
 
             var mensajeFinal = mensajesMigracion.Count > 0 
                 ? string.Join("\n", mensajesMigracion) 
-                : "No se especificaron datos de alcantarillado para migrar.";
+                : "No se migraron datos.";
 
-            StatusMessage = "✓ Proceso finalizado.";
+            StatusMessage = "✓ Migración finalizada.";
             
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                messageText: $"Migración completada:\n\n{mensajeFinal}",
-                caption: "Migración Exitosa",
+                messageText: $"✓ Migración completada\n\n{mensajeFinal}",
+                caption: "Completado",
                 button: System.Windows.MessageBoxButton.OK,
                 icon: System.Windows.MessageBoxImage.Information
             );
