@@ -43,9 +43,9 @@
   </conditions>
 
   <modules>
-    <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="true" caption="EAAB Add-in">
+      <insertModule id="EAABAddIn_Module" className="Module1" autoLoad="true" caption="EAAB">
       <tabs>
-        <tab id="EAABAddIn_Tab1" caption="EAAB Add-in" keytip="Z1">
+        <tab id="EAABAddIn_Tab1" caption="EAAB" keytip="Z1">
           <group refID="EAABAddIn_Group1" />
           <group refID="EAABAddIn_Group_DrawingTools" />
           <group refID="EAABAddIn_Group_Migracion" />
