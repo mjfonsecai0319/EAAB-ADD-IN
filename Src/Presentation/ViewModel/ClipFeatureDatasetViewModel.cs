@@ -23,7 +23,6 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
-// Clase para representar una Feature Class seleccionable
 public class SelectableFeatureClass : INotifyPropertyChanged
 {
     public string DatasetName { get; set; } = string.Empty;
@@ -316,7 +315,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         _featureDatasets = null;
         NetworksLoaded = 0;
 
-        // Limpiar la lista de Feature Classes disponibles
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
             AvailableFeatureClasses.Clear();
@@ -338,7 +336,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
             using var gdb = new ArcGIS.Core.Data.Geodatabase(connPath);
 
-            // Obtener todos los Feature Datasets
             var datasetDefinitions = gdb.GetDefinitions<FeatureDatasetDefinition>();
             
             int totalFeatureClasses = 0;
@@ -349,7 +346,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             {
                 var dsName = datasetDef.GetName();
                 
-                // Abrir el dataset y obtener sus feature classes
                 using var featureDataset = gdb.OpenDataset<FeatureDataset>(dsName);
                 var featureClassDefinitions = featureDataset.GetDefinitions<FeatureClassDefinition>();
                 var fcList = new List<string>();
@@ -359,12 +355,11 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                     var fcName = fcDef.GetName();
                     fcList.Add(fcName);
                     
-                    // Agregar a la lista de seleccionables
                     selectableList.Add(new SelectableFeatureClass
                     {
                         DatasetName = dsName,
                         FeatureClassName = fcName,
-                        IsSelected = true // Por defecto todas seleccionadas
+                        IsSelected = true 
                     });
                     
                     fcDef.Dispose();
@@ -378,7 +373,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 }
             }
 
-            // Actualizar la lista observable en el UI thread
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 AvailableFeatureClasses.Clear();
@@ -482,7 +476,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
             var bufferInMapUnits = await ConvertMetersToMapUnitsAsync(_selectedPolygon, BufferMeters);
 
-            // Filtrar solo las Feature Classes seleccionadas
             var selectedFeatureDatasets = new List<(string datasetName, List<string> featureClasses)>();
             
             if (_featureDatasets != null)
@@ -536,11 +529,9 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return meters;
             }
 
-            // Verificar si es un sistema de coordenadas geográfico (lat/lon)
             if (spatialRef.IsGeographic)
             {
-                // Para coordenadas geográficas, aproximadamente 1 grado = 111,000 metros en el ecuador
-                // Convertir metros a grados: grados = metros / 111,000
+
                 var bufferInDegrees = meters / 111000.0;
                 System.Diagnostics.Debug.WriteLine($"✓ Sistema geográfico detectado (WKID: {spatialRef.Wkid})");
                 System.Diagnostics.Debug.WriteLine($"  Conversión: {meters} metros = {bufferInDegrees:F8} grados");
@@ -555,7 +546,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return meters;
             }
 
-            // ConversionFactor es el factor para convertir DE la unidad A metros
             var conversionFactor = unit.ConversionFactor;
             
             System.Diagnostics.Debug.WriteLine($"ℹ️ Sistema proyectado detectado (WKID: {spatialRef.Wkid})");
@@ -567,15 +557,12 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return meters;
             }
 
-            // Si el factor es 1.0, la unidad ya es metros
             if (Math.Abs(conversionFactor - 1.0) < 0.0001)
             {
                 System.Diagnostics.Debug.WriteLine($"✓ Unidad ya está en metros: {meters}");
                 return meters;
             }
 
-            // Convertir metros a unidades del mapa
-            // Ejemplo: si la unidad es pies (factor = 0.3048), entonces 10 metros = 10 / 0.3048 = 32.8 pies
             var bufferInMapUnits = meters / conversionFactor;
             
             System.Diagnostics.Debug.WriteLine($"✓ Conversión: {meters} metros = {bufferInMapUnits:F2} {unit.Name}");
