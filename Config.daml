@@ -49,6 +49,7 @@
           <group refID="EAABAddIn_Group1" />
           <group refID="EAABAddIn_Group_DrawingTools" />
           <group refID="EAABAddIn_Group_Migracion" />
+          <group refID="EAABAddIn_Group_ClipFeatureDataset" />
         </tab>
       </tabs>
 
@@ -66,8 +67,12 @@
           <button refID="EAABAddIn_UnionPolygonsButton" size="large" />
         </group>
         
-        <group id="EAABAddIn_Group_Migracion" caption="Migracion" appearsOnAddInTab="false" keytip="D1" smallImage="">
+        <group id="EAABAddIn_Group_Migracion" caption="Migración" appearsOnAddInTab="false" keytip="D1" smallImage="">
           <button refID="EAABAddIn_Migrar" size="large" />
+        </group>
+
+        <group id="EAABAddIn_Group_ClipFeatureDataset" caption="Procesos" appearsOnAddInTab="false" keytip="P1" smallImage="">
+          <button refID="EAABAddIn_ClipFeatureDatasetButton" size="large" />
         </group>
       </groups>
 
@@ -183,6 +188,18 @@
           <tooltip heading="Migrar Datos">Migra datos de una capa a otra.<disabledText /></tooltip>
         </button>
 
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.ClipFeatureDatasetButton"
+          id="EAABAddIn_ClipFeatureDatasetButton"
+          caption="Clip Feature Dataset"
+          smallImage="Images\Corte16.png"
+          largeImage="Images\Corte32.png"
+          condition="EAABAddIn_DomainCheckWithMapPane"
+          keytip="B9"
+        >
+          <tooltip heading="Clip Feature Dataset">Realiza un clip de un Feature Dataset completo sobre un polígono seleccionado.<disabledText /></tooltip>
+        </button>
+
       </controls>
 
 
@@ -219,6 +236,17 @@
           condition="EAABAddIn_DomainCheck"
         >
           <content className="EAABAddIn.Src.Presentation.View.Dockpanes.MigrationDockpaneView" />
+        </dockPane>
+
+        <dockPane
+          className="EAABAddIn.Src.Presentation.ViewModel.DockPanes.ClipFeatureDatasetDockpaneViewModel"
+          id="EAABAddIn_Dockpane_ClipFeatureDataset"
+          caption="Clip Feature Dataset"
+          dock="group"
+          dockWith="esri_core_projectDockPane"
+          condition="EAABAddIn_DomainCheck"
+        >
+          <content className="EAABAddIn.Src.Presentation.View.Dockpanes.ClipFeatureDatasetDockpaneView" />
         </dockPane>
       </dockPanes>
     </insertModule>

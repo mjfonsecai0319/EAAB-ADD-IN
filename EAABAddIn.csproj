@@ -47,6 +47,8 @@
     <Content Include="Images\Union32.png" />
     <Content Include="Images\Migrar16.png" />
     <Content Include="Images\Migrar32.png" />
+    <Content Include="Images\Corte16.png" />
+    <Content Include="Images\Corte32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
@@ -63,6 +65,8 @@
     <Content Include="DarkImages\Union32.png" />
     <Content Include="DarkImages\Migrar16.png" />
     <Content Include="DarkImages\Migrar32.png" />
+    <Content Include="DarkImages\Corte16.png" />
+    <Content Include="DarkImages\Corte32.png" />
   </ItemGroup>
 
   <ItemGroup>
