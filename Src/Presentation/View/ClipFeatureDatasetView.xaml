@@ -27,6 +27,18 @@
                 <Setter Property="Margin" Value="0,0,0,5" />
             </Style>
 
+            <Style x:Key="BodyTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <Style x:Key="DisabledTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{DynamicResource Esri_TextDisabledBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
             <Style x:Key="BrowseButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextStyleEmphasisBrush}" />
@@ -105,34 +117,35 @@
 
             <StackPanel Grid.Row="0">
                 <TextBlock
-                    Text="Información de selección"
+                    Text="Workspace *"
                     Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,15"
-                    FontSize="15"
-                    FontWeight="Bold"
+                    Margin="0,0,0,10"
                 />
 
-                <TextBlock
-                    Text="Polígono de referencia"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,8"
-                />
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <TextBlock
-                    Text="{Binding SelectionStatus}"
-                    FontSize="11"
-                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
-                    Margin="0,0,0,15"
-                    TextWrapping="Wrap"
-                />
+                    <TextBox
+                        Grid.Column="0"
+                        Text="{Binding OutputGeodatabase, Mode=OneWay}"
+                        IsReadOnly="True"
+                        Style="{StaticResource ThemedTextBoxStyle}"
+                    />
 
-                <TextBlock
-                    Text="Parámetros de procesamiento"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,15,0,15"
-                    FontSize="15"
-                    FontWeight="Bold"
-                />
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource BrowseButtonStyle}"
+                        Command="{Binding OutputGeodatabaseCommand}"
+                        Height="28"
+                        Width="28"
+                    >
+                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
+                    </Button>
+                </Grid>
 
                 <TextBlock
                     Text="Feature Dataset de origen *"
@@ -142,8 +155,7 @@
 
                 <TextBlock
                     Text="Selecciona una Geodatabase (.gdb) que contenga las redes"
-                    FontSize="10"
-                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
+                    Style="{StaticResource DisabledTextStyle}"
                     Margin="0,0,0,8"
                 />
 
@@ -173,70 +185,57 @@
                 </Grid>
 
                 <TextBlock
-                    Text="{Binding NetworksStatus}"
-                    FontSize="11"
-                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
-                    Margin="0,0,0,15"
-                    TextWrapping="Wrap"
+                    Text="Selección"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,15,0,15"
                 />
+
+                <TextBlock
+                    Text="Polígono de referencia"
+                    Style="{StaticResource HeaderTextStyle}"
+                    Margin="0,0,0,8"
+                />
+
+                <TextBlock
+                    Text="{Binding SelectionStatus}"
+                    Style="{StaticResource DisabledTextStyle}"
+                    Margin="0,0,0,15"
+                />
+
+                <CheckBox
+                    x:Name="EnableBufferCheck"
+                    IsChecked="{Binding IsBufferEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,0,5"
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                    Content="Habilitar Buffer"/>
 
                 <TextBlock
                     Text="Buffer (metros)"
                     Style="{StaticResource HeaderTextStyle}"
                     Margin="0,0,0,10"
+                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
                 />
 
                 <TextBlock
                     Text="Ingrese 0 para usar el polígono sin expansión."
-                    FontSize="11"
-                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
+                    Style="{StaticResource DisabledTextStyle}"
                     Margin="0,0,0,5"
+                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
                 />
 
                 <TextBox
                     Style="{StaticResource ThemedNumberBoxStyle}"
                     Text="{Binding BufferMeters, UpdateSourceTrigger=PropertyChanged}"
+                    IsEnabled="{Binding ElementName=EnableBufferCheck, Path=IsChecked}"
+                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
                 />
-
-                <TextBlock
-                    Text="Geodatabase de salida *"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                />
-
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBox
-                        Grid.Column="0"
-                        Text="{Binding OutputGeodatabase, Mode=OneWay}"
-                        IsReadOnly="True"
-                        Style="{StaticResource ThemedTextBoxStyle}"
-                    />
-
-                    <Button
-                        Grid.Column="2"
-                        Style="{StaticResource BrowseButtonStyle}"
-                        Command="{Binding OutputGeodatabaseCommand}"
-                        Height="28"
-                        Width="28"
-                    >
-                        <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
-                    </Button>
-                </Grid>
             </StackPanel>
 
             <StackPanel Grid.Row="2">
                 <TextBlock
                     Text="{Binding StatusMessage}"
+                    Style="{StaticResource BodyTextStyle}"
                     Margin="0,0,0,8"
-                    TextWrapping="Wrap"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                    FontSize="11"
                 />
                 <ProgressBar
                     Height="4"
