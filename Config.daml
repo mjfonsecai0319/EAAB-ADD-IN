@@ -191,13 +191,13 @@
         <button
           className="EAABAddIn.Src.Presentation.View.Buttons.ClipFeatureDatasetButton"
           id="EAABAddIn_ClipFeatureDatasetButton"
-          caption="Clip Feature Dataset"
+          caption="Corte de conjunto de entidades"
           smallImage="Images\Corte16.png"
           largeImage="Images\Corte32.png"
           condition="EAABAddIn_DomainCheckWithMapPane"
           keytip="B9"
         >
-          <tooltip heading="Clip Feature Dataset">Realiza un clip de un Feature Dataset completo sobre un polígono seleccionado.<disabledText /></tooltip>
+          <tooltip heading="Corte de conjunto de entidades">Realiza un clip de un Feature Dataset completo sobre un polígono seleccionado.<disabledText /></tooltip>
         </button>
 
       </controls>

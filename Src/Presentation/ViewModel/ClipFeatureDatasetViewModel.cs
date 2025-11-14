@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +23,30 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
+// Clase para representar una Feature Class seleccionable
+public class SelectableFeatureClass : INotifyPropertyChanged
+{
+    public string DatasetName { get; set; } = string.Empty;
+    public string FeatureClassName { get; set; } = string.Empty;
+    public string DisplayName => $"{DatasetName} → {FeatureClassName}";
+    
+    private bool _isSelected = true;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
 internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 {
     public override string DisplayName => "Clip Feature Dataset";
@@ -31,11 +57,31 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
     public ICommand ExecuteClipCommand { get; private set; }
     public ICommand ClearFormCommand { get; private set; }
     public ICommand RefreshSelectionCommand { get; private set; }
+    public ICommand SelectAllCommand { get; private set; }
+    public ICommand DeselectAllCommand { get; private set; }
 
     private Polygon? _selectedPolygon = null;
-    private string? _acueductoPath = null;
-    private string? _alcantarilladoSanitarioPath = null;
-    private string? _alcantarilladoPluvalPath = null;
+    private string? _sourceGdbPath = null;
+    private List<(string datasetName, List<string> featureClasses)>? _featureDatasets = null;
+
+    private ObservableCollection<SelectableFeatureClass> _availableFeatureClasses = new ObservableCollection<SelectableFeatureClass>();
+    public ObservableCollection<SelectableFeatureClass> AvailableFeatureClasses
+    {
+        get => _availableFeatureClasses;
+        private set
+        {
+            if (_availableFeatureClasses != value)
+            {
+                _availableFeatureClasses = value;
+                NotifyPropertyChanged(nameof(AvailableFeatureClasses));
+                NotifyPropertyChanged(nameof(HasFeatureClasses));
+                NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+            }
+        }
+    }
+
+    public bool HasFeatureClasses => AvailableFeatureClasses.Any();
+    public int SelectedFeatureClassesCount => AvailableFeatureClasses.Count(fc => fc.IsSelected);
 
     public ClipFeatureDatasetViewModel()
     {
@@ -44,6 +90,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         ExecuteClipCommand = new RelayCommand(async () => await OnExecuteClip(), () => !IsBusy && CanExecuteClip);
         ClearFormCommand = new RelayCommand(OnClearForm);
         RefreshSelectionCommand = new AsyncRelayCommand(OnRefreshSelectionAsync);
+        SelectAllCommand = new RelayCommand(OnSelectAll);
+        DeselectAllCommand = new RelayCommand(OnDeselectAll);
 
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
@@ -123,7 +171,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 _isBufferEnabled = value;
                 NotifyPropertyChanged(nameof(IsBufferEnabled));
                 
-                // Si se desactiva el buffer, resetear a 0
                 if (!_isBufferEnabled)
                 {
                     BufferMeters = 0;
@@ -138,7 +185,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         get => _bufferMeters;
         set
         {
-            // Hacer opcional: clamp a cero si es negativo y permitir 0 sin bloquear
             var newVal = value < 0 ? 0 : value;
             if (Math.Abs(_bufferMeters - newVal) > 0.000001)
             {
@@ -168,7 +214,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         !string.IsNullOrWhiteSpace(FeatureDataset) &&
         BufferMeters >= 0 &&
         _selectedPolygon != null &&
-        NetworksLoaded >= 3
+        NetworksLoaded >= 1 &&
+        AvailableFeatureClasses.Any(fc => fc.IsSelected)
     );
 
     private void OnClearForm()
@@ -177,6 +224,27 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         IsBufferEnabled = false;
         BufferMeters = 0;
         StatusMessage = string.Empty;
+        AvailableFeatureClasses.Clear();
+    }
+
+    private void OnSelectAll()
+    {
+        foreach (var fc in AvailableFeatureClasses)
+        {
+            fc.IsSelected = true;
+        }
+        NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+        NotifyPropertyChanged(nameof(CanExecuteClip));
+    }
+
+    private void OnDeselectAll()
+    {
+        foreach (var fc in AvailableFeatureClasses)
+        {
+            fc.IsSelected = false;
+        }
+        NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+        NotifyPropertyChanged(nameof(CanExecuteClip));
     }
 
     private void OnOutputGeodatabase()
@@ -244,10 +312,15 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
     private async Task LoadNetworksFromFeatureDataset()
     {
-        _acueductoPath = null;
-        _alcantarilladoSanitarioPath = null;
-        _alcantarilladoPluvalPath = null;
+        _sourceGdbPath = null;
+        _featureDatasets = null;
         NetworksLoaded = 0;
+
+        // Limpiar la lista de Feature Classes disponibles
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            AvailableFeatureClasses.Clear();
+        });
 
         try
         {
@@ -259,60 +332,85 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return;
             }
 
+            _sourceGdbPath = gdbPath;
+            _featureDatasets = new List<(string, List<string>)>();
+
             var connPath = new ArcGIS.Core.Data.FileGeodatabaseConnectionPath(new Uri(gdbPath));
             using var gdb = new ArcGIS.Core.Data.Geodatabase(connPath);
 
-            // Obtener todas las definiciones de feature classes en la GDB (incluyendo dentro de Feature Datasets)
-            var fcDefinitions = gdb.GetDefinitions<ArcGIS.Core.Data.FeatureClassDefinition>();
+            // Obtener todos los Feature Datasets
+            var datasetDefinitions = gdb.GetDefinitions<FeatureDatasetDefinition>();
+            
+            int totalFeatureClasses = 0;
+            var datasetsSummary = new List<string>();
+            var selectableList = new List<SelectableFeatureClass>();
 
-            foreach (var fcDef in fcDefinitions)
+            foreach (var datasetDef in datasetDefinitions)
             {
-                var fcName = fcDef.GetName();
-                var lower = fcName.ToLower();
+                var dsName = datasetDef.GetName();
+                
+                // Abrir el dataset y obtener sus feature classes
+                using var featureDataset = gdb.OpenDataset<FeatureDataset>(dsName);
+                var featureClassDefinitions = featureDataset.GetDefinitions<FeatureClassDefinition>();
+                var fcList = new List<string>();
+                
+                foreach (var fcDef in featureClassDefinitions)
+                {
+                    var fcName = fcDef.GetName();
+                    fcList.Add(fcName);
+                    
+                    // Agregar a la lista de seleccionables
+                    selectableList.Add(new SelectableFeatureClass
+                    {
+                        DatasetName = dsName,
+                        FeatureClassName = fcName,
+                        IsSelected = true // Por defecto todas seleccionadas
+                    });
+                    
+                    fcDef.Dispose();
+                }
 
-                if (lower.StartsWith("acd_") && string.IsNullOrWhiteSpace(_acueductoPath))
+                if (fcList.Any())
                 {
-                    _acueductoPath = System.IO.Path.Combine(gdbPath, fcName);
-                }
-                else if (lower.StartsWith("als_") && string.IsNullOrWhiteSpace(_alcantarilladoSanitarioPath))
-                {
-                    _alcantarilladoSanitarioPath = System.IO.Path.Combine(gdbPath, fcName);
-                }
-                else if (lower.StartsWith("alp_") && string.IsNullOrWhiteSpace(_alcantarilladoPluvalPath))
-                {
-                    _alcantarilladoPluvalPath = System.IO.Path.Combine(gdbPath, fcName);
+                    _featureDatasets.Add((dsName, fcList));
+                    totalFeatureClasses += fcList.Count;
+                    datasetsSummary.Add($"✓ {dsName} ({fcList.Count} Feature Classes)");
                 }
             }
 
-            var networks = new List<string>();
+            // Actualizar la lista observable en el UI thread
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                AvailableFeatureClasses.Clear();
+                foreach (var fc in selectableList)
+                {
+                    fc.PropertyChanged += (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(SelectableFeatureClass.IsSelected))
+                        {
+                            NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+                            NotifyPropertyChanged(nameof(CanExecuteClip));
+                        }
+                    };
+                    AvailableFeatureClasses.Add(fc);
+                }
+                NotifyPropertyChanged(nameof(HasFeatureClasses));
+                NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+            });
 
-            if (!string.IsNullOrWhiteSpace(_acueductoPath))
-                networks.Add("✓ Acueducto");
-
-            if (!string.IsNullOrWhiteSpace(_alcantarilladoSanitarioPath))
-                networks.Add("✓ Alcantarillado Sanitario");
-
-            if (!string.IsNullOrWhiteSpace(_alcantarilladoPluvalPath))
-                networks.Add("✓ Alcantarillado Pluvial");
-
-            NetworksLoaded = networks.Count;
+            NetworksLoaded = _featureDatasets.Count;
 
             if (NetworksLoaded == 0)
             {
-                NetworksStatus = "❌ No se encontraron redes (acd_*, als_*, alp_*)";
-            }
-            else if (NetworksLoaded < 3)
-            {
-                var networksText = string.Join(", ", networks);
-                NetworksStatus = $"⚠️ Redes cargadas: {networksText} ({NetworksLoaded}/3)";
+                NetworksStatus = "❌ No se encontraron Feature Datasets en la Geodatabase";
             }
             else
             {
-                var networksText = string.Join(", ", networks);
-                NetworksStatus = $"✓ Redes cargadas: {networksText}";
+                var datasetsText = string.Join("\n  ", datasetsSummary);
+                NetworksStatus = $"✓ {NetworksLoaded} Feature Datasets encontrados ({totalFeatureClasses} Feature Classes total):\n  {datasetsText}";
             }
 
-            StatusMessage = "Redes cargadas correctamente";
+            StatusMessage = $"✓ {NetworksLoaded} Feature Datasets cargados correctamente";
             NotifyPropertyChanged(nameof(CanExecuteClip));
         }
         catch (Exception ex)
@@ -325,7 +423,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
     private (string gdbPath, string datasetName) ParseFeatureDatasetPath(string featureDatasetPath)
     {
-        // Si ya es una ruta GDB completa, devolver como está
         if (featureDatasetPath.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase))
         {
             return (featureDatasetPath, "FeatureDataset");
@@ -359,31 +456,60 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             return;
         }
 
-        StatusMessage = "Ejecutando clip...";
+        var selectedCount = AvailableFeatureClasses.Count(fc => fc.IsSelected);
+        if (selectedCount == 0)
+        {
+            StatusMessage = "❌ Debe seleccionar al menos una Feature Class";
+            return;
+        }
+
+        StatusMessage = $"Ejecutando clip de {selectedCount} Feature Classes...";
         IsBusy = true;
 
         try
         {
-            // Crear GDB de salida con nombre basado en fecha/hora
-            var parentFolder = Path.GetDirectoryName(OutputGeodatabase) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var parentFolder = Path.GetDirectoryName(OutputGeodatabase);
+            
+            if (string.IsNullOrWhiteSpace(parentFolder) || !Directory.Exists(parentFolder))
+            {
+                parentFolder = Path.GetDirectoryName(Project.Current.DefaultGeodatabasePath) 
+                    ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            }
+
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             var gdbName = $"Clip_{timestamp}.gdb";
             var outputGdbPath = Path.Combine(parentFolder, gdbName);
 
-            // Crear la GDB si no existe
-            if (!Directory.Exists(outputGdbPath))
+            var bufferInMapUnits = await ConvertMetersToMapUnitsAsync(_selectedPolygon, BufferMeters);
+
+            // Filtrar solo las Feature Classes seleccionadas
+            var selectedFeatureDatasets = new List<(string datasetName, List<string> featureClasses)>();
+            
+            if (_featureDatasets != null)
             {
-                Directory.CreateDirectory(outputGdbPath);
+                foreach (var (datasetName, featureClasses) in _featureDatasets)
+                {
+                    var selectedFCs = featureClasses
+                        .Where(fc => AvailableFeatureClasses.Any(afc => 
+                            afc.DatasetName == datasetName && 
+                            afc.FeatureClassName == fc && 
+                            afc.IsSelected))
+                        .ToList();
+
+                    if (selectedFCs.Any())
+                    {
+                        selectedFeatureDatasets.Add((datasetName, selectedFCs));
+                    }
+                }
             }
 
             var useCase = new EAABAddIn.Src.Application.UseCases.ClipFeatureDatasetUseCase();
             var (success, message) = await useCase.ExecuteAsync(
                 outputGdbPath,
-                _acueductoPath,
-                _alcantarilladoSanitarioPath,
-                _alcantarilladoPluvalPath,
+                _sourceGdbPath,
+                selectedFeatureDatasets,
                 _selectedPolygon,
-                BufferMeters);
+                bufferInMapUnits);
 
             StatusMessage = success ? $"✓ {message}" : $"❌ {message}";
         }
@@ -396,6 +522,66 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    private async Task<double> ConvertMetersToMapUnitsAsync(Polygon polygon, double meters)
+    {
+        return await QueuedTask.Run(() =>
+        {
+            var spatialRef = polygon.SpatialReference;
+            
+            if (spatialRef == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ SpatialReference es null, usando metros directamente: {meters}");
+                return meters;
+            }
+
+            // Verificar si es un sistema de coordenadas geográfico (lat/lon)
+            if (spatialRef.IsGeographic)
+            {
+                // Para coordenadas geográficas, aproximadamente 1 grado = 111,000 metros en el ecuador
+                // Convertir metros a grados: grados = metros / 111,000
+                var bufferInDegrees = meters / 111000.0;
+                System.Diagnostics.Debug.WriteLine($"✓ Sistema geográfico detectado (WKID: {spatialRef.Wkid})");
+                System.Diagnostics.Debug.WriteLine($"  Conversión: {meters} metros = {bufferInDegrees:F8} grados");
+                return bufferInDegrees;
+            }
+
+            var unit = spatialRef.Unit;
+            
+            if (unit == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Unit es null, usando metros directamente: {meters}");
+                return meters;
+            }
+
+            // ConversionFactor es el factor para convertir DE la unidad A metros
+            var conversionFactor = unit.ConversionFactor;
+            
+            System.Diagnostics.Debug.WriteLine($"ℹ️ Sistema proyectado detectado (WKID: {spatialRef.Wkid})");
+            System.Diagnostics.Debug.WriteLine($"  Unidad: {unit.Name}, Factor de conversión: {conversionFactor}");
+            
+            if (Math.Abs(conversionFactor) < 0.0001)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Factor de conversión demasiado pequeño, usando metros: {meters}");
+                return meters;
+            }
+
+            // Si el factor es 1.0, la unidad ya es metros
+            if (Math.Abs(conversionFactor - 1.0) < 0.0001)
+            {
+                System.Diagnostics.Debug.WriteLine($"✓ Unidad ya está en metros: {meters}");
+                return meters;
+            }
+
+            // Convertir metros a unidades del mapa
+            // Ejemplo: si la unidad es pies (factor = 0.3048), entonces 10 metros = 10 / 0.3048 = 32.8 pies
+            var bufferInMapUnits = meters / conversionFactor;
+            
+            System.Diagnostics.Debug.WriteLine($"✓ Conversión: {meters} metros = {bufferInMapUnits:F2} {unit.Name}");
+            
+            return bufferInMapUnits;
+        });
     }
 
     private void OnMapSelectionChanged(MapSelectionChangedEventArgs args)

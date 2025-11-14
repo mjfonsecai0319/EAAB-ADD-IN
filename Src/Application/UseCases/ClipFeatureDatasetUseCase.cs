@@ -13,9 +13,8 @@ namespace EAABAddIn.Src.Application.UseCases
     {
         public async Task<(bool success, string message)> ExecuteAsync(
             string outputGdbPath,
-            string acueductoPath,
-            string alcantarilladoSanitarioPath,
-            string alcantarilladoPluvalPath,
+            string sourceGdbPath,
+            List<(string datasetName, List<string> featureClasses)> featureDatasets,
             Polygon clipPolygon,
             double bufferMeters)
         {
@@ -23,6 +22,12 @@ namespace EAABAddIn.Src.Application.UseCases
             {
                 if (string.IsNullOrWhiteSpace(outputGdbPath))
                     return (false, "Ruta de geodatabase de salida inválida");
+
+                if (string.IsNullOrWhiteSpace(sourceGdbPath))
+                    return (false, "Ruta de geodatabase de origen inválida");
+
+                if (featureDatasets == null || !featureDatasets.Any())
+                    return (false, "No hay Feature Datasets para procesar");
 
                 if (clipPolygon == null || clipPolygon.IsEmpty)
                     return (false, "Polígono de corte inválido o vacío");
@@ -41,26 +46,46 @@ namespace EAABAddIn.Src.Application.UseCases
                 // 3. Crear feature class máscara con polígono (buffer si procede)
                 var hasBuffer = bufferMeters > 0.000001;
                 var bufferedPolygon = clipPolygon;
+                
                 if (hasBuffer)
                 {
-                    // Si el polígono es un rectángulo alineado al eje, expandir el envelope para esquinas rectas
-                    var extentPoly = PolygonBuilderEx.CreatePolygon(clipPolygon.Extent);
-                    var isAxisAlignedRect = GeometryEngine.Instance.Equals(clipPolygon, extentPoly);
-
-                    if (isAxisAlignedRect)
+                    var originalArea = clipPolygon.Area;
+                    System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
+                    System.Diagnostics.Debug.WriteLine($"Aplicando buffer de {bufferMeters} unidades al polígono");
+                    System.Diagnostics.Debug.WriteLine($"Área original: {originalArea:N2}");
+                    System.Diagnostics.Debug.WriteLine($"Sistema de coordenadas: {clipPolygon.SpatialReference?.Name ?? "desconocido"}");
+                    System.Diagnostics.Debug.WriteLine($"WKID: {clipPolygon.SpatialReference?.Wkid ?? 0}");
+                    
+                    // Aplicar buffer estándar (más confiable)
+                    try
                     {
-                        var env = clipPolygon.Extent;
-                        var eb = new EnvelopeBuilderEx(env);
-                        eb.Expand(bufferMeters, bufferMeters, false); // expansión en unidades lineales
-                        var expandedEnv = eb.ToGeometry();
-                        bufferedPolygon = PolygonBuilderEx.CreatePolygon(expandedEnv);
+                        bufferedPolygon = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
+                        
+                        if (bufferedPolygon != null && !bufferedPolygon.IsEmpty)
+                        {
+                            var newArea = bufferedPolygon.Area;
+                            var areaIncrease = ((newArea - originalArea) / originalArea) * 100;
+                            
+                            System.Diagnostics.Debug.WriteLine($"✓ Buffer aplicado exitosamente");
+                            System.Diagnostics.Debug.WriteLine($"  Área con buffer: {newArea:N2}");
+                            System.Diagnostics.Debug.WriteLine($"  Incremento: {areaIncrease:F2}%");
+                            
+                            // Validación: si el área aumentó más del 500%, puede haber un problema de unidades
+                            if (areaIncrease > 500)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"⚠️ ADVERTENCIA: El buffer aumentó el área más del 500%");
+                                System.Diagnostics.Debug.WriteLine($"⚠️ Esto puede indicar un problema con las unidades del buffer");
+                                System.Diagnostics.Debug.WriteLine($"⚠️ Considera verificar que el buffer en metros sea el correcto");
+                            }
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        // Intentar mantener esquinas rectas usando offset del contorno con unión Miter
-                        bufferedPolygon = TryBuildMiterOffsetPolygon(clipPolygon, bufferMeters) 
-                            ?? GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon; // fallback redondeado
+                        System.Diagnostics.Debug.WriteLine($"❌ Error aplicando buffer: {ex.Message}");
+                        bufferedPolygon = clipPolygon; // Usar polígono original si falla
                     }
+                    
+                    System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
                 }
 
                 if (bufferedPolygon == null || bufferedPolygon.IsEmpty)
@@ -72,29 +97,51 @@ namespace EAABAddIn.Src.Application.UseCases
                     return (false, $"No se pudo crear máscara: {maskCreated.message}");
 
                 var results = new List<string>();
+                var datasetsCreated = new List<string>();
+                int totalFeatureClasses = 0;
 
-                // 4. Ejecutar Clip por cada red
-                if (!string.IsNullOrWhiteSpace(acueductoPath))
-                    results.Add(await ClipWithGeoprocessingAsync(acueductoPath, maskFcPath, outputGdbPath, "acd_recortada"));
-                else
-                    results.Add("❌ acd_recortada: ruta vacía");
+                // 4. Procesar cada Feature Dataset
+                foreach (var (datasetName, featureClasses) in featureDatasets)
+                {
+                    var outputDatasetName = $"clip_{datasetName}";
+                    
+                    // Crear el Feature Dataset en la GDB de salida
+                    var datasetCreated = await CreateFeatureDatasetAsync(outputGdbPath, outputDatasetName, sourceGdbPath, datasetName);
+                    if (!datasetCreated.success)
+                    {
+                        results.Add($"❌ {outputDatasetName}: no se pudo crear el dataset - {datasetCreated.message}");
+                        continue;
+                    }
 
-                if (!string.IsNullOrWhiteSpace(alcantarilladoSanitarioPath))
-                    results.Add(await ClipWithGeoprocessingAsync(alcantarilladoSanitarioPath, maskFcPath, outputGdbPath, "als_recortada"));
-                else
-                    results.Add("❌ als_recortada: ruta vacía");
+                    datasetsCreated.Add(outputDatasetName);
+                    int fcSuccessCount = 0;
 
-                if (!string.IsNullOrWhiteSpace(alcantarilladoPluvalPath))
-                    results.Add(await ClipWithGeoprocessingAsync(alcantarilladoPluvalPath, maskFcPath, outputGdbPath, "alp_recortada"));
-                else
-                    results.Add("❌ alp_recortada: ruta vacía");
+                    // Clipear cada Feature Class dentro del dataset
+                    foreach (var fcName in featureClasses)
+                    {
+                        var sourceFcPath = System.IO.Path.Combine(sourceGdbPath, datasetName, fcName);
+                        var outputFcPath = System.IO.Path.Combine(outputGdbPath, outputDatasetName, fcName);
+                        
+                        var clipResult = await ClipFeatureClassAsync(sourceFcPath, maskFcPath, outputFcPath);
+                        
+                        if (clipResult.StartsWith("✓"))
+                        {
+                            fcSuccessCount++;
+                            totalFeatureClasses++;
+                        }
+                        
+                        results.Add($"  {clipResult}");
+                    }
+
+                    results.Add($"✓ {outputDatasetName}: {fcSuccessCount}/{featureClasses.Count} feature classes procesadas");
+                }
 
                 // 5. Limpiar GDB temporal
                 try { if (System.IO.Directory.Exists(tempGdbPath)) System.IO.Directory.Delete(tempGdbPath, true); } catch { }
 
-                var successCount = results.Count(r => r.StartsWith("✓"));
-                var failureCount = results.Count(r => r.StartsWith("❌"));
-                var outputInfo = $"\n📁 Ubicación: {outputGdbPath}\n📊 Archivos generados esperados: acd_recortada, als_recortada, alp_recortada";
+                var successCount = results.Count(r => r.TrimStart().StartsWith("✓"));
+                var failureCount = results.Count(r => r.TrimStart().StartsWith("❌"));
+                var outputInfo = $"\n📁 Ubicación: {outputGdbPath}\n📊 Feature Datasets creados: {string.Join(", ", datasetsCreated)}\n📊 Total Feature Classes procesadas: {totalFeatureClasses}";
                 var bufferInfo = hasBuffer ? $"\n🛟 Buffer aplicado: {bufferMeters:N2} m" : "\n🛟 Sin buffer";
                 var finalMessage = $"Clip completado: {successCount} exitosos, {failureCount} fallidos\n" + string.Join("\n", results) + outputInfo + bufferInfo;
                 return (failureCount == 0, finalMessage);
@@ -203,26 +250,72 @@ namespace EAABAddIn.Src.Application.UseCases
             }
         }
 
-        private async Task<string> ClipWithGeoprocessingAsync(string sourceFCPath, string maskFCPath, string outputGdbPath, string outputName)
+        private async Task<(bool success, string message)> CreateFeatureDatasetAsync(string outputGdbPath, string datasetName, string sourceGdbPath, string sourceDatasetName)
         {
             try
             {
+                // Obtener la referencia espacial del dataset de origen
+                await QueuedTask.Run(() =>
+                {
+                    var sourceGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(sourceGdbPath)));
+                    using (sourceGdb)
+                    {
+                        using var sourceDataset = sourceGdb.OpenDataset<FeatureDataset>(sourceDatasetName);
+                        var spatialRef = sourceDataset.GetDefinition().GetSpatialReference();
+                        var wkid = spatialRef?.Wkid ?? 4326;
+
+                        // Crear el Feature Dataset en la GDB de salida
+                        var createParams = Geoprocessing.MakeValueArray(
+                            outputGdbPath,
+                            datasetName,
+                            wkid);
+
+                        var result = Geoprocessing.ExecuteToolAsync(
+                            "management.CreateFeatureDataset",
+                            createParams,
+                            null,
+                            CancelableProgressor.None,
+                            GPExecuteToolFlags.None).Result;
+
+                        if (result.IsFailed)
+                        {
+                            var err = result.ErrorMessages != null && result.ErrorMessages.Any()
+                                ? string.Join("; ", result.ErrorMessages.Select(m => m.Text))
+                                : "CreateFeatureDataset falló sin detalles";
+                            throw new Exception(err);
+                        }
+                    }
+                });
+
+                return (true, "Feature Dataset creado");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        private async Task<string> ClipFeatureClassAsync(string sourceFcPath, string maskFcPath, string outputFcPath)
+        {
+            var fcName = System.IO.Path.GetFileName(outputFcPath);
+            
+            try
+            {
                 // Eliminar si existe
-                var existingOut = System.IO.Path.Combine(outputGdbPath, outputName);
-                if (System.IO.Directory.Exists(existingOut))
+                if (System.IO.File.Exists(outputFcPath) || System.IO.Directory.Exists(outputFcPath))
                 {
                     try
                     {
-                        var delParams = Geoprocessing.MakeValueArray(existingOut);
+                        var delParams = Geoprocessing.MakeValueArray(outputFcPath);
                         await Geoprocessing.ExecuteToolAsync("management.Delete", delParams);
                     }
                     catch { }
                 }
 
                 var clipParams = Geoprocessing.MakeValueArray(
-                    sourceFCPath,
-                    maskFCPath,
-                    existingOut);
+                    sourceFcPath,
+                    maskFcPath,
+                    outputFcPath);
 
                 var gpResult = await Geoprocessing.ExecuteToolAsync(
                     "analysis.Clip",
@@ -236,70 +329,13 @@ namespace EAABAddIn.Src.Application.UseCases
                     var err = gpResult.ErrorMessages != null && gpResult.ErrorMessages.Any()
                         ? string.Join("; ", gpResult.ErrorMessages.Select(m => m.Text))
                         : "Clip falló sin detalles";
-                    return $"❌ {outputName}: {err}";
+                    return $"❌ {fcName}: {err}";
                 }
-                return $"✓ {outputName}: clipeado";
+                return $"✓ {fcName}";
             }
             catch (Exception ex)
             {
-                return $"❌ {outputName}: {ex.Message}";
-            }
-        }
-
-        /// <summary>
-        /// Construye un polígono expandido preservando esquinas (unión Miter) usando offset del contorno.
-        /// Si falla, devuelve null para que el llamador haga fallback al buffer estándar.
-        /// </summary>
-        private Polygon? TryBuildMiterOffsetPolygon(Polygon polygon, double distance)
-        {
-            try
-            {
-                if (polygon == null || polygon.IsEmpty || Math.Abs(distance) < 1e-6)
-                    return polygon;
-
-                // Tomar el contorno exterior como polilínea
-                Polyline? outline = null;
-                try
-                {
-                    // Boundary devuelve el contorno como polilínea
-                    outline = GeometryEngine.Instance.Boundary(polygon) as Polyline;
-                }
-                catch { }
-
-                if (outline == null)
-                {
-                    // Construir desde los puntos del primer anillo
-                    var firstPart = polygon.Parts.FirstOrDefault();
-                    if (firstPart != null)
-                    {
-                        var pts = firstPart.ToList();
-                        outline = PolylineBuilderEx.CreatePolyline(pts, polygon.SpatialReference);
-                    }
-                }
-
-                if (outline == null || outline.IsEmpty)
-                    return null;
-
-                // Offset con unión en Miter para mantener esquinas rectas
-                // Intentar con el signo dado; si reduce el área, invertir el signo
-                var offsetA = GeometryEngine.Instance.Offset(outline, distance, OffsetType.Miter, 1.0) as Polyline;
-                Polygon? polyA = (offsetA == null || offsetA.IsEmpty) ? null : PolygonBuilderEx.CreatePolygon(offsetA, polygon.SpatialReference);
-
-                if (polyA == null || polyA.IsEmpty || polyA.Area <= polygon.Area)
-                {
-                    var offsetB = GeometryEngine.Instance.Offset(outline, -Math.Abs(distance), OffsetType.Miter, 1.0) as Polyline;
-                    var polyB = (offsetB == null || offsetB.IsEmpty) ? null : PolygonBuilderEx.CreatePolygon(offsetB, polygon.SpatialReference);
-                    if (polyB != null && !polyB.IsEmpty && polyB.Area > polygon.Area)
-                        return polyB;
-
-                    return null;
-                }
-
-                return polyA;
-            }
-            catch
-            {
-                return null;
+                return $"❌ {fcName}: {ex.Message}";
             }
         }
     }
