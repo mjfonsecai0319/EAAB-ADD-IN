@@ -112,6 +112,26 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
+    private bool _isBufferEnabled = false;
+    public bool IsBufferEnabled
+    {
+        get => _isBufferEnabled;
+        set
+        {
+            if (_isBufferEnabled != value)
+            {
+                _isBufferEnabled = value;
+                NotifyPropertyChanged(nameof(IsBufferEnabled));
+                
+                // Si se desactiva el buffer, resetear a 0
+                if (!_isBufferEnabled)
+                {
+                    BufferMeters = 0;
+                }
+            }
+        }
+    }
+
     private double _bufferMeters = 0;
     public double BufferMeters
     {
@@ -154,6 +174,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
     private void OnClearForm()
     {
         FeatureDataset = null;
+        IsBufferEnabled = false;
         BufferMeters = 0;
         StatusMessage = string.Empty;
     }
