@@ -214,6 +214,20 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
+    private bool _isRoundedBufferEnabled = false;
+    public bool IsRoundedBufferEnabled
+    {
+        get => _isRoundedBufferEnabled;
+        set
+        {
+            if (_isRoundedBufferEnabled != value)
+            {
+                _isRoundedBufferEnabled = value;
+                NotifyPropertyChanged(nameof(IsRoundedBufferEnabled));
+            }
+        }
+    }
+
     private double _bufferMeters = 0;
     public double BufferMeters
     {
@@ -601,7 +615,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 _sourceGdbPath,
                 selectedFeatureDatasets,
                 _selectedPolygon,
-                bufferInMapUnits);
+                bufferInMapUnits,
+                IsRoundedBufferEnabled);
 
             StatusMessage = success ? $"✓ {message}" : $"❌ {message}";
         }

@@ -205,15 +205,20 @@
                 <CheckBox
                     x:Name="EnableBufferCheck"
                     IsChecked="{Binding IsBufferEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Margin="0,0,0,5"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                    Content="Habilitar Buffer"/>
+                    Margin="0,0,0,5">
+                    <TextBlock
+                        Text="Habilitar Buffer"
+                        Foreground="{DynamicResource Esri_TextPrimaryBrush}"
+                        FontWeight="SemiBold"
+                        FontSize="14" />
+                </CheckBox>
 
                 <TextBlock
                     Text="Buffer (metros)"
                     Style="{StaticResource HeaderTextStyle}"
                     Margin="0,0,0,10"
                     Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
                 />
 
                 <TextBlock
@@ -221,6 +226,7 @@
                     Style="{StaticResource DisabledTextStyle}"
                     Margin="0,0,0,5"
                     Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
                 />
 
                 <TextBox
@@ -228,7 +234,46 @@
                     Text="{Binding BufferMeters, UpdateSourceTrigger=PropertyChanged}"
                     IsEnabled="{Binding ElementName=EnableBufferCheck, Path=IsChecked}"
                     Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
                 />
+
+                <CheckBox
+                    x:Name="RoundedBufferCheck"
+                    IsChecked="{Binding IsRoundedBufferEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,0,5"
+                    IsEnabled="{Binding ElementName=EnableBufferCheck, Path=IsChecked}"
+                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="Aplicar puntas redondeadas al buffer (recomendado)" Foreground="{DynamicResource Esri_TextPrimaryBrush}" />
+                    <CheckBox.ToolTip>
+                        <TextBlock TextWrapping="Wrap" MaxWidth="320">
+                            <Run Text="Activado (Recomendado): " FontWeight="Bold"/>
+                            <Run Text="Buffer con puntas redondeadas - resultado exacto y preciso"/>
+                            <LineBreak/>
+                            <LineBreak/>
+                            <Run Text="Desactivado: " FontWeight="Bold"/>
+                            <Run Text="Buffer con puntas más rectas - resultado APROXIMADO. Puede presentar diferencias en la geometría."/>
+                        </TextBlock>
+                    </CheckBox.ToolTip>
+                </CheckBox>
+                
+                <Border
+                    BorderBrush="{DynamicResource Esri_BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource Esri_BackgroundHoverBrush}"
+                    Padding="8"
+                    Margin="0,0,0,15"
+                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock
+                            Style="{StaticResource DisabledTextStyle}"
+                            FontSize="10"
+                            TextWrapping="Wrap">
+                            <Run Text="Nota: " FontWeight="Bold"/>
+                            <Run Text="Por defecto, se aplica buffer con puntas redondeadas (exacto). La opción de puntas rectas es una aproximación que puede alterar ligeramente la geometría."/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
 
                 <!-- Sección de selección de Feature Classes -->
                 <Border

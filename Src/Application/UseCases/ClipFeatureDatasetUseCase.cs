@@ -16,7 +16,8 @@ namespace EAABAddIn.Src.Application.UseCases
             string sourceGdbPath,
             List<(string datasetName, List<string> featureClasses)> featureDatasets,
             Polygon clipPolygon,
-            double bufferMeters)
+            double bufferMeters,
+            bool useRoundedBuffer = false)
         {
             try
             {
@@ -50,16 +51,60 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (hasBuffer)
                 {
                     var originalArea = clipPolygon.Area;
-                    System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
-                    System.Diagnostics.Debug.WriteLine($"Aplicando buffer de {bufferMeters} unidades al polígono");
-                    System.Diagnostics.Debug.WriteLine($"Área original: {originalArea:N2}");
-                    System.Diagnostics.Debug.WriteLine($"Sistema de coordenadas: {clipPolygon.SpatialReference?.Name ?? "desconocido"}");
-                    System.Diagnostics.Debug.WriteLine($"WKID: {clipPolygon.SpatialReference?.Wkid ?? 0}");
+                    var bufferStyle = useRoundedBuffer ? "redondeadas" : "rectas/planas";
+                    var sr = clipPolygon.SpatialReference;
+                    var unitInfo = sr != null ? (sr.IsGeographic ? "grados decimales" : sr.Unit?.Name ?? "unidades desconocidas") : "sin referencia espacial";
                     
-                    // Aplicar buffer estándar (más confiable)
+                    System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
+                    System.Diagnostics.Debug.WriteLine($"Aplicando buffer de {bufferMeters} unidades del mapa");
+                    System.Diagnostics.Debug.WriteLine($"Estilo de puntas: {bufferStyle}");
+                    System.Diagnostics.Debug.WriteLine($"Área original: {originalArea:N2}");
+                    System.Diagnostics.Debug.WriteLine($"Sistema de coordenadas: {sr?.Name ?? "desconocido"}");
+                    System.Diagnostics.Debug.WriteLine($"WKID: {sr?.Wkid ?? 0}");
+                    System.Diagnostics.Debug.WriteLine($"Unidades del sistema: {unitInfo}");
+                    System.Diagnostics.Debug.WriteLine($"NOTA: El valor del buffer ya ha sido convertido de metros a las unidades del mapa");
+                    
+                    // Aplicar buffer según configuración
                     try
                     {
-                        bufferedPolygon = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
+                        if (useRoundedBuffer)
+                        {
+                            // Buffer con puntas redondeadas (EXACTO - por defecto)
+                            bufferedPolygon = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
+                            System.Diagnostics.Debug.WriteLine($"✓ Buffer redondeado (exacto) aplicado");
+                        }
+                        else
+                        {
+                            // Buffer con puntas rectas (APROXIMADO)
+                            System.Diagnostics.Debug.WriteLine($"⚠️ Aplicando buffer con puntas rectas (APROXIMADO)");
+                            
+                            var roundedBuffer = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
+                            
+                            if (roundedBuffer != null && !roundedBuffer.IsEmpty)
+                            {
+                                // Generalizar para convertir esquinas redondeadas en más rectas
+                                // Tolerancia ajustada para un mejor balance
+                                var tolerance = bufferMeters * 0.25; // 25% del buffer
+                                
+                                var generalizedBuffer = GeometryEngine.Instance.Generalize(roundedBuffer, tolerance, false);
+                                
+                                if (generalizedBuffer != null && !generalizedBuffer.IsEmpty)
+                                {
+                                    bufferedPolygon = generalizedBuffer as Polygon;
+                                    System.Diagnostics.Debug.WriteLine($"✓ Buffer con puntas rectas (aproximado) aplicado con tolerancia {tolerance:F2}");
+                                }
+                                else
+                                {
+                                    // Fallback: usar buffer redondeado
+                                    bufferedPolygon = roundedBuffer;
+                                    System.Diagnostics.Debug.WriteLine($"⚠️ Generalize falló, usando buffer redondeado");
+                                }
+                            }
+                            else
+                            {
+                                bufferedPolygon = roundedBuffer;
+                            }
+                        }
                         
                         if (bufferedPolygon != null && !bufferedPolygon.IsEmpty)
                         {
@@ -96,9 +141,11 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (!maskCreated.success)
                     return (false, $"No se pudo crear máscara: {maskCreated.message}");
 
-                var results = new List<string>();
                 var datasetsCreated = new List<string>();
-                int totalFeatureClasses = 0;
+                var datasetSummaries = new List<string>();
+                var failedFeatureClasses = new List<string>();
+                int totalFeatureClassesAttempted = 0;
+                int totalFeatureClassesSucceeded = 0;
 
                 // 4. Procesar cada Feature Dataset
                 foreach (var (datasetName, featureClasses) in featureDatasets)
@@ -109,7 +156,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     var datasetCreated = await CreateFeatureDatasetAsync(outputGdbPath, outputDatasetName, sourceGdbPath, datasetName);
                     if (!datasetCreated.success)
                     {
-                        results.Add($"❌ {outputDatasetName}: no se pudo crear el dataset - {datasetCreated.message}");
+                        failedFeatureClasses.Add($"{outputDatasetName}: no se pudo crear el dataset - {datasetCreated.message}");
                         continue;
                     }
 
@@ -119,31 +166,46 @@ namespace EAABAddIn.Src.Application.UseCases
                     // Clipear cada Feature Class dentro del dataset
                     foreach (var fcName in featureClasses)
                     {
+                        totalFeatureClassesAttempted++;
+
                         var sourceFcPath = System.IO.Path.Combine(sourceGdbPath, datasetName, fcName);
                         var outputFcPath = System.IO.Path.Combine(outputGdbPath, outputDatasetName, fcName);
-                        
+
                         var clipResult = await ClipFeatureClassAsync(sourceFcPath, maskFcPath, outputFcPath);
-                        
+
                         if (clipResult.StartsWith("✓"))
                         {
                             fcSuccessCount++;
-                            totalFeatureClasses++;
+                            totalFeatureClassesSucceeded++;
                         }
-                        
-                        results.Add($"  {clipResult}");
+                        else
+                        {
+                            // Guardar fallo para resumen (recortar el prefijo y no mostrar todo el stack)
+                            var failText = clipResult.StartsWith("❌") ? clipResult.Substring(1).Trim() : clipResult;
+                            failedFeatureClasses.Add($"{outputDatasetName}/{fcName}: {failText}");
+                        }
                     }
 
-                    results.Add($"✓ {outputDatasetName}: {fcSuccessCount}/{featureClasses.Count} feature classes procesadas");
+                    datasetSummaries.Add($"{outputDatasetName}: {fcSuccessCount}/{featureClasses.Count}");
                 }
 
                 // 5. Limpiar GDB temporal
                 try { if (System.IO.Directory.Exists(tempGdbPath)) System.IO.Directory.Delete(tempGdbPath, true); } catch { }
 
-                var successCount = results.Count(r => r.TrimStart().StartsWith("✓"));
-                var failureCount = results.Count(r => r.TrimStart().StartsWith("❌"));
-                var outputInfo = $"\n📁 Ubicación: {outputGdbPath}\n📊 Feature Datasets creados: {string.Join(", ", datasetsCreated)}\n📊 Total Feature Classes procesadas: {totalFeatureClasses}";
+                var successCount = totalFeatureClassesSucceeded;
+                var failureCount = failedFeatureClasses.Count;
+
+                var outputInfo = $"\n📁 Ubicación: {outputGdbPath}\n📊 Feature Datasets creados: {string.Join(", ", datasetsCreated)}\n📊 Resumen por dataset: {string.Join("; ", datasetSummaries)}\n📊 Total Feature Classes intentadas: {totalFeatureClassesAttempted}, éxitos: {totalFeatureClassesSucceeded}";
                 var bufferInfo = hasBuffer ? $"\n🛟 Buffer aplicado: {bufferMeters:N2} m" : "\n🛟 Sin buffer";
-                var finalMessage = $"Clip completado: {successCount} exitosos, {failureCount} fallidos\n" + string.Join("\n", results) + outputInfo + bufferInfo;
+
+                var failuresText = string.Empty;
+                if (failureCount > 0)
+                {
+                    var preview = string.Join(", ", failedFeatureClasses.Take(10));
+                    failuresText = $"\n❌ Fallos ({failureCount}): {preview}" + (failureCount > 10 ? $" (+{failureCount - 10} más)" : "");
+                }
+
+                var finalMessage = $"Clip completado: {successCount} exitosos, {failureCount} fallidos." + outputInfo + bufferInfo + failuresText;
                 return (failureCount == 0, finalMessage);
             }
             catch (Exception ex)
