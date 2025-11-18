@@ -11,11 +11,11 @@ namespace EAABAddIn.Src.Application.UseCases;
 
 public class AppendOptions
 {
-    public string SourcePath { get; set; } = string.Empty; // feature class o layer file path
-    public string TargetPath { get; set; } = string.Empty; // feature class destino
-    public bool UseSelection { get; set; } = false;        // usar selección actual del mapa para el dataset origin
-    public string SchemaType { get; set; } = "NO_TEST";    // NO_TEST | TEST
-    public string FieldMappings { get; set; } = string.Empty; // cadena de mapeo de campos GP si aplica
+    public string SourcePath { get; set; } = string.Empty; 
+    public string TargetPath { get; set; } = string.Empty; 
+    public bool UseSelection { get; set; } = false;        
+    public string SchemaType { get; set; } = "NO_TEST";    
+    public string FieldMappings { get; set; } = string.Empty; 
 }
 
 public class AppendFeaturesUseCase
@@ -31,14 +31,12 @@ public class AppendFeaturesUseCase
             {
                 string input = options.SourcePath;
 
-                // Si se pide usar selección, construimos una capa temporal filtrada y copiamos a in_memory
                 if (options.UseSelection)
                 {
                     var selectedOids = GetSelectedOidsForDataset(options.SourcePath);
                     if (selectedOids == null || selectedOids.Count == 0)
                         return (false, "No hay entidades seleccionadas del origen");
 
-                    // Obtener nombre del campo OID
                     string oidField;
                     using (var fc = OpenFeatureClass(options.SourcePath))
                     {
@@ -48,7 +46,6 @@ public class AppendFeaturesUseCase
                     if (string.IsNullOrWhiteSpace(oidField))
                         return (false, "No se encontró el campo OID del origen");
 
-                    // where OBJECTID IN (...)
                     var inList = string.Join(",", selectedOids);
                     var where = $"{EscapeField(oidField)} IN ({inList})";
 
@@ -94,7 +91,6 @@ public class AppendFeaturesUseCase
     {
         try
         {
-            // path "C:\\...\\db.gdb\\featureClass"
             var idx = path.LastIndexOf(".gdb", StringComparison.OrdinalIgnoreCase);
             if (idx < 0) return null;
             var gdbPath = path.Substring(0, idx + 4);
@@ -110,7 +106,6 @@ public class AppendFeaturesUseCase
     private static string EscapeField(string field)
     {
         if (string.IsNullOrWhiteSpace(field)) return field;
-        // Minimal escape para nombres con espacios
         return field.Contains(' ') ? $"\"{field}\"" : field;
     }
 
