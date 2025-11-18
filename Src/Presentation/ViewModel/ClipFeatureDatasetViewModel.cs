@@ -58,6 +58,9 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
     public ICommand RefreshSelectionCommand { get; private set; }
     public ICommand SelectAllCommand { get; private set; }
     public ICommand DeselectAllCommand { get; private set; }
+    public ICommand ClearSearchCommand { get; private set; }
+    public ICommand SelectAllFilteredCommand { get; private set; }
+    public ICommand DeselectAllFilteredCommand { get; private set; }
 
     private Polygon? _selectedPolygon = null;
     private string? _sourceGdbPath = null;
@@ -79,8 +82,38 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
+    private ObservableCollection<SelectableFeatureClass> _filteredFeatureClasses = new ObservableCollection<SelectableFeatureClass>();
+    public ObservableCollection<SelectableFeatureClass> FilteredFeatureClasses
+    {
+        get => _filteredFeatureClasses;
+        private set
+        {
+            if (_filteredFeatureClasses != value)
+            {
+                _filteredFeatureClasses = value;
+                NotifyPropertyChanged(nameof(FilteredFeatureClasses));
+            }
+        }
+    }
+
+    private string _searchText = string.Empty;
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText != value)
+            {
+                _searchText = value;
+                NotifyPropertyChanged(nameof(SearchText));
+                ApplyFilter();
+            }
+        }
+    }
+
     public bool HasFeatureClasses => AvailableFeatureClasses.Any();
     public int SelectedFeatureClassesCount => AvailableFeatureClasses.Count(fc => fc.IsSelected);
+    public int FilteredFeatureClassesCount => FilteredFeatureClasses.Count;
 
     public ClipFeatureDatasetViewModel()
     {
@@ -91,6 +124,9 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         RefreshSelectionCommand = new AsyncRelayCommand(OnRefreshSelectionAsync);
         SelectAllCommand = new RelayCommand(OnSelectAll);
         DeselectAllCommand = new RelayCommand(OnDeselectAll);
+        ClearSearchCommand = new RelayCommand(OnClearSearch);
+        SelectAllFilteredCommand = new RelayCommand(OnSelectAllFiltered);
+        DeselectAllFilteredCommand = new RelayCommand(OnDeselectAllFiltered);
 
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
@@ -246,6 +282,64 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         NotifyPropertyChanged(nameof(CanExecuteClip));
     }
 
+    private void OnClearSearch()
+    {
+        SearchText = string.Empty;
+    }
+
+    private void OnSelectAllFiltered()
+    {
+        foreach (var fc in FilteredFeatureClasses)
+        {
+            fc.IsSelected = true;
+        }
+        NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+        NotifyPropertyChanged(nameof(CanExecuteClip));
+    }
+
+    private void OnDeselectAllFiltered()
+    {
+        foreach (var fc in FilteredFeatureClasses)
+        {
+            fc.IsSelected = false;
+        }
+        NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+        NotifyPropertyChanged(nameof(CanExecuteClip));
+    }
+
+    private void ApplyFilter()
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            FilteredFeatureClasses.Clear();
+            
+            if (string.IsNullOrWhiteSpace(SearchText))
+            {
+                // Sin filtro, mostrar todas
+                foreach (var fc in AvailableFeatureClasses)
+                {
+                    FilteredFeatureClasses.Add(fc);
+                }
+            }
+            else
+            {
+                // Filtrar por texto de búsqueda
+                var searchLower = SearchText.ToLower();
+                foreach (var fc in AvailableFeatureClasses)
+                {
+                    if (fc.DatasetName.ToLower().Contains(searchLower) ||
+                        fc.FeatureClassName.ToLower().Contains(searchLower) ||
+                        fc.DisplayName.ToLower().Contains(searchLower))
+                    {
+                        FilteredFeatureClasses.Add(fc);
+                    }
+                }
+            }
+            
+            NotifyPropertyChanged(nameof(FilteredFeatureClassesCount));
+        });
+    }
+
     private void OnOutputGeodatabase()
     {
         var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
@@ -318,6 +412,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
             AvailableFeatureClasses.Clear();
+            FilteredFeatureClasses.Clear();
+            SearchText = string.Empty;
         });
 
         try
@@ -390,6 +486,9 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 }
                 NotifyPropertyChanged(nameof(HasFeatureClasses));
                 NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
+                
+                // Aplicar filtro inicial (mostrará todas)
+                ApplyFilter();
             });
 
             NetworksLoaded = _featureDatasets.Count;

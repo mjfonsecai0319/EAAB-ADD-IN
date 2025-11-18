@@ -259,7 +259,58 @@
                                 Margin="0">
                                 <Run Text="Seleccionadas:" />
                                 <Run Text="{Binding SelectedFeatureClassesCount, Mode=OneWay}" FontWeight="Bold" />
+                                <Run Text="/" />
+                                <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}" />
                             </TextBlock>
+                        </Grid>
+
+                        <!-- Barra de búsqueda -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="5" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                Style="{StaticResource ThemedTextBoxStyle}"
+                                Height="28"
+                                VerticalContentAlignment="Center">
+                                <TextBox.Resources>
+                                    <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource ThemedTextBoxStyle}">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <VisualBrush Stretch="None" AlignmentX="Left">
+                                                            <VisualBrush.Visual>
+                                                                <TextBlock 
+                                                                    Text="🔍 Buscar Feature Classes..."
+                                                                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
+                                                                    FontSize="11"
+                                                                    Margin="8,0,0,0"
+                                                                    VerticalAlignment="Center"/>
+                                                            </VisualBrush.Visual>
+                                                        </VisualBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Resources>
+                            </TextBox>
+
+                            <Button
+                                Grid.Column="2"
+                                Style="{StaticResource BrowseButtonStyle}"
+                                Command="{Binding ClearSearchCommand}"
+                                Height="28"
+                                Width="28"
+                                ToolTip="Limpiar búsqueda">
+                                <TextBlock Text="✕" FontSize="14" FontWeight="Bold" />
+                            </Button>
                         </Grid>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -270,7 +321,8 @@
                                 Padding="8,4"
                                 FontSize="10"
                                 Margin="0,0,5,0"
-                                Command="{Binding SelectAllCommand}"
+                                Command="{Binding SelectAllFilteredCommand}"
+                                ToolTip="Selecciona todas las Feature Classes visibles en la lista filtrada"
                             />
                             <Button
                                 Content="Deseleccionar Todas"
@@ -278,12 +330,13 @@
                                 Height="24"
                                 Padding="8,4"
                                 FontSize="10"
-                                Command="{Binding DeselectAllCommand}"
+                                Command="{Binding DeselectAllFilteredCommand}"
+                                ToolTip="Deselecciona todas las Feature Classes visibles en la lista filtrada"
                             />
                         </StackPanel>
 
                         <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding AvailableFeatureClasses}">
+                            <ItemsControl ItemsSource="{Binding FilteredFeatureClasses}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <CheckBox
@@ -297,6 +350,17 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+
+                        <TextBlock
+                            Style="{StaticResource DisabledTextStyle}"
+                            Margin="0,5,0,0"
+                            FontSize="10">
+                            <Run Text="Mostrando" />
+                            <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}" FontWeight="Bold" />
+                            <Run Text="de" />
+                            <Run Text="{Binding AvailableFeatureClasses.Count, Mode=OneWay}" FontWeight="Bold" />
+                            <Run Text="Feature Classes" />
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
