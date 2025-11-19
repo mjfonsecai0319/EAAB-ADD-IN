@@ -27,16 +27,12 @@ public class UnionPolygonsButton : Button
     {
         try
         {
-            // Common ArcGIS Pro selection tool command IDs; try a known ID and fallback to execute command
-            // If your ArcGIS Pro version uses a different command id, replace with the correct one.
             var toolId = "esri_mapping_selectByRectangleTool";
 
-            // Try to set the current tool (async). Some SDK versions return void Task.
             await FrameworkApplication.SetCurrentToolAsync(toolId);
         }
         catch (Exception ex)
         {
-            // If activation failed, inform the user
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
                 $"No se pudo activar la herramienta de selección: {ex.Message}",
                 "Error",

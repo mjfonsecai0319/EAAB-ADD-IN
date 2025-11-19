@@ -33,18 +33,15 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (clipPolygon == null || clipPolygon.IsEmpty)
                     return (false, "Polígono de corte inválido o vacío");
 
-                // 1. Asegurar GDB de salida (crear con CreateFileGDB si no existe)
                 var ensureOutput = await EnsureFileGeodatabaseAsync(outputGdbPath);
                 if (!ensureOutput.success)
                     return (false, $"No se pudo crear GDB de salida: {ensureOutput.message}");
 
-                // 2. Crear GDB temporal para máscara
                 var tempGdbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"tempClip_{Guid.NewGuid():N}.gdb");
                 var ensureTemp = await EnsureFileGeodatabaseAsync(tempGdbPath);
                 if (!ensureTemp.success)
                     return (false, $"No se pudo crear GDB temporal: {ensureTemp.message}");
 
-                // 3. Crear feature class máscara con polígono (buffer si procede)
                 var hasBuffer = bufferMeters > 0.000001;
                 var bufferedPolygon = clipPolygon;
                 
@@ -64,27 +61,22 @@ namespace EAABAddIn.Src.Application.UseCases
                     System.Diagnostics.Debug.WriteLine($"Unidades del sistema: {unitInfo}");
                     System.Diagnostics.Debug.WriteLine($"NOTA: El valor del buffer ya ha sido convertido de metros a las unidades del mapa");
                     
-                    // Aplicar buffer según configuración
                     try
                     {
                         if (useRoundedBuffer)
                         {
-                            // Buffer con puntas redondeadas (EXACTO - por defecto)
                             bufferedPolygon = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
                             System.Diagnostics.Debug.WriteLine($"✓ Buffer redondeado (exacto) aplicado");
                         }
                         else
                         {
-                            // Buffer con puntas rectas (APROXIMADO)
                             System.Diagnostics.Debug.WriteLine($"⚠️ Aplicando buffer con puntas rectas (APROXIMADO)");
                             
                             var roundedBuffer = GeometryEngine.Instance.Buffer(clipPolygon, bufferMeters) as Polygon;
                             
                             if (roundedBuffer != null && !roundedBuffer.IsEmpty)
                             {
-                                // Generalizar para convertir esquinas redondeadas en más rectas
-                                // Tolerancia ajustada para un mejor balance
-                                var tolerance = bufferMeters * 0.25; // 25% del buffer
+                                var tolerance = bufferMeters * 0.25; 
                                 
                                 var generalizedBuffer = GeometryEngine.Instance.Generalize(roundedBuffer, tolerance, false);
                                 
@@ -95,7 +87,6 @@ namespace EAABAddIn.Src.Application.UseCases
                                 }
                                 else
                                 {
-                                    // Fallback: usar buffer redondeado
                                     bufferedPolygon = roundedBuffer;
                                     System.Diagnostics.Debug.WriteLine($"⚠️ Generalize falló, usando buffer redondeado");
                                 }
@@ -115,7 +106,6 @@ namespace EAABAddIn.Src.Application.UseCases
                             System.Diagnostics.Debug.WriteLine($"  Área con buffer: {newArea:N2}");
                             System.Diagnostics.Debug.WriteLine($"  Incremento: {areaIncrease:F2}%");
                             
-                            // Validación: si el área aumentó más del 500%, puede haber un problema de unidades
                             if (areaIncrease > 500)
                             {
                                 System.Diagnostics.Debug.WriteLine($"⚠️ ADVERTENCIA: El buffer aumentó el área más del 500%");
@@ -127,7 +117,7 @@ namespace EAABAddIn.Src.Application.UseCases
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"❌ Error aplicando buffer: {ex.Message}");
-                        bufferedPolygon = clipPolygon; // Usar polígono original si falla
+                        bufferedPolygon = clipPolygon; 
                     }
                     
                     System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
@@ -147,12 +137,10 @@ namespace EAABAddIn.Src.Application.UseCases
                 int totalFeatureClassesAttempted = 0;
                 int totalFeatureClassesSucceeded = 0;
 
-                // 4. Procesar cada Feature Dataset
                 foreach (var (datasetName, featureClasses) in featureDatasets)
                 {
                     var outputDatasetName = $"clip_{datasetName}";
                     
-                    // Crear el Feature Dataset en la GDB de salida
                     var datasetCreated = await CreateFeatureDatasetAsync(outputGdbPath, outputDatasetName, sourceGdbPath, datasetName);
                     if (!datasetCreated.success)
                     {
@@ -163,7 +151,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     datasetsCreated.Add(outputDatasetName);
                     int fcSuccessCount = 0;
 
-                    // Clipear cada Feature Class dentro del dataset
                     foreach (var fcName in featureClasses)
                     {
                         totalFeatureClassesAttempted++;
@@ -180,7 +167,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         }
                         else
                         {
-                            // Guardar fallo para resumen (recortar el prefijo y no mostrar todo el stack)
                             var failText = clipResult.StartsWith("❌") ? clipResult.Substring(1).Trim() : clipResult;
                             failedFeatureClasses.Add($"{outputDatasetName}/{fcName}: {failText}");
                         }
@@ -189,7 +175,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     datasetSummaries.Add($"{outputDatasetName}: {fcSuccessCount}/{featureClasses.Count}");
                 }
 
-                // 5. Limpiar GDB temporal
                 try { if (System.IO.Directory.Exists(tempGdbPath)) System.IO.Directory.Delete(tempGdbPath, true); } catch { }
 
                 var successCount = totalFeatureClassesSucceeded;
@@ -225,7 +210,7 @@ namespace EAABAddIn.Src.Application.UseCases
                 return (false, "Ruta inválida para GDB");
 
             if (name.EndsWith(".gdb", StringComparison.OrdinalIgnoreCase))
-                name = name.Substring(0, name.Length - 4); // sin sufijo
+                name = name.Substring(0, name.Length - 4); 
 
             try
             {
@@ -260,7 +245,6 @@ namespace EAABAddIn.Src.Application.UseCases
                 var sr = polygon.SpatialReference ?? SpatialReferences.WebMercator;
                 var wkid = sr.Wkid > 0 ? sr.Wkid : 4326;
 
-                // Habilitar M/Z según la geometría de entrada para evitar errores al insertar
                 var hasM = (polygon.HasM) ? "ENABLED" : "DISABLED";
                 var hasZ = (polygon.HasZ) ? "ENABLED" : "DISABLED";
 
@@ -288,7 +272,6 @@ namespace EAABAddIn.Src.Application.UseCases
                     return (false, err);
                 }
 
-                // Insertar polígono
                 await QueuedTask.Run(() =>
                 {
                     var gdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(gdbPath)));
@@ -316,7 +299,6 @@ namespace EAABAddIn.Src.Application.UseCases
         {
             try
             {
-                // Obtener la referencia espacial del dataset de origen
                 await QueuedTask.Run(() =>
                 {
                     var sourceGdb = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(sourceGdbPath)));
@@ -326,7 +308,6 @@ namespace EAABAddIn.Src.Application.UseCases
                         var spatialRef = sourceDataset.GetDefinition().GetSpatialReference();
                         var wkid = spatialRef?.Wkid ?? 4326;
 
-                        // Crear el Feature Dataset en la GDB de salida
                         var createParams = Geoprocessing.MakeValueArray(
                             outputGdbPath,
                             datasetName,
@@ -363,7 +344,6 @@ namespace EAABAddIn.Src.Application.UseCases
             
             try
             {
-                // Eliminar si existe
                 if (System.IO.File.Exists(outputFcPath) || System.IO.Directory.Exists(outputFcPath))
                 {
                     try

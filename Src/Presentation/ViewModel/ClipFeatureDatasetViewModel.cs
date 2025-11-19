@@ -229,7 +229,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
-    // Inverse convenience property for the UI: bind checkbox to enable flat (rectas) buffer
     public bool IsFlatBufferEnabled
     {
         get => !_isRoundedBufferEnabled;
@@ -346,7 +345,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             
             if (string.IsNullOrWhiteSpace(SearchText))
             {
-                // Sin filtro, mostrar todas
                 foreach (var fc in AvailableFeatureClasses)
                 {
                     FilteredFeatureClasses.Add(fc);
@@ -354,7 +352,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             }
             else
             {
-                // Filtrar por texto de búsqueda
                 var searchLower = SearchText.ToLower();
                 foreach (var fc in AvailableFeatureClasses)
                 {
@@ -518,7 +515,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 NotifyPropertyChanged(nameof(HasFeatureClasses));
                 NotifyPropertyChanged(nameof(SelectedFeatureClassesCount));
                 
-                // Aplicar filtro inicial (mostrará todas)
                 ApplyFilter();
             });
 

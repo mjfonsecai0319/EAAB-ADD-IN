@@ -9,7 +9,6 @@ namespace EAABAddIn.Src.Presentation.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            // Para controlar visibilidad basada en strings (ej: "Oracle")
             if (parameter != null && value is string stringValue)
             {
                 return string.Equals(stringValue, parameter.ToString(), StringComparison.OrdinalIgnoreCase)
@@ -17,10 +16,8 @@ namespace EAABAddIn.Src.Presentation.Converters
                     : Visibility.Collapsed;
             }
 
-            // Para controlar visibilidad basada en booleanos
             if (value is bool boolValue)
             {
-                // Si el parámetro es "Invert", invertir el resultado
                 if (parameter != null && parameter.ToString().Equals("Invert", StringComparison.OrdinalIgnoreCase))
                 {
                     return !boolValue ? Visibility.Visible : Visibility.Collapsed;
@@ -36,7 +33,6 @@ namespace EAABAddIn.Src.Presentation.Converters
         {
             if (value is Visibility visibility)
             {
-                // Si el parámetro es "Invert", invertir el resultado
                 if (parameter != null && parameter.ToString().Equals("Invert", StringComparison.OrdinalIgnoreCase))
                 {
                     return visibility != Visibility.Visible;

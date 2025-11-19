@@ -4,9 +4,7 @@ using System.Windows.Input;
 
 namespace EAABAddIn.Src.Presentation.Base
 {
-    /// <summary>
-    /// ICommand para métodos async Task en MVVM.
-    /// </summary>
+
     public class AsyncRelayCommand : ICommand
     {
         private readonly Func<Task> _execute;

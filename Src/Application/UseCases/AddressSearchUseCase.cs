@@ -39,14 +39,12 @@ public class AddressSearchUseCase
 
         if (searchResults.Count == 0 && cityCode == "11001")
         {
-            // Fallback a IDECA cuando BD local no retorna resultados
             var externo = GetFromIDECA(address);
             if (externo.Count > 0) return externo.Take(1).ToList();
         }
 
         if (searchResults.Count == 0)
         {
-            // Fallback a ESRI cuando BD local e IDECA no retornan resultados
             var externo = GetFromESRI(address, cityCode, cityDesc);
             if (externo.Count > 0) return externo.OrderByDescending(it => it.Score).Take(1).ToList();
         }
@@ -92,11 +90,9 @@ public class AddressSearchUseCase
         {
             if (string.IsNullOrWhiteSpace(address)) return list;
 
-            // 1. Construir URL
             const string baseUrl = "https://catalogopmb.catastrobogota.gov.co/PMBWeb/web/geocodificador2";
             var url = $"{baseUrl}?cmd=geocodificar&query={Uri.EscapeDataString(address)}";
 
-            // 2. Opciones HTTP (cache corto + timeout)
             var options = new HttpService.HttpRequestOptions
             {
                 Timeout = TimeSpan.FromSeconds(15),
@@ -105,11 +101,10 @@ public class AddressSearchUseCase
                 ThrowOn400 = false
             };
 
-            // 3. Consumir servicio (sin async aquí para mantener firma actual)
             var httpResult = HttpService.Instance.GetAsync(url, options).GetAwaiter().GetResult();
             if (!httpResult.IsSuccess || string.IsNullOrWhiteSpace(httpResult.Content))
             {
-                return list; // retornar vacío si falla
+                return list; 
             }
 
             var body = httpResult.Content.Trim();
@@ -144,11 +139,9 @@ public class AddressSearchUseCase
         {
             if (string.IsNullOrWhiteSpace(address)) return list;
 
-            // 1. Construir URL
             const string baseUrl = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
             var url = $"{baseUrl}?f=pjson&SingleLine={Uri.EscapeDataString(full)}&outFields=*&maxLocations=5";
 
-            // 2. Opciones HTTP (cache corto + timeout)
             var options = new HttpService.HttpRequestOptions
             {
                 Timeout = TimeSpan.FromSeconds(15),
@@ -157,11 +150,10 @@ public class AddressSearchUseCase
                 ThrowOn400 = false
             };
 
-            // 3. Consumir servicio (sin async aquí para mantener firma actual)
             var httpResult = HttpService.Instance.GetAsync(url, options).GetAwaiter().GetResult();
             if (!httpResult.IsSuccess || string.IsNullOrWhiteSpace(httpResult.Content))
             {
-                return list; // retornar vacío si falla
+                return list; 
             }
 
             var body = httpResult.Content.Trim();

@@ -25,7 +25,6 @@ public class GetSelectedFeatureUseCase
 
     public List<Feature> InvokeInternal(MapView mapView, string target)
     {
-        // Collect all selected features that belong to the target polygons class
         var selected = new List<Feature>();
         var filtered = mapView.Map.GetSelection().ToDictionary().Select(
             it => it

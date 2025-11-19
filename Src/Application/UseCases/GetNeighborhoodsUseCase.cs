@@ -16,11 +16,7 @@ namespace EAABAddIn.Src.Application.UseCases;
 
 public class GetNeighborhoodsUseCase
 {
-    /// <summary>
-    /// Given a feature and a feature-class path (dataset path), finds features in the map layer(s)
-    /// matching the dataset name that intersect the input feature and returns a CSV of neighborhood names.
-    /// It attempts to read the field "NEIGHBORHOOD_DESC" (case-insensitive) and falls back to the first string field.
-    /// </summary>
+
     public async Task<string> Invoke(Feature feature, string? classPath)
     {
         if (feature == null || string.IsNullOrWhiteSpace(classPath))
@@ -87,7 +83,6 @@ public class GetNeighborhoodsUseCase
         }
         catch
         {
-            // ignore errors and return what we have
         }
 
         var ordered = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
