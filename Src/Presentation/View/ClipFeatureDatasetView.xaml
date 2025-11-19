@@ -25,19 +25,19 @@
             <!-- Core styles (centralizados y coherentes) -->
             <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="16" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="Margin" Value="0,0,0,6" />
             </Style>
 
             <Style x:Key="BodyTextStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
             <Style x:Key="DisabledTextStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextDisabledBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
@@ -109,7 +109,6 @@
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
 
-            <!-- Small utility style for section containers -->
             <Style x:Key="SectionBorderStyle" TargetType="Border">
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
@@ -121,7 +120,6 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <!-- Root scroll area -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0">
         <Grid Margin="20">
             <Grid.RowDefinitions>
@@ -130,9 +128,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Main content column -->
             <StackPanel Grid.Row="0" Orientation="Vertical">
-                <!-- Workspace -->
                 <TextBlock Text="Workspace *" Style="{StaticResource HeaderTextStyle}" />
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
@@ -155,7 +151,6 @@
                     </Button>
                 </Grid>
 
-                <!-- Feature Dataset origen -->
                 <TextBlock Text="Feature Dataset de origen *" Style="{StaticResource HeaderTextStyle}" Margin="0,6,0,0" />
                 <TextBlock Text="Selecciona una Geodatabase (.gdb) que contenga las redes"
                            Style="{StaticResource DisabledTextStyle}"
@@ -182,22 +177,20 @@
                     </Button>
                 </Grid>
 
-                <!-- Selección y estado -->
                 <TextBlock Text="Selección" Style="{StaticResource HeaderTextStyle}" Margin="0,12,0,8" />
-                <TextBlock Text="Polígono de referencia" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,6" />
+                <TextBlock Text="Polígono de referencia" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,6" />
                 <TextBlock Text="{Binding SelectionStatus}" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,12" />
 
-                <!-- ===== Buffer Section (modernizado) ===== -->
                 <StackPanel Margin="0,6,0,0">
                     <CheckBox
                         x:Name="EnableBufferCheck"
                         IsChecked="{Binding IsBufferEnabled, Mode=TwoWay}"
                         Margin="0,0,0,8">
-                        <TextBlock Text="Habilitar Buffer" FontSize="14" FontWeight="SemiBold" />
+                        <TextBlock Text="Habilitar Buffer" FontSize="12" FontWeight="SemiBold" />
                     </CheckBox>
 
                     <StackPanel Visibility="{Binding IsBufferEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="Buffer (metros)" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,4" />
+                        <TextBlock Text="Buffer (metros)" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,4" />
 
                         <TextBlock Text="Ingrese 0 para usar el polígono sin expansión."
                                    Style="{StaticResource DisabledTextStyle}"
@@ -234,9 +227,7 @@
                         </Border>
                     </StackPanel>
                 </StackPanel>
-                <!-- ===== end buffer ===== -->
 
-                <!-- ===== Feature Classes selection ===== -->
                 <Border Style="{StaticResource SectionBorderStyle}" Visibility="{Binding HasFeatureClasses, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
@@ -254,7 +245,6 @@
                             </TextBlock>
                         </Grid>
 
-                        <!-- Search bar -->
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -269,7 +259,6 @@
                                 Height="28"
                                 VerticalContentAlignment="Center">
                                 <TextBox.Resources>
-                                    <!-- Placeholder visual using VisualBrush when Text == empty -->
                                     <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource ThemedTextBoxStyle}">
                                         <Style.Triggers>
                                             <Trigger Property="Text" Value="">
@@ -346,14 +335,19 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-                <!-- ===== end Feature Classes ===== -->
 
                 <TextBlock Text="{Binding NetworksStatus}" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" />
             </StackPanel>
 
-            <!-- Footer panel with action buttons -->
             <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,12,0,0">
-                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource BodyTextStyle}" Margin="0,0,0,8" />
+                <TextBlock Visibility="{Binding HasOutputLocation, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource BodyTextStyle}" Margin="0,0,0,8" TextWrapping="Wrap">
+                    <Run Text="📁 Ubicación de salida:" FontWeight="Bold" FontSize="13" />
+                    <LineBreak />
+                    <Run Text="{Binding OutputLocation, Mode=OneWay}" />
+                </TextBlock>
+
+                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource BodyTextStyle}" Margin="0,0,0,8" TextWrapping="Wrap" />
+
                 <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">

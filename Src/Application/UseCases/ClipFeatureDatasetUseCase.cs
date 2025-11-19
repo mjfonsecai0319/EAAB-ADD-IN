@@ -180,8 +180,8 @@ namespace EAABAddIn.Src.Application.UseCases
                 var successCount = totalFeatureClassesSucceeded;
                 var failureCount = failedFeatureClasses.Count;
 
-                var outputInfo = $"\n📁 Ubicación: {outputGdbPath}\n📊 Feature Datasets creados: {string.Join(", ", datasetsCreated)}\n📊 Resumen por dataset: {string.Join("; ", datasetSummaries)}\n📊 Total Feature Classes intentadas: {totalFeatureClassesAttempted}, éxitos: {totalFeatureClassesSucceeded}";
-                var bufferInfo = hasBuffer ? $"\n🛟 Buffer aplicado: {bufferMeters:N2} m" : "\n🛟 Sin buffer";
+                var outputInfo = $"\n📊 Feature Datasets creados: {string.Join(", ", datasetsCreated)}\n📊 Resumen por dataset: {string.Join("; ", datasetSummaries)}\n📊 Total Feature Classes intentadas: {totalFeatureClassesAttempted}, éxitos: {totalFeatureClassesSucceeded}";
+                var bufferInfo = hasBuffer ? $"\n Buffer aplicado: {bufferMeters:N2} m" : "\n Sin buffer";
 
                 var failuresText = string.Empty;
                 if (failureCount > 0)

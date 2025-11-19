@@ -274,6 +274,34 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
+    private string _outputLocation = string.Empty;
+    public string OutputLocation
+    {
+        get => _outputLocation;
+        private set
+        {
+            if (_outputLocation != value)
+            {
+                _outputLocation = value;
+                NotifyPropertyChanged(nameof(OutputLocation));
+            }
+        }
+    }
+
+    private bool _hasOutputLocation = false;
+    public bool HasOutputLocation
+    {
+        get => _hasOutputLocation;
+        private set
+        {
+            if (_hasOutputLocation != value)
+            {
+                _hasOutputLocation = value;
+                NotifyPropertyChanged(nameof(HasOutputLocation));
+            }
+        }
+    }
+
     public bool CanExecuteClip => (
         !string.IsNullOrWhiteSpace(OutputGeodatabase) &&
         !string.IsNullOrWhiteSpace(FeatureDataset) &&
@@ -370,14 +398,12 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
     private void OnOutputGeodatabase()
     {
-        var filter = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases");
-
         var dlg = new OpenItemDialog
         {
-            Title = "Seleccionar Geodatabase de Salida",
-            BrowseFilter = filter,
+            Title = "Seleccionar Carpeta de Salida",
             MultiSelect = false,
-            InitialLocation = Project.Current?.HomeFolderPath
+            InitialLocation = Project.Current?.HomeFolderPath,
+            BrowseFilter = BrowseProjectFilter.GetFilter("esri_browseDialogFilters_folders")
         };
 
         var ok = dlg.ShowDialog();
@@ -588,7 +614,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
         try
         {
-            var parentFolder = Path.GetDirectoryName(OutputGeodatabase);
+            // Use the selected folder directly (OutputGeodatabase is now a folder path, not a GDB path)
+            var parentFolder = OutputGeodatabase;
             
             if (string.IsNullOrWhiteSpace(parentFolder) || !Directory.Exists(parentFolder))
             {
@@ -632,6 +659,10 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 IsRoundedBufferEnabled);
 
             StatusMessage = success ? $"✓ {message}" : $"❌ {message}";
+
+            // Expose the output location separately so the view can render the label in bold via XAML
+            OutputLocation = outputGdbPath ?? string.Empty;
+            HasOutputLocation = !string.IsNullOrWhiteSpace(OutputLocation);
         }
         catch (Exception ex)
         {
@@ -711,7 +742,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
             if (_selectedPolygon != null)
             {
-                var area = _selectedPolygon.Area;
+                var area = await CalculateAreaInSquareMetersAsync(_selectedPolygon);
                 var areaText = area >= 1 ? $"{area:N0} m²" : $"{area:N2} m²";
                 SelectionStatus = $"✓ Polígono seleccionado (Área: {areaText})";
             }
@@ -775,6 +806,71 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             }
 
             return null;
+        });
+    }
+
+    private async Task<double> CalculateAreaInSquareMetersAsync(Polygon polygon)
+    {
+        return await QueuedTask.Run(() =>
+        {
+            if (polygon == null)
+                return 0.0;
+
+            var spatialRef = polygon.SpatialReference;
+            
+            if (spatialRef == null)
+            {
+                System.Diagnostics.Debug.WriteLine("⚠️ SpatialReference es null, retornando área directa");
+                return polygon.Area;
+            }
+
+            // Si el sistema de referencia es geográfico (lat/lon), necesitamos proyectar
+            if (spatialRef.IsGeographic)
+            {
+                System.Diagnostics.Debug.WriteLine($"✓ Sistema geográfico detectado (WKID: {spatialRef.Wkid}), proyectando para calcular área");
+                
+                // Proyectar a Web Mercator (WKID 3857) para calcular área en metros
+                var webMercatorSR = SpatialReferenceBuilder.CreateSpatialReference(3857);
+                
+                try
+                {
+                    var projectedPolygon = GeometryEngine.Instance.Project(polygon, webMercatorSR) as Polygon;
+                    if (projectedPolygon != null)
+                    {
+                        var projectedArea = projectedPolygon.Area;
+                        System.Diagnostics.Debug.WriteLine($"  Área calculada (proyectada): {projectedArea:N2} m²");
+                        return projectedArea;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Error al proyectar polígono: {ex.Message}");
+                }
+            }
+            
+            // Si es un sistema proyectado, verificar las unidades
+            var unit = spatialRef.Unit;
+            
+            if (unit == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Unit es null, usando área directa: {polygon.Area}");
+                return polygon.Area;
+            }
+
+            var area = polygon.Area;
+            var conversionFactor = unit.ConversionFactor;
+            
+            System.Diagnostics.Debug.WriteLine($"ℹ️ Sistema proyectado detectado (WKID: {spatialRef.Wkid})");
+            System.Diagnostics.Debug.WriteLine($"  Unidad: {unit.Name}, Factor de conversión: {conversionFactor}");
+            System.Diagnostics.Debug.WriteLine($"  Área en unidades nativas: {area}");
+            
+            // El factor de conversión convierte de la unidad nativa a metros
+            // Para área, necesitamos el cuadrado del factor
+            var areaInSquareMeters = area * conversionFactor * conversionFactor;
+            
+            System.Diagnostics.Debug.WriteLine($"  Área en metros cuadrados: {areaInSquareMeters:N2} m²");
+            
+            return areaInSquareMeters;
         });
     }
 }
