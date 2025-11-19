@@ -214,7 +214,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
-    private bool _isRoundedBufferEnabled = false;
+    private bool _isRoundedBufferEnabled = true;
     public bool IsRoundedBufferEnabled
     {
         get => _isRoundedBufferEnabled;
@@ -224,6 +224,23 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             {
                 _isRoundedBufferEnabled = value;
                 NotifyPropertyChanged(nameof(IsRoundedBufferEnabled));
+                NotifyPropertyChanged(nameof(IsFlatBufferEnabled));
+            }
+        }
+    }
+
+    // Inverse convenience property for the UI: bind checkbox to enable flat (rectas) buffer
+    public bool IsFlatBufferEnabled
+    {
+        get => !_isRoundedBufferEnabled;
+        set
+        {
+            var newRounded = !value;
+            if (_isRoundedBufferEnabled != newRounded)
+            {
+                _isRoundedBufferEnabled = newRounded;
+                NotifyPropertyChanged(nameof(IsRoundedBufferEnabled));
+                NotifyPropertyChanged(nameof(IsFlatBufferEnabled));
             }
         }
     }

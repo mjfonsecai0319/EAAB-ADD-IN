@@ -8,23 +8,26 @@
     xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
     mc:Ignorable="d"
     d:DesignHeight="600"
-    d:DesignWidth="450"
->
+    d:DesignWidth="450">
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Keep ArcGIS theme resources -->
                 <extensions:DesignOnlyResourceDictionary
                     Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- Converters -->
             <conv:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <conv:InverseBooleanConverter x:Key="InverseBooleanConverter" />
 
+            <!-- Core styles (centralizados y coherentes) -->
             <Style x:Key="HeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_TextPrimaryBrush}" />
-                <Setter Property="Margin" Value="0,0,0,5" />
+                <Setter Property="Margin" Value="0,0,0,6" />
             </Style>
 
             <Style x:Key="BodyTextStyle" TargetType="TextBlock">
@@ -46,6 +49,8 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Width" Value="28" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{DynamicResource Esri_BackgroundPressedBrush}" />
@@ -58,7 +63,7 @@
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Height" Value="32" />
-                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="Padding" Value="16,6" />
                 <Setter Property="FontWeight" Value="Medium" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
@@ -72,14 +77,13 @@
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="SecondaryButtonStyle" TargetType="Button"
-                BasedOn="{StaticResource {x:Type Button}}">
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Esri_Blue}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Height" Value="32" />
-                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="Padding" Value="12,6" />
                 <Setter Property="FontWeight" Value="Medium" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Style.Triggers>
@@ -102,11 +106,22 @@
             </Style>
 
             <Style x:Key="ThemedNumberBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ThemedTextBoxStyle}">
-                <Setter Property="Margin" Value="0,0,0,15" />
+                <Setter Property="Margin" Value="0,0,0,12" />
+            </Style>
+
+            <!-- Small utility style for section containers -->
+            <Style x:Key="SectionBorderStyle" TargetType="Border">
+                <Setter Property="BorderBrush" Value="{DynamicResource Esri_BorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Background" Value="{DynamicResource Esri_BackgroundHoverBrush}" />
+                <Setter Property="Padding" Value="10" />
+                <Setter Property="Margin" Value="0,10,0,10" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
+    <!-- Root scroll area -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0">
         <Grid Margin="20">
             <Grid.RowDefinitions>
@@ -115,14 +130,11 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0">
-                <TextBlock
-                    Text="Workspace *"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                />
-
-                <Grid Margin="0,0,0,15">
+            <!-- Main content column -->
+            <StackPanel Grid.Row="0" Orientation="Vertical">
+                <!-- Workspace -->
+                <TextBlock Text="Workspace *" Style="{StaticResource HeaderTextStyle}" />
+                <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="10" />
@@ -133,33 +145,23 @@
                         Grid.Column="0"
                         Text="{Binding OutputGeodatabase, Mode=OneWay}"
                         IsReadOnly="True"
-                        Style="{StaticResource ThemedTextBoxStyle}"
-                    />
+                        Style="{StaticResource ThemedTextBoxStyle}" />
 
                     <Button
                         Grid.Column="2"
                         Style="{StaticResource BrowseButtonStyle}"
-                        Command="{Binding OutputGeodatabaseCommand}"
-                        Height="28"
-                        Width="28"
-                    >
+                        Command="{Binding OutputGeodatabaseCommand}">
                         <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
-                <TextBlock
-                    Text="Feature Dataset de origen *"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                />
+                <!-- Feature Dataset origen -->
+                <TextBlock Text="Feature Dataset de origen *" Style="{StaticResource HeaderTextStyle}" Margin="0,6,0,0" />
+                <TextBlock Text="Selecciona una Geodatabase (.gdb) que contenga las redes"
+                           Style="{StaticResource DisabledTextStyle}"
+                           Margin="0,0,0,8" />
 
-                <TextBlock
-                    Text="Selecciona una Geodatabase (.gdb) que contenga las redes"
-                    Style="{StaticResource DisabledTextStyle}"
-                    Margin="0,0,0,8"
-                />
-
-                <Grid Margin="0,0,0,15">
+                <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="10" />
@@ -170,146 +172,89 @@
                         Grid.Column="0"
                         Text="{Binding FeatureDataset, Mode=OneWay}"
                         IsReadOnly="True"
-                        Style="{StaticResource ThemedTextBoxStyle}"
-                    />
+                        Style="{StaticResource ThemedTextBoxStyle}" />
 
                     <Button
                         Grid.Column="2"
                         Style="{StaticResource BrowseButtonStyle}"
-                        Command="{Binding FeatureDatasetCommand}"
-                        Height="28"
-                        Width="28"
-                    >
+                        Command="{Binding FeatureDatasetCommand}">
                         <Image Width="16" Height="16" Source="pack://application:,,,/EAABAddIn;component/Images/FolderIcon16.png" />
                     </Button>
                 </Grid>
 
-                <TextBlock
-                    Text="Selección"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,15,0,15"
-                />
+                <!-- Selección y estado -->
+                <TextBlock Text="Selección" Style="{StaticResource HeaderTextStyle}" Margin="0,12,0,8" />
+                <TextBlock Text="Polígono de referencia" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,6" />
+                <TextBlock Text="{Binding SelectionStatus}" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,12" />
 
-                <TextBlock
-                    Text="Polígono de referencia"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,8"
-                />
+                <!-- ===== Buffer Section (modernizado) ===== -->
+                <StackPanel Margin="0,6,0,0">
+                    <CheckBox
+                        x:Name="EnableBufferCheck"
+                        IsChecked="{Binding IsBufferEnabled, Mode=TwoWay}"
+                        Margin="0,0,0,8">
+                        <TextBlock Text="Habilitar Buffer" FontSize="14" FontWeight="SemiBold" />
+                    </CheckBox>
 
-                <TextBlock
-                    Text="{Binding SelectionStatus}"
-                    Style="{StaticResource DisabledTextStyle}"
-                    Margin="0,0,0,15"
-                />
+                    <StackPanel Visibility="{Binding IsBufferEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="Buffer (metros)" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,4" />
 
-                <CheckBox
-                    x:Name="EnableBufferCheck"
-                    IsChecked="{Binding IsBufferEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Margin="0,0,0,5">
-                    <TextBlock
-                        Text="Habilitar Buffer"
-                        Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                        FontWeight="SemiBold"
-                        FontSize="14" />
-                </CheckBox>
+                        <TextBlock Text="Ingrese 0 para usar el polígono sin expansión."
+                                   Style="{StaticResource DisabledTextStyle}"
+                                   Margin="0,0,0,8" />
 
-                <TextBlock
-                    Text="Buffer (metros)"
-                    Style="{StaticResource HeaderTextStyle}"
-                    Margin="0,0,0,10"
-                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                />
+                        <TextBox
+                            Text="{Binding BufferMeters, UpdateSourceTrigger=PropertyChanged}"
+                            Style="{StaticResource ThemedNumberBoxStyle}"
+                            IsEnabled="{Binding IsBufferEnabled}" />
 
-                <TextBlock
-                    Text="Ingrese 0 para usar el polígono sin expansión."
-                    Style="{StaticResource DisabledTextStyle}"
-                    Margin="0,0,0,5"
-                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
-                    Foreground="{DynamicResource Esri_TextDisabledBrush}"
-                />
+                        <CheckBox
+                            x:Name="FlatBufferCheck"
+                            IsChecked="{Binding IsFlatBufferEnabled, Mode=TwoWay}"
+                            Margin="0,0,0,8"
+                            IsEnabled="{Binding IsBufferEnabled}">
+                            <TextBlock Text="Usar puntas rectas (aprox.)" FontSize="12" />
+                            <CheckBox.ToolTip>
+                                <TextBlock TextWrapping="Wrap" MaxWidth="320">
+                                    <Run Text="Activado: " FontWeight="Bold"/>
+                                    <Run Text="Genera puntas más rectas (APROXIMACIÓN). Puede alterar ligeramente la geometría fuera del buffer exacto."/>
+                                    <LineBreak/>
+                                    <LineBreak/>
+                                    <Run Text="Desactivado (Recomendado): " FontWeight="Bold"/>
+                                    <Run Text="Buffer con puntas redondeadas - resultado exacto y más consistente."/>
+                                </TextBlock>
+                            </CheckBox.ToolTip>
+                        </CheckBox>
 
-                <TextBox
-                    Style="{StaticResource ThemedNumberBoxStyle}"
-                    Text="{Binding BufferMeters, UpdateSourceTrigger=PropertyChanged}"
-                    IsEnabled="{Binding ElementName=EnableBufferCheck, Path=IsChecked}"
-                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"
-                    Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                />
-
-                <CheckBox
-                    x:Name="RoundedBufferCheck"
-                    IsChecked="{Binding IsRoundedBufferEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Margin="0,0,0,5"
-                    IsEnabled="{Binding ElementName=EnableBufferCheck, Path=IsChecked}"
-                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="Aplicar puntas redondeadas al buffer (recomendado)" Foreground="{DynamicResource Esri_TextPrimaryBrush}" />
-                    <CheckBox.ToolTip>
-                        <TextBlock TextWrapping="Wrap" MaxWidth="320">
-                            <Run Text="Activado (Recomendado): " FontWeight="Bold"/>
-                            <Run Text="Buffer con puntas redondeadas - resultado exacto y preciso"/>
-                            <LineBreak/>
-                            <LineBreak/>
-                            <Run Text="Desactivado: " FontWeight="Bold"/>
-                            <Run Text="Buffer con puntas más rectas - resultado APROXIMADO. Puede presentar diferencias en la geometría."/>
-                        </TextBlock>
-                    </CheckBox.ToolTip>
-                </CheckBox>
-                
-                <Border
-                    BorderBrush="{DynamicResource Esri_BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Background="{DynamicResource Esri_BackgroundHoverBrush}"
-                    Padding="8"
-                    Margin="0,0,0,15"
-                    Visibility="{Binding ElementName=EnableBufferCheck, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel>
-                        <TextBlock
-                            Style="{StaticResource DisabledTextStyle}"
-                            FontSize="10"
-                            TextWrapping="Wrap">
-                            <Run Text="Nota: " FontWeight="Bold"/>
-                            <Run Text="Por defecto, se aplica buffer con puntas redondeadas (exacto). La opción de puntas rectas es una aproximación que puede alterar ligeramente la geometría."/>
-                        </TextBlock>
+                        <Border Style="{StaticResource SectionBorderStyle}">
+                            <TextBlock Style="{StaticResource DisabledTextStyle}" FontSize="11" TextWrapping="Wrap">
+                                <Run Text="Nota: " FontWeight="Bold"/>
+                                <Run Text="Por defecto, el buffer aplica puntas redondeadas (exacto). La opción de puntas rectas es una aproximación y puede alterar ligeramente la geometría."/>
+                            </TextBlock>
+                        </Border>
                     </StackPanel>
-                </Border>
+                </StackPanel>
+                <!-- ===== end buffer ===== -->
 
-                <!-- Sección de selección de Feature Classes -->
-                <Border
-                    BorderBrush="{DynamicResource Esri_BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Background="{DynamicResource Esri_BackgroundHoverBrush}"
-                    Padding="10"
-                    Margin="0,10,0,15"
-                    Visibility="{Binding HasFeatureClasses, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <!-- ===== Feature Classes selection ===== -->
+                <Border Style="{StaticResource SectionBorderStyle}" Visibility="{Binding HasFeatureClasses, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>
-                        <Grid Margin="0,0,0,10">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock
-                                Grid.Column="0"
-                                Text="Feature Classes para Clip"
-                                Style="{StaticResource HeaderTextStyle}"
-                                Margin="0"
-                            />
-
-                            <TextBlock
-                                Grid.Column="1"
-                                Style="{StaticResource BodyTextStyle}"
-                                Margin="0">
-                                <Run Text="Seleccionadas:" />
-                                <Run Text="{Binding SelectedFeatureClassesCount, Mode=OneWay}" FontWeight="Bold" />
-                                <Run Text="/" />
-                                <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}" />
+                            <TextBlock Grid.Column="0" Text="Feature Classes para Clip" Style="{StaticResource HeaderTextStyle}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <Run Text="Seleccionadas: "/>
+                                <Run Text="{Binding SelectedFeatureClassesCount, Mode=OneWay}" FontWeight="Bold"/>
+                                <Run Text=" / "/>
+                                <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}"/>
                             </TextBlock>
                         </Grid>
 
-                        <!-- Barra de búsqueda -->
+                        <!-- Search bar -->
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -324,6 +269,7 @@
                                 Height="28"
                                 VerticalContentAlignment="Center">
                                 <TextBox.Resources>
+                                    <!-- Placeholder visual using VisualBrush when Text == empty -->
                                     <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource ThemedTextBoxStyle}">
                                         <Style.Triggers>
                                             <Trigger Property="Text" Value="">
@@ -331,7 +277,7 @@
                                                     <Setter.Value>
                                                         <VisualBrush Stretch="None" AlignmentX="Left">
                                                             <VisualBrush.Visual>
-                                                                <TextBlock 
+                                                                <TextBlock
                                                                     Text="🔍 Buscar Feature Classes..."
                                                                     Foreground="{DynamicResource Esri_TextDisabledBrush}"
                                                                     FontSize="11"
@@ -354,30 +300,26 @@
                                 Height="28"
                                 Width="28"
                                 ToolTip="Limpiar búsqueda">
-                                <TextBlock Text="✕" FontSize="14" FontWeight="Bold" />
+                                <TextBlock Text="✕" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </Button>
                         </Grid>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <Button
                                 Content="Seleccionar Todas"
                                 Style="{StaticResource SecondaryButtonStyle}"
-                                Height="24"
-                                Padding="8,4"
-                                FontSize="10"
-                                Margin="0,0,5,0"
+                                Height="28"
+                                Padding="10,4"
+                                Margin="0,0,8,0"
                                 Command="{Binding SelectAllFilteredCommand}"
-                                ToolTip="Selecciona todas las Feature Classes visibles en la lista filtrada"
-                            />
+                                ToolTip="Selecciona todas las Feature Classes visibles en la lista filtrada"/>
                             <Button
                                 Content="Deseleccionar Todas"
                                 Style="{StaticResource SecondaryButtonStyle}"
-                                Height="24"
-                                Padding="8,4"
-                                FontSize="10"
+                                Height="28"
+                                Padding="10,4"
                                 Command="{Binding DeselectAllFilteredCommand}"
-                                ToolTip="Deselecciona todas las Feature Classes visibles en la lista filtrada"
-                            />
+                                ToolTip="Deselecciona todas las Feature Classes visibles en la lista filtrada"/>
                         </StackPanel>
 
                         <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
@@ -389,59 +331,43 @@
                                             Content="{Binding DisplayName}"
                                             Margin="0,2"
                                             Foreground="{DynamicResource Esri_TextPrimaryBrush}"
-                                            FontSize="11"
-                                        />
+                                            FontSize="11" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <TextBlock
-                            Style="{StaticResource DisabledTextStyle}"
-                            Margin="0,5,0,0"
-                            FontSize="10">
-                            <Run Text="Mostrando" />
-                            <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}" FontWeight="Bold" />
-                            <Run Text="de" />
-                            <Run Text="{Binding AvailableFeatureClasses.Count, Mode=OneWay}" FontWeight="Bold" />
-                            <Run Text="Feature Classes" />
+                        <TextBlock Style="{StaticResource DisabledTextStyle}" Margin="0,8,0,0" FontSize="10">
+                            <Run Text="Mostrando "/>
+                            <Run Text="{Binding FilteredFeatureClassesCount, Mode=OneWay}" FontWeight="Bold"/>
+                            <Run Text=" de "/>
+                            <Run Text="{Binding AvailableFeatureClasses.Count, Mode=OneWay}" FontWeight="Bold"/>
+                            <Run Text=" Feature Classes"/>
                         </TextBlock>
                     </StackPanel>
                 </Border>
+                <!-- ===== end Feature Classes ===== -->
 
-                <TextBlock
-                    Text="{Binding NetworksStatus}"
-                    Style="{StaticResource BodyTextStyle}"
-                    Margin="0,0,0,15"
-                />
+                <TextBlock Text="{Binding NetworksStatus}" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" />
             </StackPanel>
 
-            <StackPanel Grid.Row="2">
-                <TextBlock
-                    Text="{Binding StatusMessage}"
-                    Style="{StaticResource BodyTextStyle}"
-                    Margin="0,0,0,8"
-                />
-                <ProgressBar
-                    Height="4"
-                    IsIndeterminate="True"
-                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                />
+            <!-- Footer panel with action buttons -->
+            <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,12,0,0">
+                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource BodyTextStyle}" Margin="0,0,0,8" />
+                <ProgressBar Height="4" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,10,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                     <Button
                         Content="Limpiar"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Margin="0,0,10,0"
                         Command="{Binding ClearFormCommand}"
-                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
-                    />
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"/>
                     <Button
                         Content="Cortar"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Command="{Binding ExecuteClipCommand}"
-                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
-                    />
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"/>
                 </StackPanel>
             </StackPanel>
         </Grid>
