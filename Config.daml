@@ -50,6 +50,7 @@
           <group refID="EAABAddIn_Group_DrawingTools" />
           <group refID="EAABAddIn_Group_Migracion" />
           <group refID="EAABAddIn_Group_ClipFeatureDataset" />
+          <group refID="EAABAddIn_Group_Hash" />
         </tab>
       </tabs>
 
@@ -73,6 +74,10 @@
 
         <group id="EAABAddIn_Group_ClipFeatureDataset" caption="Procesos" appearsOnAddInTab="false" keytip="P1" smallImage="">
           <button refID="EAABAddIn_ClipFeatureDatasetButton" size="large" />
+        </group>
+
+        <group id="EAABAddIn_Group_Hash" caption="Hash" appearsOnAddInTab="false" keytip="H1" smallImage="Images\Hash16.png">
+          <button refID="EAABAddIn_GeneradorHashButton" size="large" />
         </group>
       </groups>
 
@@ -200,6 +205,18 @@
           <tooltip heading="Recortar Capas">Realiza un clip de un Feature Dataset completo sobre un polígono seleccionado.<disabledText /></tooltip>
         </button>
 
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.GeneradorHashButton"
+          id="EAABAddIn_GeneradorHashButton"
+          caption="Generar Hash"
+          smallImage="Images\Hash16.png"
+          largeImage="Images\Hash32.png"
+          condition="EAABAddIn_DomainCheck"
+          keytip="B10"
+        >
+          <tooltip heading="Generador de Hash">Genera y verifica hashes SHA256 de archivos y carpetas.<disabledText /></tooltip>
+        </button>
+
       </controls>
 
 
@@ -247,6 +264,17 @@
           condition="EAABAddIn_DomainCheck"
         >
           <content className="EAABAddIn.Src.Presentation.View.Dockpanes.ClipFeatureDatasetDockpaneView" />
+        </dockPane>
+
+        <dockPane
+          className="EAABAddIn.Src.Presentation.ViewModel.DockPanes.GeneradorHashDockpaneViewModel"
+          id="EAABAddIn_Dockpane_GeneradorHash"
+          caption="Generador de Hash"
+          dock="group"
+          dockWith="esri_core_projectDockPane"
+          condition="EAABAddIn_DomainCheck"
+        >
+          <content className="EAABAddIn.Src.Presentation.View.Dockpanes.GeneradorHashDockpaneView" />
         </dockPane>
       </dockPanes>
     </insertModule>

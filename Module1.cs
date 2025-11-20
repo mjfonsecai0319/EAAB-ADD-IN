@@ -179,8 +179,10 @@ namespace EAABAddIn
         {
             var dockPane1 = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_AddressGeocoder");
             var dockPane2 = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_Cierres");
+            var dockPane3 = FrameworkApplication.DockPaneManager.Find("EAABAddIn_Dockpane_GeneradorHash");
             dockPane1?.UnPin();
             dockPane2?.UnPin();
+            dockPane3?.UnPin();
         }
     }
 }
