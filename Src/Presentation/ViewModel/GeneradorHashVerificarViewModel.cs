@@ -106,19 +106,29 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private void OnExaminarArchivo()
         {
+            var filter = new BrowseProjectFilter("esri_browseDialogFilters_all");
             var dlg = new OpenItemDialog
             {
                 Title = "Seleccionar Archivo a Verificar",
+                BrowseFilter = filter,
                 MultiSelect = false,
-                InitialLocation = Project.Current?.HomeFolderPath,
-                BrowseFilter = BrowseProjectFilter.GetFilter("esri_browseDialogFilters_all")
+                InitialLocation = Project.Current?.HomeFolderPath
             };
 
-            var ok = dlg.ShowDialog();
-            if (ok == true && dlg.Items != null && dlg.Items.Count > 0)
+            if (dlg.ShowDialog() == true && dlg.Items != null && dlg.Items.Count > 0)
             {
-                var item = dlg.Items[0];
-                ArchivoVerificar = item.Path;
+                var path = dlg.Items[0].Path;
+                
+                // Convertir URI a ruta local si es necesario
+                if (Uri.TryCreate(path, UriKind.Absolute, out Uri uri))
+                {
+                    if (uri.IsFile)
+                    {
+                        path = uri.LocalPath;
+                    }
+                }
+                
+                ArchivoVerificar = path;
             }
         }
 

@@ -25,8 +25,11 @@ namespace EAABAddIn.Src.Application.UseCases
                 if (string.IsNullOrWhiteSpace(gdbPath))
                     return (false, string.Empty, string.Empty, "❌ La ruta no puede estar vacía");
 
+                // Normalizar la ruta
+                gdbPath = Path.GetFullPath(gdbPath);
+
                 if (!Directory.Exists(gdbPath))
-                    return (false, string.Empty, string.Empty, $"❌ La ruta no existe: {gdbPath}");
+                    return (false, string.Empty, string.Empty, $"❌ La ruta no existe:\n{gdbPath}");
 
                 // Advertencia si no parece ser una GDB
                 var esGdb = CompressionService.EsGDB(gdbPath);

@@ -22,8 +22,11 @@ namespace EAABAddIn.Src.Application.Services
             if (string.IsNullOrWhiteSpace(carpetaPath))
                 return (false, string.Empty, "La ruta de la carpeta no puede estar vacía");
 
+            // Normalizar la ruta
+            carpetaPath = Path.GetFullPath(carpetaPath);
+
             if (!Directory.Exists(carpetaPath))
-                return (false, string.Empty, $"La carpeta no existe: {carpetaPath}");
+                return (false, string.Empty, $"La carpeta no existe:\n{carpetaPath}");
 
             try
             {

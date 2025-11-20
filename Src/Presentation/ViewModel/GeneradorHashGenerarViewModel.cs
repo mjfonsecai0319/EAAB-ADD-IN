@@ -111,19 +111,34 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private void OnExaminarCarpeta()
         {
+            // Usar el filtro apropiado según la funcionalidad
+            var filterName = EsFuncionalidad1 
+                ? "esri_browseDialogFilters_all"  // Permite carpetas y GDBs
+                : "esri_browseDialogFilters_folders"; // Solo carpetas
+            
+            var filter = new BrowseProjectFilter(filterName);
             var dlg = new OpenItemDialog
             {
                 Title = EsFuncionalidad1 ? "Seleccionar Carpeta o GDB" : "Seleccionar Carpeta",
+                BrowseFilter = filter,
                 MultiSelect = false,
-                InitialLocation = Project.Current?.HomeFolderPath,
-                BrowseFilter = BrowseProjectFilter.GetFilter("esri_browseDialogFilters_folders")
+                InitialLocation = Project.Current?.HomeFolderPath
             };
 
-            var ok = dlg.ShowDialog();
-            if (ok == true && dlg.Items != null && dlg.Items.Count > 0)
+            if (dlg.ShowDialog() == true && dlg.Items != null && dlg.Items.Count > 0)
             {
-                var item = dlg.Items[0];
-                RutaCarpetaGenerar = item.Path;
+                var path = dlg.Items[0].Path;
+                
+                // Convertir URI a ruta local si es necesario
+                if (Uri.TryCreate(path, UriKind.Absolute, out Uri uri))
+                {
+                    if (uri.IsFile)
+                    {
+                        path = uri.LocalPath;
+                    }
+                }
+                
+                RutaCarpetaGenerar = path;
             }
         }
 
@@ -132,6 +147,13 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             if (string.IsNullOrWhiteSpace(RutaCarpetaGenerar))
             {
                 ResultadoGenerar = "❌ Por favor seleccione una carpeta";
+                return;
+            }
+
+            // Validar que la ruta existe antes de continuar
+            if (!Directory.Exists(RutaCarpetaGenerar))
+            {
+                ResultadoGenerar = $"❌ La carpeta no existe:\n{RutaCarpetaGenerar}";
                 return;
             }
 
