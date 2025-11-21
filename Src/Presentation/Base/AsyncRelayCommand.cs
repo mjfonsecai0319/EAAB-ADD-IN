@@ -25,12 +25,25 @@ namespace EAABAddIn.Src.Presentation.Base
         public async void Execute(object parameter)
         {
             if (!CanExecute(parameter))
+            {
+                System.Diagnostics.Debug.WriteLine("AsyncRelayCommand: CanExecute returned false");
                 return;
+            }
+            
             _isExecuting = true;
             RaiseCanExecuteChanged();
+            
             try
             {
+                System.Diagnostics.Debug.WriteLine("AsyncRelayCommand: Executing command...");
                 await _execute();
+                System.Diagnostics.Debug.WriteLine("AsyncRelayCommand: Command completed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"AsyncRelayCommand: Exception caught: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"AsyncRelayCommand: StackTrace: {ex.StackTrace}");
+                throw; // Re-lanzar la excepción para que no se oculte
             }
             finally
             {

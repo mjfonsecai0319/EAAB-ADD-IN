@@ -43,8 +43,32 @@ namespace EAABAddIn.Src.Presentation.ViewModel.DockPanes
 
             if (dockPane is not null)
             {
+                var vm = dockPane as GeneradorHashDockpaneViewModel;
+                vm?.SetGenerarTab();
                 dockPane.Activate();
             }
+        }
+
+        internal static void ShowVerificarTab()
+        {
+            DockPane dockPane = FrameworkApplication.DockPaneManager.Find(_dockPaneID);
+
+            if (dockPane is not null)
+            {
+                var vm = dockPane as GeneradorHashDockpaneViewModel;
+                vm?.SetVerificarTab();
+                dockPane.Activate();
+            }
+        }
+
+        internal void SetGenerarTab()
+        {
+            SelectedPanelHeaderIndex = 0; // Índice 0 corresponde a la pestaña Generar
+        }
+
+        internal void SetVerificarTab()
+        {
+            SelectedPanelHeaderIndex = 1; // Índice 1 corresponde a la pestaña Verificar
         }
 
         #region Properties

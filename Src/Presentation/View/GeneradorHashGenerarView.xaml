@@ -80,7 +80,7 @@
                       Height="32"
                       Margin="0,0,0,15">
                 <ComboBoxItem Content="Comprimir GDB y Generar Hash" />
-                <ComboBoxItem Content="Generar Hash de Archivos en Carpeta" />
+                <ComboBoxItem Content="Generar Hash de archivos en carpeta" />
             </ComboBox>
 
             <!-- Ruta de Carpeta/GDB -->
@@ -117,7 +117,7 @@
                     Margin="0,0,0,15"
                     Visibility="{Binding EsFuncionalidad1, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <TextBlock TextWrapping="Wrap" FontSize="11">
-                    <Run Text="ℹ️  Esta función comprimirá la carpeta/GDB en un archivo ZIP y generará:" FontWeight="SemiBold"/>
+                    <Run Text="ℹ️  Esta función comprimirá la carpeta/GDB en un archivo ZIP y generará:" FontWeight="Bold"/>
                     <LineBreak/>
                     <Run Text="• Archivo ZIP: nombreGDB_AAAAMMDDHHMMSS.zip"/>
                     <LineBreak/>
@@ -177,7 +177,7 @@
                         Command="{Binding LimpiarCommand}"
                         Margin="0,0,8,0" />
                 
-                <Button Content="GENERAR HASH"
+                <Button Content="Generar Hash"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Command="{Binding GenerarHashCommand}" />
             </StackPanel>

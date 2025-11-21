@@ -51,6 +51,8 @@
     <Content Include="Images\Corte32.png" />
     <Content Include="Images\Hash16.png" />
     <Content Include="Images\Hash32.png" />
+    <Content Include="Images\Verificar16.png" />
+    <Content Include="Images\Verificar32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Content Include="DarkImages\Geocoder_Local.png" />
@@ -71,6 +73,8 @@
     <Content Include="DarkImages\Corte32.png" />
     <Content Include="DarkImages\Hash16.png" />
     <Content Include="DarkImages\Hash32.png" />
+    <Content Include="DarkImages\Verificar16.png" />
+    <Content Include="DarkImages\Verificar32.png" />
   </ItemGroup>
 
   <ItemGroup>

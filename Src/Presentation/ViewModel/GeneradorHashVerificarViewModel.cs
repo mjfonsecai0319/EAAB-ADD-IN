@@ -7,6 +7,7 @@ using System.Windows.Input;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using EAABAddIn.Src.Application.UseCases;
+using EAABAddIn.Src.Application.Services;
 using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
@@ -71,6 +72,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 {
                     _resultadoVerificar = value;
                     NotifyPropertyChanged(nameof(ResultadoVerificar));
+                    NotifyPropertyChanged(nameof(TieneResultado));
                 }
             }
         }
@@ -90,6 +92,24 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         }
 
         public bool PuedeVerificarHash => !string.IsNullOrWhiteSpace(ArchivoVerificar) && !IsBusy;
+        
+        public bool TieneResultado => !string.IsNullOrWhiteSpace(ResultadoVerificar);
+        public bool TieneMensajeEstado => !string.IsNullOrWhiteSpace(StatusMessage);
+
+        // Sobrescribir StatusMessage para notificar TieneMensajeEstado
+        private string _statusMessageLocal = string.Empty;
+        public new string StatusMessage
+        {
+            get => base.StatusMessage;
+            set
+            {
+                if (base.StatusMessage != value)
+                {
+                    base.StatusMessage = value;
+                    NotifyPropertyChanged(nameof(TieneMensajeEstado));
+                }
+            }
+        }
 
         // ==================== CONSTRUCTOR ====================
 
@@ -100,6 +120,8 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             ExaminarArchivoCommand = new RelayCommand(OnExaminarArchivo);
             VerificarHashCommand = new AsyncRelayCommand(OnVerificarHashAsync, () => PuedeVerificarHash);
             LimpiarCommand = new RelayCommand(OnLimpiar);
+            
+            System.Diagnostics.Debug.WriteLine("GeneradorHashVerificarViewModel: Constructor ejecutado");
         }
 
         // ==================== MÉTODOS ====================
@@ -147,15 +169,23 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 VerificacionExitosa = false;
                 StatusMessage = "Verificando integridad...";
 
+                // Logging para depuración
+                System.Diagnostics.Debug.WriteLine($"Iniciando verificación de: {ArchivoVerificar}");
+
                 var (ok, coinciden, hashEsperado, hashActual, message) = await _generarHashUseCase.VerificarIntegridadArchivo(ArchivoVerificar);
                 
+                System.Diagnostics.Debug.WriteLine($"Verificación completada: ok={ok}, coinciden={coinciden}");
+                System.Diagnostics.Debug.WriteLine($"Mensaje: {message}");
+
                 ResultadoVerificar = message;
                 VerificacionExitosa = ok && coinciden;
                 StatusMessage = coinciden ? "✅ Verificación exitosa" : "❌ Verificación fallida";
             }
             catch (Exception ex)
             {
-                ResultadoVerificar = $"❌ Error inesperado: {ex.Message}";
+                var errorCompleto = $"❌ Error inesperado: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}";
+                System.Diagnostics.Debug.WriteLine(errorCompleto);
+                ResultadoVerificar = errorCompleto;
                 StatusMessage = "❌ Error";
                 VerificacionExitosa = false;
             }
@@ -185,7 +215,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
-                var hashPath = Application.Services.HashService.BuscarArchivoHashEnCarpeta(ArchivoVerificar);
+                var hashPath = HashService.BuscarArchivoHashEnCarpeta(ArchivoVerificar);
                 ArchivoHash = hashPath ?? "❌ No se encontró archivo HASH";
             }
             catch (Exception ex)

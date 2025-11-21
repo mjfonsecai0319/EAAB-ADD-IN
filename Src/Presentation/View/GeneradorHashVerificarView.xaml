@@ -67,7 +67,7 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="12" />
                 <Setter Property="CornerRadius" Value="4" />
-                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="Margin" Value="0,0,0,0" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -117,7 +117,7 @@
                     CornerRadius="4"
                     Margin="0,0,0,15">
                 <TextBlock TextWrapping="Wrap" FontSize="11">
-                    <Run Text="ℹ️  Verificación de Integridad:" FontWeight="SemiBold"/>
+                    <Run Text="ℹ️  Verificación de Integridad:" FontWeight="Bold"/>
                     <LineBreak/>
                     <Run Text="• Seleccione el archivo que desea verificar (ej: archivo.zip)"/>
                     <LineBreak/>
@@ -131,11 +131,10 @@
 
             <!-- Resultado de Verificación -->
             <Border Style="{StaticResource ResultBoxStyle}"
-                    Visibility="{Binding ResultadoVerificar, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    Visibility="{Binding TieneResultado, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
                     <TextBlock Text="{Binding ResultadoVerificar}"
                                TextWrapping="Wrap"
-                               FontFamily="Consolas"
                                FontSize="11"
                                Foreground="{DynamicResource Esri_TextPrimaryBrush}"/>
                 </ScrollViewer>
@@ -149,10 +148,9 @@
 
             <!-- Estado -->
             <TextBlock Text="{Binding StatusMessage}"
-                       Margin="0,0,0,15"
+                       Margin="0,10,0,15"
                        TextWrapping="Wrap"
-                       FontStyle="Italic"
-                       Visibility="{Binding StatusMessage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                       Visibility="{Binding TieneMensajeEstado, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
             <!-- Botones de Acción -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
@@ -161,7 +159,7 @@
                         Command="{Binding LimpiarCommand}"
                         Margin="0,0,8,0" />
                 
-                <Button Content="VERIFICAR INTEGRIDAD"
+                <Button Content="Verificar integridad"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Command="{Binding VerificarHashCommand}" />
             </StackPanel>

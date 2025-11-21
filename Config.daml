@@ -78,6 +78,7 @@
 
         <group id="EAABAddIn_Group_Hash" caption="Hash" appearsOnAddInTab="false" keytip="H1" smallImage="Images\Hash16.png">
           <button refID="EAABAddIn_GeneradorHashButton" size="large" />
+          <button refID="EAABAddIn_VerificarHashButton" size="large" />
         </group>
       </groups>
 
@@ -215,6 +216,18 @@
           keytip="B10"
         >
           <tooltip heading="Generador de Hash">Genera y verifica hashes SHA256 de archivos y carpetas.<disabledText /></tooltip>
+        </button>
+
+        <button
+          className="EAABAddIn.Src.Presentation.View.Buttons.VerificarHashButton"
+          id="EAABAddIn_VerificarHashButton"
+          caption="Verificar Hash"
+          smallImage="Images\Verificar16.png"
+          largeImage="Images\Verificar32.png"
+          condition="EAABAddIn_DomainCheck"
+          keytip="B11"
+        >
+          <tooltip heading="Verificar Hash">Verifica la integridad de archivos usando hashes SHA256.<disabledText /></tooltip>
         </button>
 
       </controls>

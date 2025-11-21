@@ -8,6 +8,7 @@ using System.Windows.Input;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using EAABAddIn.Src.Application.UseCases;
+using EAABAddIn.Src.Application.Services;
 using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
@@ -357,7 +358,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
             try
             {
-                var hashPath = Application.Services.HashService.BuscarArchivoHashEnCarpeta(ArchivoVerificar);
+                var hashPath = HashService.BuscarArchivoHashEnCarpeta(ArchivoVerificar);
                 ArchivoHash = hashPath ?? "❌ No se encontró archivo HASH";
             }
             catch (Exception ex)
