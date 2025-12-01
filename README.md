@@ -48,7 +48,7 @@ El sistema implementa los mapeos de clasificación, nomenclatura de feature clas
 
 ## Arquitectura del Sistema
 
-### Estructura de Carpetas
+### Estructura de Carpetas (simplificada)
 
 ```
 EAABAddIn/
@@ -57,13 +57,14 @@ EAABAddIn/
 │   │   ├── Services/
 │   │   │   ├── AddressNormalizer.cs
 │   │   │   ├── AddressSearchService.cs
-│   │   │   ├── MassiveGeocodingService.cs
-│   │   │   ├── PoiSearchService.cs
-│   │   │   └── CsvReportService.cs
+│   │   │   ├── CsvReportService.cs
+│   │   │   └── HashService.cs
 │   │   ├── UseCases/
 │   │   │   ├── MigrateAlcantarilladoUseCase.cs
 │   │   │   ├── MigrateAcueductoUseCase.cs
 │   │   │   ├── CreateGdbFromXmlUseCase.cs
+│   │   │   ├── ClipFeatureDatasetUseCase.cs
+│   │   │   ├── GenerarHashUseCase.cs
 │   │   │   └── Validation/
 │   │   │       └── ValidateDatasetsUseCase.cs
 │   │   └── DTOs/
@@ -94,12 +95,18 @@ EAABAddIn/
 │       │   ├── AddressSearchView.xaml
 │       │   ├── MassiveGeocodingView.xaml
 │       │   ├── MigrationView.xaml
+│       │   ├── GeneradorHashView.xaml
+│       │   ├── ClipFeatureDatasetView.xaml
 │       │   └── Dockpanes/
 │       │       └── MigrationDockpaneView.xaml
 │       └── ViewModel/
 │           ├── AddressSearchViewModel.cs
 │           ├── MassiveGeocodingViewModel.cs
 │           ├── MigrationViewModel.cs
+│           ├── GeneradorHashViewModel.cs
+│           ├── GeneradorHashGenerarViewModel.cs
+│           ├── GeneradorHashVerificarViewModel.cs
+│           ├── ClipFeatureDatasetViewModel.cs
 │           └── Dockpanes/
 │               └── MigrationDockpaneViewModel.cs
 │
@@ -590,7 +597,101 @@ public class CsvReportService
         return filePath;
     }
 }
+
+### 5. ClipFeatureDataset (Corte de Feature Dataset)
+
+Descripción: Herramienta para recortar (clip) un conjunto de Feature Classes contenidos en un Feature Dataset usando un polígono seleccionado en el mapa. Genera una geodatabase de salida en la carpeta seleccionada con un nombre `Clip_YYYYMMDD_HHmmss.gdb` e incluye opciones de buffer y selección por feature class.
+
+Componente principal: `ClipFeatureDatasetViewModel`
+
+- Propiedades clave:
+    - `OutputGeodatabase`: carpeta donde se creará la GDB de salida.
+    - `FeatureDataset`: ruta al Feature Dataset de origen (.gdb/.../FeatureDataset).
+    - `AvailableFeatureClasses` / `FilteredFeatureClasses`: lista de feature classes seleccionables dentro del dataset.
+    - `BufferMeters`, `IsBufferEnabled`, `IsRoundedBufferEnabled`: opciones de tamponamiento aplicadas al polígono de recorte.
+    - `OutputLocation`: ruta de la GDB o carpeta de salida (expuesta para UI / hipervínculo).
+
+- Comandos:
+    - `OutputGeodatabaseCommand`: examina la carpeta de salida.
+    - `FeatureDatasetCommand`: examina y selecciona el Feature Dataset de origen.
+    - `ExecuteClipCommand`: ejecuta el proceso de clip (llama a `ClipFeatureDatasetUseCase`).
+    - `OpenOutputLocationCommand`: abre la carpeta de salida en el Explorador de Windows (hipervínculo en la UI).
+
+- Flujo técnico resumido:
+    1. El usuario selecciona el Feature Dataset de entrada y la carpeta de salida.
+    2. El ViewModel carga las Feature Classes del dataset y permite seleccionar cuáles recortar.
+    3. El usuario selecciona un polígono en el mapa (debe existir exactamente un polígono seleccionado).
+    4. Opcionalmente define un buffer en metros y el tipo (redondeado/plano).
+    5. Al ejecutar, el caso de uso crea una GDB nueva `Clip_YYYYMMDD_HHmmss.gdb` en la carpeta padre, ejecuta el clip por cada feature class seleccionada y registra el resultado en `StatusMessage`.
+    6. `OutputLocation` se expone y la UI muestra un hipervínculo para abrir la carpeta en Explorer.
+
+Notas de implementación:
+- El proceso utiliza `QueuedTask.Run` para operaciones con ArcGIS SDK (apertura de geodatabases, lectura de definiciones, operaciones de clip).
+- La UI expone `HasOutputLocation` para controlar la visibilidad del hipervínculo.
+- Se recomienda comprobar permisos de escritura en la carpeta de salida antes de ejecutar.
 ```
+
+### 6. Hash SHA-256 (Generar y Verificar)
+
+Descripción: Módulo para generar y verificar firmas SHA-256 de archivos de salida del AddIn (por ejemplo: `Migracion_*.gdb` empaquetadas, archivos `.zip` generados por procesos, y el propio paquete `.esriAddInX`). Permite asegurar integridad y facilitar validación en despliegues.
+
+Componentes principales:
+- `HashViewModel` (Presentation): expone comandos de UI y estado de operación.
+- `FileHashService` (Application/Core): calcula y verifica hash con lectura en streaming.
+- Comandos: `GenerateHashCommand`, `VerifyHashCommand` (mapeados en DAML).
+
+UI (DAML - conceptual):
+```xml
+<toolGroup id="EAABAddIn_HashGroup" caption="Hash">
+  <button id="EAABAddIn_GenerateHash" caption="Generar Hash" />
+  <button id="EAABAddIn_VerifyHash" caption="Verificar Hash" />
+</toolGroup>
+```
+
+Flujo técnico: Generar Hash
+1. Selección de archivo(s) objetivo(s) mediante diálogo (ZIP, GDB empaquetada, esriAddInX, etc.).
+2. Cálculo SHA-256 en streaming usando `System.Security.Cryptography.SHA256.Create()` con `FileStream` y buffer (ej. 1–4 MB) para evitar cargas completas en memoria.
+3. Se genera un archivo resumen por cada archivo de entrada con nombre `<NombreArchivo>_HASH.txt` en la misma carpeta, con el siguiente formato de texto:
+    - `Archivo: <nombre.ext>`
+    - `Ubicación: <ruta completa>`
+    - `Algoritmo: SHA-256`
+    - `TamañoBytes: <entero>`
+    - `Hash: <hex en mayúsculas sin separadores>`
+    - `Fecha: <YYYY-MM-DD HH:mm:ss>`
+4. Manejo de errores: archivos bloqueados, permisos insuficientes, rutas largas → registrar mensaje y continuar con el resto.
+
+Flujo técnico: Verificar Hash
+1. Selección de archivo a verificar o carpeta que contenga el par `<archivo>` y `<archivo>_HASH.txt`.
+2. Búsqueda no recursiva del archivo de resumen en la misma carpeta; si existe más de uno, se prioriza el que coincide exactamente con el nombre base.
+3. Recalcular SHA-256 del archivo objetivo en streaming y comparar con el valor en `Hash:` del archivo de resumen.
+4. Resultado de verificación:
+    - `OK`: hash coincide.
+    - `NO MATCH`: contenido difiere.
+    - `NO HASH`: no se encontró archivo resumen.
+5. Registro de detalles en `StatusMessage` y, opcionalmente, generación de `Verificacion_HASH_[timestamp].txt` con el resultado.
+
+Consideraciones de implementación
+- Lectura por bloques (`FileStream` con `useAsync:true`) para archivos grandes.
+- Cancelación y reporte de progreso opcionales vía `IProgress<T>`/`CancellationToken`.
+- Operaciones de IO pesadas en `Task.Run`/`QueuedTask` según corresponda, actualizando UI en el hilo apropiado.
+- Nombres y rutas conservando carpeta origen; no se realiza búsqueda recursiva.
+
+Ejemplo (C# simplificado de cómputo):
+```csharp
+public static string ComputeSha256(string path)
+{
+     using var sha = SHA256.Create();
+     using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1_048_576, FileOptions.SequentialScan);
+     var hash = sha.ComputeHash(fs);
+     return Convert.ToHexString(hash); // .NET 5+: HEX en mayúsculas
+}
+```
+
+Pruebas recomendadas
+- Archivos pequeños y grandes (>1 GB) para validar rendimiento/streaming.
+- Casos: archivo inexistente, archivo bloqueado, carpeta sin `_HASH.txt`, valor `Hash:` mal formado.
+- Verificación cruzada con herramienta externa (ej. `Get-FileHash` en PowerShell) para validar el resultado.
+
 
 ## Componentes Principales Geocodificación
 
@@ -989,6 +1090,13 @@ Sugerido:
 | Piloto | Revisión funcional | Capturar métricas básicas |
 | Producción | Publicación controlada | Registrar hash archivo |
 
+### Checklist de Publicación
+- Generar build Release (`.esriAddInX`).
+- Usar la opción `Generar Hash` para el `.esriAddInX` y adjuntar el archivo `<AddIn>.esriAddInX_HASH.txt` al entregable.
+- Si se distribuyen datos (GDB/ZIP) generados por el AddIn, generar su `*_HASH.txt` correspondiente y conservar junto al archivo original.
+- Verificar integridad con `Verificar Hash` en un equipo distinto antes de entrega final.
+- Registrar el valor SHA-256 en el acta o sistema de despliegue.
+
 ## Seguridad y Acceso a Datos
 
 - Principio de mínimo privilegio para usuarios de BD.
@@ -1136,674 +1244,9 @@ Sin clase destino,3
 
 ## Versión del Documento
 
-**Versión**: 1.2  
-**Última actualización**: 10 de noviembre de 2025  
+**Versión**: 1.3  
+**Última actualización**: 1 de diciembre de 2025  
 **Cambios principales:**
-- Documentación completa del sistema de migración
-- Flujos detallados de validación y transformación
-- Ejemplos de código de componentes de migración
-- Mapeo de atributos y clasificaciones
-- Consideraciones de rendimiento específicas de migración
-
----
-
-(Sección original de patrones y ejemplos mantenida abajo para referencia)
-
-# Documentación Técnica - EAAB AddIn para ArcGIS Pro
-
-## Descripción General
-
-AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE.
-
-## Stack Tecnológico
-
-- **.NET 8**
-- **ArcGIS Pro SDK 3.4+**
-- **WPF** con patrón MVVM
-- **PostgreSQL 15+** con PostGIS
-- **Oracle 18+**
-- **EPPlus** para procesamiento de archivos Excel
-
-## Requisitos de Desarrollo
-
-### Entorno de desarrollo
-
-- Visual Studio 2022 o superior
-- ArcGIS Pro SDK for .NET
-- ArcGIS Pro 3.4+ instalado
-- .NET 8 SDK
-
-### Dependencias del proyecto
-
-```xml
-<PackageReference Include="ArcGIS.Desktop.SDK" Version="3.4.*" />
-<PackageReference Include="EPPlus" Version="7.0+" />
-<PackageReference Include="Npgsql" Version="8.0+" />
-<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21+" />
-```
-
-## Arquitectura del Sistema
-
-### Estructura de Carpetas
-
-```
-EAABAddIn/
-├── Src/
-│   ├── Application/              # Capa de aplicación
-│   │   ├── Services/
-│   │   │   ├── AddressNormalizer.cs
-│   │   │   ├── AddressSearchService.cs
-│   │   │   └── MassiveGeocodingService.cs
-│   │   └── DTOs/
-│   │
-│   ├── Core/                     # Capa core
-│   │   ├── Config/
-│   │   │   ├── ConfigurationManager.cs
-│   │   │   ├── DatabaseConfiguration.cs
-│   │   │   └── PersistentSettings.cs
-│   │   │
-│   │   └── Data/
-│   │       ├── DatabaseConnectionService.cs
-│   │       ├── ConnectionPropertiesFactory.cs
-│   │       ├── ResultsLayerService.cs
-│   │       ├── AddressNotFoundTableService.cs
-│   │       └── Repositories/
-│   │           ├── PtAddressGralEntityRepository.cs
-│   │           ├── OraclePtAddressGralRepository.cs
-│   │           └── PostgresPtAddressGralRepository.cs
-│   │
-│   └── Presentation/             # Capa de presentación
-│       ├── Converters/           # Convertidores XAML
-│       │   ├── BoolToVisibilityConverter.cs
-│       │   └── ConnectionStatusConverter.cs
-│       │
-│       ├── View/                 # Vistas XAML
-│       │   ├── AddressSearchView.xaml
-│       │   ├── MassiveGeocodingView.xaml
-│       │   └── PropertyPageView.xaml
-│       │
-│       └── ViewModel/            # ViewModels
-│           ├── AddressSearchViewModel.cs
-│           ├── MassiveGeocodingViewModel.cs
-│           └── PropertyPageViewModel.cs
-│
-├── Images/                       # Recursos gráficos
-├── Config.daml                   # Configuración del AddIn
-└── Module1.cs                    # Punto de entrada
-```
-
-### Patrones de Diseño Implementados
-
-#### 1. MVVM (Model-View-ViewModel)
-
-```csharp
-// ViewModel base con INotifyPropertyChanged
-public class ViewModelBase : INotifyPropertyChanged
-{
-    public event PropertyChangedEventHandler PropertyChanged;
-    
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-}
-
-// Ejemplo de comando asíncrono
-private AsyncRelayCommand _searchCommand;
-public ICommand SearchCommand => _searchCommand ??= 
-    new AsyncRelayCommand(ExecuteSearchAsync, CanExecuteSearch);
-```
-
-#### 2. Factory Pattern
-
-```csharp
-public static class ConnectionPropertiesFactory
-{
-    public static DatabaseConnectionProperties Create(DatabaseEngine engine, 
-        string host, int port, string database, string user, string password)
-    {
-        return engine switch
-        {
-            DatabaseEngine.PostgreSQL => CreatePostgreSQL(host, port, database, user, password),
-            DatabaseEngine.Oracle => CreateOracle(host, port, database, user, password),
-            DatabaseEngine.PostgreSQLSDE => CreateFromSdeFile(sdeFilePath),
-            DatabaseEngine.OracleSDE => CreateFromSdeFile(sdeFilePath),
-            _ => throw new NotSupportedException($"Motor no soportado: {engine}")
-        };
-    }
-}
-```
-
-#### 3. Repository Pattern
-
-```csharp
-public interface IPtAddressGralEntityRepository
-{
-    Task<IEnumerable<PtAddressGralEntity>> SearchAddressesAsync(
-        string address, string city, CancellationToken cancellationToken);
-    
-    Task<IEnumerable<string>> GetAvailableCitiesAsync(
-        CancellationToken cancellationToken);
-}
-
-public class OraclePtAddressGralRepository : IPtAddressGralEntityRepository
-{
-    private readonly DatabaseConnectionService _connectionService;
-    
-    public async Task<IEnumerable<PtAddressGralEntity>> SearchAddressesAsync(
-        string address, string city, CancellationToken cancellationToken)
-    {
-        var connection = await _connectionService.GetConnectionAsync();
-        using var command = connection.CreateCommand();
-        
-        command.CommandText = @"
-            SELECT ID, DIRECCION, FULLADDRESSEAAB, FULLADDRESSUACD, POBLACION
-            FROM PT_ADDRESS_GRAL_ENTITY
-            WHERE UPPER(POBLACION) = UPPER(:city) 
-            AND UPPER(DIRECCION) = UPPER(:address)";
-        
-        // Implementación...
-    }
-}
-```
-
-#### 4. Singleton Controlado
-
-```csharp
-public class Module1 : Module
-{
-    private static Module1 _this = null;
-    private static DatabaseConnectionService _connectionService;
-    
-    public static Module1 Current => _this ?? (_this = 
-        (Module1)FrameworkApplication.FindModule("EAABAddIn_Module"));
-    
-    public static DatabaseConnectionService ConnectionService => 
-        _connectionService ??= new DatabaseConnectionService();
-}
-```
-
-#### 5. Strategy Pattern (Fallback)
-
-```csharp
-public class AddressNormalizer
-{
-    public async Task<string> NormalizeAsync(string address)
-    {
-        try
-        {
-            // Intento de normalización con servicio ESRI
-            return await ESRINormalizationService.NormalizeAsync(address);
-        }
-        catch (LexiconException ex) when (ex.Code is "CODE_145" or "CODE_146")
-        {
-            // Fallback: usar dirección original
-            Debug.WriteLine($"Fallback de normalización: {ex.Code}");
-            return address;
-        }
-    }
-}
-```
-
-#### 6. Lazy Initialization
-
-```csharp
-public class ResultsLayerService
-{
-    private FeatureClass _geocodedAddressesFC;
-    
-    public async Task<FeatureClass> GetOrCreateFeatureClassAsync()
-    {
-        if (_geocodedAddressesFC != null)
-            return _geocodedAddressesFC;
-        
-        await QueuedTask.Run(() =>
-        {
-            // Crear o recuperar Feature Class
-            _geocodedAddressesFC = CreateOrRetrieveFeatureClass();
-        });
-        
-        return _geocodedAddressesFC;
-    }
-}
-```
-
-## Componentes Principales
-
-### 1. Module1.cs - Punto de Entrada
-
-```csharp
-internal class Module1 : Module
-{
-    protected override bool Initialize()
-    {
-        // Cargar configuración persistente
-        LoadConfiguration();
-        
-        // Inicializar servicios
-        InitializeServices();
-        
-        // Intentar reconexión diferida
-        _ = Task.Run(async () => await AttemptReconnectionAsync());
-        
-        return base.Initialize();
-    }
-    
-    private async Task AttemptReconnectionAsync()
-    {
-        var config = ConfigurationManager.LoadConfiguration();
-        if (config.IsValid)
-        {
-            await ConnectionService.ConnectAsync(config);
-        }
-    }
-}
-```
-
-### 2. DatabaseConnectionService
-
-Gestiona las conexiones a bases de datos con soporte multi-motor.
-
-```csharp
-public class DatabaseConnectionService : IDisposable
-{
-    private Geodatabase _geodatabase;
-    private DatabaseEngine _currentEngine;
-    private string _sdeFilePath;
-    
-    public async Task<bool> ConnectAsync(DatabaseConfiguration config)
-    {
-        try
-        {
-            DatabaseConnectionProperties connectionProps;
-            
-            if (config.Engine is DatabaseEngine.PostgreSQLSDE or DatabaseEngine.OracleSDE)
-            {
-                // Conexión mediante archivo SDE
-                connectionProps = new DatabaseConnectionFile(
-                    new Uri(config.SdeFilePath, UriKind.Absolute));
-            }
-            else
-            {
-                // Conexión por credenciales
-                connectionProps = ConnectionPropertiesFactory.Create(
-                    config.Engine, config.Host, config.Port, 
-                    config.Database, config.User, config.Password);
-            }
-            
-            await QueuedTask.Run(() =>
-            {
-                _geodatabase = new Geodatabase(connectionProps);
-            });
-            
-            _currentEngine = config.Engine;
-            IsConnected = true;
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error de conexión: {ex.Message}");
-            return false;
-        }
-    }
-    
-    public async Task<Geodatabase> GetConnectionAsync()
-    {
-        if (!IsConnected || _geodatabase == null)
-            throw new InvalidOperationException("No hay conexión activa");
-        
-        return await Task.FromResult(_geodatabase);
-    }
-    
-    public void Dispose()
-    {
-        _geodatabase?.Dispose();
-        _geodatabase = null;
-        IsConnected = false;
-    }
-}
-```
-
-### 3. ResultsLayerService
-
-Gestiona la capa de resultados de geocodificación con batch insert optimizado.
-
-```csharp
-public class ResultsLayerService
-{
-    private const string FEATURE_CLASS_NAME = "GeocodedAddresses";
-    
-    public async Task InsertBatchAsync(List<GeocodeResult> results)
-    {
-        var featureClass = await GetOrCreateFeatureClassAsync();
-        
-        await QueuedTask.Run(() =>
-        {
-            using var operation = new EditOperation
-            {
-                Name = "Insertar resultados de geocodificación"
-            };
-            
-            foreach (var result in results)
-            {
-                var attributes = new Dictionary<string, object>
-                {
-                    ["Identificador"] = result.Identifier,
-                    ["Direccion"] = result.Address,
-                    ["FullAdressEAAB"] = result.FullAddressEAAB,
-                    ["FullAdressUACD"] = result.FullAddressUACD,
-                    ["Geocoder"] = result.Geocoder.ToString(),
-                    ["Score"] = result.Score,
-                    ["ScoreText"] = result.ScoreText,
-                    ["FechaHora"] = DateTime.Now
-                };
-                
-                var geometry = MapPointBuilderEx.CreateMapPoint(
-                    result.X, result.Y, SpatialReferences.WGS84);
-                
-                operation.Create(featureClass, attributes, geometry);
-            }
-            
-            operation.Execute();
-        });
-    }
-    
-    private FeatureClass CreateOrRetrieveFeatureClass()
-    {
-        var gdb = GetDefaultGeodatabase();
-        
-        // Intentar abrir existente
-        try
-        {
-            return gdb.OpenDataset<FeatureClass>(FEATURE_CLASS_NAME);
-        }
-        catch
-        {
-            // Crear nuevo
-            return CreateNewFeatureClass(gdb);
-        }
-    }
-    
-    private FeatureClass CreateNewFeatureClass(Geodatabase gdb)
-    {
-        var fcDescription = new FeatureClassDescription(
-            FEATURE_CLASS_NAME,
-            new List<FieldDescription>
-            {
-                new FieldDescription("Identificador", FieldType.String),
-                new FieldDescription("Direccion", FieldType.String),
-                new FieldDescription("FullAdressEAAB", FieldType.String),
-                new FieldDescription("FullAdressUACD", FieldType.String),
-                new FieldDescription("Geocoder", FieldType.String),
-                new FieldDescription("Score", FieldType.Double),
-                new FieldDescription("ScoreText", FieldType.String),
-                new FieldDescription("FechaHora", FieldType.Date)
-            },
-            new ShapeDescription(GeometryType.Point, SpatialReferences.WGS84)
-        );
-        
-        return gdb.CreateFeatureClass(fcDescription);
-    }
-}
-```
-
-### 4. AddressSearchService
-
-Orquesta la búsqueda de direcciones con fallback inteligente.
-
-```csharp
-public class AddressSearchService
-{
-    private readonly IPtAddressGralEntityRepository _repository;
-    private readonly AddressNormalizer _normalizer;
-    
-    public async Task<SearchResult> SearchAsync(
-        string address, string city, CancellationToken cancellationToken)
-    {
-        // Primer intento: búsqueda exacta
-        var results = await _repository.SearchAddressesAsync(
-            address, city, cancellationToken);
-        
-        if (results.Any())
-            return new SearchResult(results, SearchStrategy.Exact);
-        
-        // Segundo intento: búsqueda LIKE ampliada
-        Debug.WriteLine("Búsqueda exacta sin resultados, intentando LIKE...");
-        results = await _repository.SearchAddressesLikeAsync(
-            address, city, cancellationToken);
-        
-        return new SearchResult(results, SearchStrategy.Like);
-    }
-    
-    public async Task<string> NormalizeAddressAsync(string address)
-    {
-        try
-        {
-            return await _normalizer.NormalizeAsync(address);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error de normalización: {ex.Message}");
-            return address; // Fallback a dirección original
-        }
-    }
-}
-```
-
-### 5. MassiveGeocodingService
-
-Procesamiento masivo con optimizaciones de rendimiento.
-
-```csharp
-public class MassiveGeocodingService
-{
-    private readonly AddressSearchService _searchService;
-    private readonly ResultsLayerService _resultsService;
-    
-    public async Task<MassiveResult> ProcessFileAsync(
-        string filePath, IProgress<ProgressInfo> progress)
-    {
-        var records = await ReadExcelFileAsync(filePath);
-        var results = new List<GeocodeResult>();
-        var notFound = new List<NotFoundRecord>();
-        
-        int processed = 0;
-        int total = records.Count;
-        
-        foreach (var record in records)
-        {
-            var searchResult = await _searchService.SearchAsync(
-                record.Address, record.City, CancellationToken.None);
-            
-            if (searchResult.HasResults)
-            {
-                // Determinar mejor dirección: EAAB > Catastro > Original
-                var bestAddress = DetermineBestAddress(searchResult);
-                results.Add(CreateGeocodeResult(record, bestAddress));
-            }
-            else
-            {
-                notFound.Add(new NotFoundRecord
-                {
-                    Identifier = record.Identifier,
-                    Address = record.Address,
-                    City = record.City,
-                    Timestamp = DateTime.Now
-                });
-            }
-            
-            processed++;
-            progress?.Report(new ProgressInfo(processed, total));
-        }
-        
-        // Inserción en lote optimizada
-        await _resultsService.InsertBatchAsync(results);
-        await _notFoundService.InsertBatchAsync(notFound);
-        
-        return new MassiveResult
-        {
-            Found = results.Count,
-            NotFound = notFound.Count,
-            Total = total
-        };
-    }
-    
-    private string DetermineBestAddress(SearchResult result)
-    {
-        // Prioridad: FullAddressEAAB > FullAddressUACD > Original > Calle básica
-        var first = result.Addresses.First();
-        
-        if (!string.IsNullOrEmpty(first.FullAddressEAAB))
-            return first.FullAddressEAAB;
-        
-        if (!string.IsNullOrEmpty(first.FullAddressUACD))
-            return first.FullAddressUACD;
-        
-        return first.Direccion;
-    }
-}
-```
-
-## Sistema de Configuración
-
-- Persistencia JSON + respaldo en settings App.
-- Validación contextual según tipo de motor.
-- Admite cambio caliente (runtime) disparando reconexión.
-
-### Seguridad de Configuración
-
-- Contraseñas no se registran en logs.
-- Posible mejora: cifrado AES local (pendiente) usando DPAPI Windows.
-- Recomendado: restringir permisos de carpeta `%AppData%/EAABAddIn`.
-
-## Modelo de Datos (Lógico Simplificado)
-
-| Entidad | Campos clave | Fuente | Notas |
-|---------|--------------|--------|-------|
-| PtAddressGralEntity | ID, Direccion, FullAddressEAAB, FullAddressCadastre, Poblacion | BD corporativa | Base principal de direcciones |
-| GeocodeResult | Identifier, Address, Source, Score, Lat/Long | Derivado | Unión de varias fuentes |
-| NotFoundRecord | Identifier, Address, City, Timestamp | Generado | Auditoría de intentos fallidos |
-| PoiEntity | PoiId, Name, Category, City, X, Y | BD corporativa / vista | Indexable para búsqueda |
-
-## Capa de Resultados Espaciales
-
-### `ResultsLayerService`
-- Lazy create de Feature Class `GeocodedAddresses` (WGS84).  
-- Inserciones agrupadas dentro de `EditOperation`.  
-- Campos calculados en el ViewModel (score interpretado).
-
-### `PoiResultsLayerService`
-- Similar estrategia: `POIResults` con campos `PoiId`, `Nombre`, `Categoria`, `Ciudad`, `FechaHora`.
-- Reutiliza builder de geometrías estándar.
-
-## Logging y Observabilidad
-
-Estado actual: logging mínimo mediante `Debug.WriteLine` y mensajes UI.  
-Sugerido:
-- Introducir `ILogger` (MS.Extensions.Logging) con proveedor simple.
-- Niveles: Info (operaciones), Warning (faltantes), Error (excepciones).
-- Métricas futuras: tiempo promedio por geocodificación, % éxito.
-
-## Rendimiento y Escalabilidad
-
-| Área | Riesgo | Mitigación Actual | Mejora Potencial |
-|------|-------|-------------------|------------------|
-| Masivo secuencial | Lento con >50k filas | Procesamiento controlado | Paralelizar lectura + cola MCT |
-| Acceso BD | Latencia variable | Repositorio único | Cache ciudades en memoria |
-| Insert espacial | Bloqueos si muchas ediciones | Batch + single commit | Chunk configurable |
-| Normalización externa | Timeout/errores | Fallback inmediato | Circuit breaker + retry |
-
-## Tratamiento de Errores
-
-- Validaciones previas detienen proceso temprano (fail-fast).
-- Excepciones en loop masivo contabilizan como "no encontrados" sin detener el resto.
-- Mostrar mensajes al usuario solo cuando agregan valor (no spam por cada fila).
-
-## Pruebas (Testing)
-
-### Estrategia Propuesta
-
-| Tipo | Objetivo | Ejemplos |
-|------|----------|----------|
-| Unit | Lógica pura (normalizador, filtros) | `AddressNormalizerTests` |
-| Repository (mock) | Queries adaptadas por motor | `PtAddressGralRepositoryTests` |
-| Integration (opcional) | Conexión real a GDB de prueba | Escenarios mínimos |
-| UI (manual) | Flujo MVVM básico | Buscar, Masivo, POI |
-
-### Recomendaciones
-- Introducir interfaces para capa ResultsLayer para facilitar mocks.
-- Usar `xUnit` + `Moq`.
-- Datos de prueba ligeros (JSON) para direcciones.
-
-## Build y Empaquetado
-
-### Compilación Local
-
-1. Abrir solución en Visual Studio con ArcGIS Pro instalado.
-2. Restaurar paquetes NuGet.
-3. Asegurar target: `net8.0-windows` con `UseWPF` habilitado.
-4. Compilar en modo Release.
-
-### Generación del AddIn (.esriAddInX)
-
-1. Verificar `Config.daml` actualizado (botones/paneles).  
-2. Build Release genera carpeta `bin/Release`.  
-3. Utilizar herramienta de empaquetado del SDK (si configurada) o copiar output.  
-4. Validar firma (si política corporativa lo exige).  
-
-### Versionado
-
-- Mantener versión en AssemblyInfo o proyecto (PropertyGroup `<Version>`).  
-- Sincronizar con sección "Información de Versión" de manual usuario.  
-
-## Despliegue
-
-| Entorno | Acción | Notas |
-|---------|-------|-------|
-| Usuario final | Distribuir `.esriAddInX` | Instrucciones en READMEUSER |
-| Piloto | Revisión funcional | Capturar métricas básicas |
-| Producción | Publicación controlada | Registrar hash archivo |
-
-## Seguridad y Acceso a Datos
-
-- Principio de mínimo privilegio para usuarios de BD.
-- No almacenar contraseñas en texto plano fuera de `%AppData%` (cifrar futuro).
-- Validar origen de archivos Excel (no macros, no binarios maliciosos).
-
-## Internacionalización (i18n)
-
-- Textos actualmente en español embebidos.
-- Mejora futura: recursos (.resx) para soportar EN/ES.
-
-## Roadmap Propuesto
-
-| Prioridad | Feature | Descripción |
-|-----------|---------|-------------|
-| Alta | Cancelación masiva | Token cancelar proceso en curso |
-| Media | Cache ciudades | Reducir llamadas repetidas |
-| Media | Exportar no encontrados | CSV automático |
-| Media | Paginación POIs | Controlar grandes resultados |
-| Baja | Cifrado credenciales | DPAPI / AES |
-| Baja | Telemetría | Eventos anónimos de uso |
-
-## Ejemplo Simplificado de POI Repository
-
-```csharp
-public interface IPoiRepository {
-    IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500);
-}
-
-public class PostgresPoiRepository : IPoiRepository {
-    private readonly DatabaseConnectionService _connection;
-    public IEnumerable<PoiEntity> Search(string term, string city = null, int max = 500) {
-        // Implementación con ILIKE y limit
-    }
-}
-```
-
-## Notas de Mantenimiento
-
-- Revisar compatibilidad ArcGIS Pro antes de subir versión SDK.
-- Ejecutar pruebas de regresión después de cambios en repositorios.
-- Documentar nuevas columnas añadidas a Feature Class.
+- Se agrega documentación técnica del módulo de Hash (SHA-256): generar y verificar, mapeo DAML, flujos y consideraciones.
+- Se documenta `ClipFeatureDataset` con propiedades, comandos y flujo técnico.
+- Se añade checklist de despliegue con generación y verificación de hash para entregables.

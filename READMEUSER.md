@@ -2,7 +2,18 @@
 
 ## Descripción
 
-El EAAB AddIn es una herramienta para ArcGIS Pro que facilita la búsqueda y localización de direcciones en Bogotá, tanto de forma individual como masiva. Permite conectarse a la base de datos corporativa para consultar direcciones y ubicarlas automáticamente en el mapa.
+El EAAB AddIn es una herramienta integral para ArcGIS Pro que facilita:
+
+- **Geocodificación de direcciones**: Búsqueda y localización de direcciones en Bogotá de forma individual o masiva
+- **Búsqueda de Puntos de Interés (POIs)**: Localización de instituciones, equipamientos y servicios
+
+- **Migración de datos**: transformación de redes de acueducto y alcantarillado a estructura corporativa
+
+- **Corte de datos espaciales (Clip)**: Extracción de feature classes por áreas de interés usando polígonos
+
+- **Generación y verificación de integridad (Hash SHA256)**: Aseguramiento de integridad de archivos y geodatabases
+
+El AddIn permite conectarse a la base de datos corporativa para consultar información y ubicarla automáticamente en el mapa, además de realizar operaciones avanzadas de gestión y validación de datos.
 
 ## Requisitos del Sistema
 
@@ -82,6 +93,14 @@ Una vez configurada la conexión, no necesitas volver a ingresarla. El AddIn rec
 ## Cómo Usar el AddIn
 
 Una vez configurado, verás una nueva pestaña llamada **"EAAB Add-in"** en la parte superior de ArcGIS Pro.
+
+**Herramientas disponibles:**
+1. **Buscar** - Búsqueda individual de direcciones
+2. **Masivo** - Geocodificación masiva desde Excel
+3. **POI** - Búsqueda de Puntos de Interés
+4. **Migración** - Migración de redes de acueducto/alcantarillado
+5. **Clip** - Corte de Feature Datasets
+6. **Hash** - Generador y verificador de integridad SHA256
 
 ### 1. Buscar una Dirección Individual
 
@@ -381,9 +400,273 @@ El sistema mapea automáticamente según el campo CLASE:
 - NORTE, ESTE, ABSCISA, IDENTIFIC
 - *(y otros según esquema)*
 
+### 5. Cortar Feature Dataset (Clip)
+
+La funcionalidad de "Cortar" permite extraer (clip) las Feature Classes de un Feature Dataset usando un polígono seleccionado en el mapa como máscara de recorte. Es útil para obtener subconjuntos de datos por área de interés o trabajar con áreas específicas.
+
+**Casos de uso:**
+- Extraer datos de una zona específica para análisis
+- Crear subconjuntos más pequeños para procesar o compartir
+- Recortar redes de acueducto/alcantarillado por localidad o sector
+- Generar entregas de proyecto con datos limitados geográficamente
+
+**Pasos detallados:**
+
+**Paso 1: Abrir la herramienta**
+1. En la pestaña **EAAB Add-in**, haz clic en el botón **"Clip"** (ícono de scissors/corte)
+2. Se abrirá un panel a la derecha con el título "Clip Feature Dataset"
+
+**Paso 2: Seleccionar Feature Dataset de origen**
+1. Haz clic en **"Examinar..."** junto a "Feature Dataset"
+2. Navega hasta la carpeta que contiene tu geodatabase
+3. Selecciona la geodatabase (.gdb) que contiene los Feature Dataset que deseas recortar
+4. El sistema cargará automáticamente la lista de Feature Datasets disponibles
+
+**Paso 3: Seleccionar Feature Classes a recortar**
+1. Expande el Feature Dataset en la lista
+2. Selecciona las Feature Classes que deseas recortar (puedes seleccionar múltiples)
+3. Usa los botones de conveniencia:
+   - **"Seleccionar todo"**: Marca todas las Feature Classes
+   - **"Deseleccionar todo"**: Desmarca todas las selecciones
+4. (Opcional) Usa el campo de **filtro** para buscar Feature Classes por nombre
+
+**Paso 4: Seleccionar carpeta de salida**
+1. Haz clic en **"Examinar..."** junto a "Carpeta de Salida"
+2. Selecciona la carpeta donde se creará la nueva geodatabase recortada
+3. **Nota**: La herramienta creará automáticamente una GDB con nombre `Clip_YYYYMMDD_HHmmss.gdb`
+
+**Paso 5: Seleccionar polígono de recorte en el mapa**
+1. En ArcGIS Pro, en el mapa activo, **selecciona exactamente un polígono** que será la máscara de recorte
+2. La herramienta mostrará:
+   - ✓ Estado de selección: "Selección válida" o "Sin selección"
+   - Área del polígono en m² 
+3. **Importante**: Debe haber exactamente 1 polígono seleccionado. Si hay 0 o más de 1, no se permitirá ejecutar
+
+**Paso 6: (Opcional) Configurar Buffer**
+1. Marca el checkbox **"Aplicar Buffer"** si deseas expandir el área de recorte
+2. Ingresa la distancia en **metros** (ej: 100, 500, 1000)
+3. Selecciona el tipo de buffer:
+   - **Redondeado**: Puntas redondeadas en las esquinas
+   - **Plano**: Esquinas afiladas (Aproximado)
+4. El buffer se sumará al polígono original para crear un área más grande
+
+**Paso 7: Ejecutar el corte**
+1. Haz clic en el botón **"Cortar / Ejecutar"**
+2. Observa la barra de progreso
+3. La herramienta procesará cada Feature Class seleccionada
+
+**Resultados:**
+
+-  Se crea una nueva geodatabase con nombre `Clip_YYYYMMDD_HHmmss.gdb`
+- Todas las Feature Classes recortadas se incluyen con la estructura original
+- Solo se copian las features dentro del polígono (o buffer)
+-  Los atributos se mantienen sin cambios
+-  **Ubicación de salida**: Aparece como hipervínculo en el panel; haz clic para abrir la carpeta en el Explorador de Windows
+-  Mensajes de progreso en el área de estado
 
 
-### 5. Cambiar la Configuración de Conexión
+**Consejos y mejores prácticas:**
+
+-  **Selección de polígono**: Asegúrate de que el polígono esté visible y seleccionado en el mapa
+
+- **Permisos**: Verifica que tengas permisos de escritura en la carpeta de salida
+
+- **Espacio en disco**: Asegúrate de tener suficiente espacio para la geodatabase de salida (puede ser grande)
+
+- **Rendimiento**: Con muchas features, el proceso puede tomar tiempo. No cierres ArcGIS Pro durante la ejecución
+
+- **Buffer**: Úsalo cuando necesites datos con un margen alrededor de tu área de interés
+
+- **Múltiples cortes**: Puedes ejecutar varios cortes seguidos en la misma carpeta (se crearán GDB diferentes)
+
+**Manejo de errores:**
+
+| Problema | Solución |
+|----------|----------|
+| "Sin selección / Selección múltiple" | Selecciona exactamente 1 polígono en el mapa |
+| "Carpeta no existe" | Verifica la ruta de salida |
+| "Permiso denegado" | Comprueba permisos de escritura en la carpeta |
+| "GDB no encontrada" | Verifica que la ruta al Feature Dataset sea correcta |
+| Proceso muy lento | Es normal con features grandes; espera o divide el trabajo |
+| Resultado vacío | Es posible que no haya features dentro del polígono |
+
+**Después del corte:**
+
+1. Abre la carpeta de salida (clic en el hipervínculo)
+2. Localiza la GDB creada: `Clip_YYYYMMDD_HHmmss.gdb`
+3. Puedes agregar la GDB al mapa de ArcGIS Pro
+4. Los datos están listos para compartir, analizar o procesar
+
+### 6. Generador de Hash SHA256 (Verificación de Integridad)
+
+Esta herramienta permite generar y verificar hashes SHA256 de archivos y geodatabases para garantizar su integridad durante el almacenamiento y transferencia.
+
+**¿Por qué es importante?**
+- Verifica que los archivos no hayan sido alterados o corrompidos
+- Garantiza integridad de datos en trasferencias entre equipos
+- Audita los cambios en archivos críticos
+- Valida descargas o copias de seguridad
+
+#### Generar Hash
+
+**Funcionalidad 1: Comprimir GDB y Generar Hash**
+
+Permite comprimir una Geodatabase en ZIP y generar su hash SHA256.
+
+**Pasos:**
+1. En la pestaña **EAAB Add-in**, haz clic en **" Generar Hash"** (ícono de candado/verificación)
+2. Se abrirá un panel con la pestaña **"Generar Hash"**
+3. Selecciona la opción **"Comprimir GDB y Generar Hash"** en el combo
+4. Haz clic en **"Examinar..."** y selecciona la carpeta o GDB que deseas comprimir
+5. Haz clic en **"Generar Hash"**
+
+**Resultado:**
+- Se crea un archivo ZIP: `nombreGDB_YYYYMMDDHHMMSS.zip`
+- Se crea un archivo de texto: `nombreGDB_YYYYMMDDHHMMSS_HASH.txt` con:
+  ```
+  Archivo: nombreGDB_20251201143045.zip
+  SHA256: a1b2c3d4e5f6g7h8i9j0...
+  Fecha: 2025-12-01 14:30:45
+  Tamaño: 125.5 MB
+  ```
+- Ambos archivos se guardan en la misma carpeta del GDB original
+- El hash se muestra en el panel para verificación rápida
+
+**Casos de uso:**
+- Realizar respaldo de GDB con verificación de integridad
+- Preparar GDB para compartir de forma segura
+- Documentar estado de una GDB en una fecha específica
+
+**Funcionalidad 2: Generar Hash de Archivos en Carpeta**
+
+Calcula SHA256 de todos los archivos en una carpeta (sin incluir subcarpetas).
+
+**Pasos:**
+1. En la pestaña **"Generar Hash"**, selecciona **"Generar Hash de Archivos en Carpeta"**
+2. Haz clic en **"Examinar..."** y selecciona la carpeta
+3. Haz clic en **"Generar Hash"**
+
+**Resultado:**
+- Se crea un archivo resumen: `carpeta_YYYYMMDDHHMMSS_HASH.txt` con:
+  ```
+  Carpeta: C:\ruta\a\carpeta
+  Fecha: 2025-12-01 14:30:45
+  Total archivos: 12
+  
+  archivo1.shp      | SHA256: a1b2c3d4e5f6...
+  archivo2.dbf      | SHA256: b2c3d4e5f6g7...
+  archivo3.xlsx     | SHA256: c3d4e5f6g7h8...
+  (12 archivos en total)
+  ```
+- Cada archivo se lista con su hash individual
+- Facilita auditoría de cambios en múltiples archivos
+
+**Casos de uso:**
+- Verificar integridad de un shapefile completo (todos sus componentes)
+- Documentar estado de una carpeta de proyecto
+- Validar que un delivery de archivos está completo
+
+#### Verificar Integridad
+
+**Funcionalidad 1: Verificar Integridad de Archivo**
+
+Comprueba que un archivo no haya sido modificado comparando su hash actual con el esperado.
+
+**Pasos:**
+1. En la pestaña **"Verificar Hash"**
+2. Haz clic en **"Examinar..."** junto a "Archivo a Verificar"
+3. Selecciona el archivo (ZIP, SHP, etc.)
+4. El sistema buscará automáticamente el archivo HASH asociado
+   - Busca patrones: `nombrearchivo_HASH.txt` o `nombrearchivo_[timestamp]_HASH.txt`
+   - Si lo encuentra, lo carga automáticamente
+5. Si no lo encuentra, puedes:
+   - Haz clic en **"Examinar..."** junto a "Archivo Hash" y selecciónalo manualmente
+   - O proporciona el hash manualmente en el campo de texto
+6. Haz clic en **"VERIFICAR INTEGRIDAD"**
+
+**Resultado - Si es válido:**
+```
+✅ INTEGRIDAD VERIFICADA
+   Archivo: archivo.zip
+   HASH esperado: a1b2c3d4e5f6g7h8...
+   HASH actual:   a1b2c3d4e5f6g7h8...
+   
+   ✅ Los hashes coinciden - Archivo íntegro
+   Fecha verificación: 2025-12-01 14:35:10
+```
+
+**Resultado - Si está corrupto:**
+```
+❌ INTEGRIDAD COMPROMETIDA
+   Archivo: archivo.zip
+   HASH esperado: a1b2c3d4e5f6g7h8...
+   HASH actual:   x9y8z7w6v5u4t3s2...
+   
+   ❌ Los hashes NO coinciden - Archivo modificado o corrupto
+   Diferencia: detectada
+```
+
+**Casos de uso:**
+- Verificar que una descarga no fue corrompida
+- Validar que un respaldo está íntegro
+- Confirmar que un archivo no ha sido modificado
+- Auditoría de cambios
+
+**Interfaz del Generador de Hash:**
+
+El panel se divide en dos pestañas:
+
+| Sección | Funciones |
+|---------|----------|
+| **Generar Hash** | Crear nuevos hashes |
+|  - Combo de función | Seleccionar entre comprimir GDB o generar de carpeta |
+|  - Examinar | Seleccionar archivo/carpeta de origen |
+|  - Generar Hash | Ejecutar generación |
+| **Verificar Hash** | Validar integridad |
+|  - Archivo a verificar | Seleccionar archivo |
+|  - Archivo HASH | Carga automática o manual |
+|  - Verificar integridad | Ejecutar verificación |
+| **Resultados** | Área de scroll con:
+|  | - Detalles de operación |
+|  | - Hashes generados/verificados |
+|  | - Rutas de archivos |
+|  | - Mensajes de éxito/error |
+
+**Validaciones implementadas:**
+
+| Validación | Comportamiento |
+|-----------|----------------|
+| Carpeta no existe | ❌ Error con sugerencia |
+| Carpeta vacía | ⚠️ Advertencia (sin archivos) |
+| Archivo no existe | ❌ Error |
+| No hay archivo HASH | ⚠️ Busca automáticamente o permite entrada manual |
+| HASH con formato incorrecto | ❌ Error: no se puede parsear |
+| Hashes no coinciden | ❌ Alerta: integridad comprometida |
+
+**Consejos y mejores prácticas:**
+
+- **Guardar hashes**: Mantén los archivos `*_HASH.txt` en lugar seguro
+
+-  **Documentación**: Anota la fecha y propósito de cada verificación
+
+-  **Transferencias**: Siempre verifica después de copiar archivos entre equipos o redes
+
+-  **Respaldos**: Incluye un hash con cada respaldo para validar restauración
+
+-  **Automatización**: Puedes programar generación de hashes regularmente
+
+- **Comparación manual**: Puedes comparar hashes directamente sin usar la herramienta
+
+**Interpretación del formato SHA256:**
+
+- **Longitud**: Siempre 64 caracteres hexadecimales (0-9, a-f)
+- **Sensibilidad**: Cualquier cambio en el archivo produce un hash completamente diferente
+- **Unicidad**: Es prácticamente imposible encontrar dos archivos diferentes con el mismo SHA256
+- **Ejemplo**: `a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2`
+
+ 
+
+### 7. Cambiar la Configuración de Conexión
 
 Si necesitas cambiar de base de datos o actualizar tus credenciales:
 
@@ -394,7 +677,7 @@ Si necesitas cambiar de base de datos o actualizar tus credenciales:
 
 Los cambios se guardan automáticamente mientras editas los campos.
 
-### 6. Exportar Resultados
+### 8. Exportar Resultados
 
 Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 
@@ -410,7 +693,7 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 - `Source` / `ScoreText`: Origen y calidad
 - `FechaHora`: Marca de tiempo de la operación
 
-### 7. Buenas Prácticas de Uso
+### 9. Buenas Prácticas de Uso
 
 - Revisa que tu Excel no tenga filas totalmente vacías al final.
 - Evita caracteres especiales innecesarios (ej: múltiples espacios, tabs).
@@ -418,7 +701,7 @@ Puedes exportar los puntos generados a otros formatos para compartir o procesar:
 - No lances procesos masivos mientras ArcGIS Pro ejecuta otras ediciones complejas.
 - Guarda el proyecto antes de una geocodificación masiva grande.
 
-### 8. Interpretación de la Calidad (Score / Etiquetas)
+### 10. Interpretación de la Calidad (Score / Etiquetas)
 
 La columna `ScoreText` sintetiza la procedencia/calidad:
 - `Exacta`: Coincidencia directa registrada en EAAB.
@@ -589,6 +872,54 @@ WGS84 (EPSG:4326) para puntos internos; el mapa reproyecta según tu vista.
 **¿Puedo usar CSV en vez de Excel para geocodificación masiva?**  
 No en esta versión (solo `.xlsx` / `.xls`).
 
+### Sobre Corte (Clip)
+
+**¿Qué pasa si no selecciono ningún polígono?**
+La herramienta mostrará un error indicando "Sin selección". Debes seleccionar exactamente 1 polígono en el mapa.
+
+**¿Puedo recortar múltiples Feature Datasets a la vez?**
+No directamente. Si tienes múltiples Feature Datasets, puedes:
+- Ejecutar el clip varias veces (una por cada FDS)
+- Usar la misma carpeta de salida (se crearán GDB diferentes con timestamps)
+
+**¿El buffer crea anillos o expande la geometría?**
+Expande la geometría en todas direcciones. Un buffer de 100m creará un polígono 100m más grande alrededor del original.
+
+**¿Se preservan los atributos en las features recortadas?**
+Sí, todos los atributos se copian exactamente igual. Solo cambia la geometría (se recorta).
+
+**¿Cuánto espacio en disco necesito?**
+Mínimo: tamaño de las features a recortar + 20% de margen. La nueva GDB puede ser bastante grande dependiendo del volumen.
+
+**¿Puedo cancelar un proceso de clip en curso?**
+No se recomienda. Espera a que termine. Si necesitas cancelar, cierra ArcGIS Pro (no recomendado).
+
+### Sobre Hash
+
+**¿Qué es un hash SHA256?**
+Es una función criptográfica que genera un código de 64 caracteres único para un archivo. Si el archivo cambia aunque sea 1 bit, el hash cambia completamente.
+
+**¿Puedo reutilizar un hash antiguo para verificar?**
+Sí, siempre que el archivo original no haya sido modificado. El hash es válido indefinidamente para el mismo archivo.
+
+**¿Dónde guardo los archivos _HASH.txt?**
+En la misma carpeta que el archivo original, o en un lugar seguro separado. La herramienta busca automáticamente en la carpeta del archivo.
+
+**¿Dos geodatabases con los mismos datos tienen el mismo hash?**
+No necesariamente. Aunque contengan los mismos datos, si fueron creadas en momentos diferentes o con herramientas diferentes, su hash será diferente.
+
+**¿Es seguro compartir el archivo HASH?**
+Sí, perfectamente. El hash es público y no contiene información sensible. Solo asegúrate de que el archivo _HASH.txt no se modifique.
+
+**¿Puedo generar hash de archivos muy grandes?**
+Sí, pero tomará más tiempo. Archivos de varios GB pueden tomar minutos. La herramienta mostrará progreso.
+
+**¿Qué pasa si pierdo el archivo _HASH.txt?**
+Puedes regenerarlo en cualquier momento con la herramienta. Simplemente vuelve a ejecutar "Generar Hash" sobre el archivo o carpeta.
+
+**¿Por qué cambió el hash de mi GDB después de hacer backup?**
+Al comprimir un GDB en ZIP, ciertos metadatos internos pueden variar. El contenido de datos es el mismo, pero la estructura de compresión es diferente.
+
 ### Sobre Migración
 
 **¿La migración modifica mis datos originales?**  
@@ -641,12 +972,31 @@ No hay límite estricto, pero archivos con más de 100,000 features pueden tomar
 | Esquema XML | Archivo que define la estructura de una geodatabase |
 | Proyección | Transformación de geometrías entre diferentes sistemas de coordenadas |
 | Z/M | Dimensiones adicionales de geometría (Z=elevación, M=medida lineal) |
+| Clip/Corte | Extracción de features dentro de un área de interés usando un polígono |
+| Buffer | Área expandida alrededor de una geometría (en metros o unidades) |
+| Hash SHA256 | Código criptográfico de 64 caracteres que identifica un archivo |
+| Integridad | Verificación de que un archivo no ha sido modificado o corrupto |
+| ZIP | Formato de compresión de archivos |
+| Timestamp | Marca de fecha y hora en formato YYYYMMDDHHMMSS |
 
 ## Información de Versión
 
-**Versión**: 1.2  
-**Última actualización**: 10 de noviembre de 2025  
+**Versión**: 1.3  
+**Última actualización**: 1 de diciembre de 2025  
 **Compatible con**: ArcGIS Pro 3.4 o superior
+
+**Novedades de la versión 1.3:**
+- ✨ **Nueva herramienta de Generador de Hash SHA256** para verificación de integridad
+  - Compresión de GDB y generación de hash automática
+  - Generación de hashes para múltiples archivos en carpeta
+  - Verificación de integridad con búsqueda automática de archivos HASH
+- ✨ **Mejora de herramienta Clip/Corte**
+  - Documentación detallada de workflow
+  - Manejo mejorado de errores y validaciones
+  - Soporte para buffer configurable (redondeado/plano)
+  - Interfaz más clara con hipervínculo a carpeta de salida
+- 📚 Documentación de usuario completamente actualizada
+- 🐛 Correcciones menores en validaciones
 
 **Novedades de la versión 1.2:**
 - ✨ **Nueva herramienta de migración** de datos de acueducto y alcantarillado

@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Diagnostics;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using EAABAddIn.Src.Application.UseCases;
@@ -11,9 +12,6 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    /// <summary>
-    /// ViewModel para la pestaña de Generar Hash
-    /// </summary>
     internal class GeneradorHashGenerarViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Generar Hash";
@@ -21,12 +19,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private readonly GenerarHashUseCase _generarHashUseCase;
 
-        // ==================== COMANDOS ====================
         public ICommand ExaminarCarpetaCommand { get; }
         public ICommand GenerarHashCommand { get; }
         public ICommand LimpiarCommand { get; }
 
-        // ==================== PROPIEDADES ====================
         
         private int _funcionalidadSeleccionada = 0;
         public int FuncionalidadSeleccionada
@@ -92,9 +88,38 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
+        private string _outputLocation = string.Empty;
+        public string OutputLocation
+        {
+            get => _outputLocation;
+            private set
+            {
+                if (_outputLocation != value)
+                {
+                    _outputLocation = value;
+                    NotifyPropertyChanged(nameof(OutputLocation));
+                    HasOutputLocation = !string.IsNullOrWhiteSpace(_outputLocation);
+                    (OpenOutputLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        private bool _hasOutputLocation = false;
+        public bool HasOutputLocation
+        {
+            get => _hasOutputLocation;
+            private set
+            {
+                if (_hasOutputLocation != value)
+                {
+                    _hasOutputLocation = value;
+                    NotifyPropertyChanged(nameof(HasOutputLocation));
+                }
+            }
+        }
+
         public bool PuedeGenerarHash => !string.IsNullOrWhiteSpace(RutaCarpetaGenerar) && !IsBusy;
 
-        // ==================== CONSTRUCTOR ====================
 
         public GeneradorHashGenerarViewModel()
         {
@@ -107,14 +132,12 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             ActualizarPlaceholder();
         }
 
-        // ==================== MÉTODOS ====================
 
         private void OnExaminarCarpeta()
         {
-            // Usar el filtro apropiado según la funcionalidad
             var filterName = EsFuncionalidad1 
-                ? "esri_browseDialogFilters_all"  // Permite carpetas y GDBs
-                : "esri_browseDialogFilters_folders"; // Solo carpetas
+                ? "esri_browseDialogFilters_all"  
+                : "esri_browseDialogFilters_folders"; 
             
             var filter = new BrowseProjectFilter(filterName);
             var dlg = new OpenItemDialog
@@ -129,7 +152,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 var path = dlg.Items[0].Path;
                 
-                // Convertir URI a ruta local si es necesario
                 if (Uri.TryCreate(path, UriKind.Absolute, out Uri uri))
                 {
                     if (uri.IsFile)
@@ -150,7 +172,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 return;
             }
 
-            // Validar que la ruta existe antes de continuar
             if (!Directory.Exists(RutaCarpetaGenerar))
             {
                 ResultadoGenerar = $"❌ La carpeta no existe:\n{RutaCarpetaGenerar}";
@@ -165,7 +186,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                 if (EsFuncionalidad1)
                 {
-                    // Funcionalidad 1: Comprimir GDB y Generar Hash
                     StatusMessage = "Comprimiendo carpeta...";
                     var (ok, zipPath, hashPath, message) = await _generarHashUseCase.ComprimirGdbYGenerarHash(RutaCarpetaGenerar);
                     
@@ -174,17 +194,20 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (ok)
                     {
-                        // Abrir carpeta contenedora
-                        var carpeta = Path.GetDirectoryName(zipPath);
+                        // Establecer la ubicación de salida (carpeta contenedora)
+                        var carpeta = Path.GetDirectoryName(zipPath) ?? string.Empty;
+                        OutputLocation = carpeta;
+
+                        // Abrir carpeta contenedora (comportamiento previo)
                         if (!string.IsNullOrWhiteSpace(carpeta) && Directory.Exists(carpeta))
                         {
-                            System.Diagnostics.Process.Start("explorer.exe", carpeta);
+                            var psi = new ProcessStartInfo { FileName = carpeta, UseShellExecute = true };
+                            Process.Start(psi);
                         }
                     }
                 }
                 else if (EsFuncionalidad2)
                 {
-                    // Funcionalidad 2: Generar Hash de Archivos en Carpeta
                     StatusMessage = "Calculando hashes de archivos...";
                     var (ok, resumenPath, hashes, message) = await _generarHashUseCase.GenerarHashArchivosEnCarpeta(RutaCarpetaGenerar);
                     
@@ -193,10 +216,14 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (ok)
                     {
-                        // Abrir carpeta contenedora
+                        // Establecer la ubicación de salida (carpeta usada)
+                        OutputLocation = RutaCarpetaGenerar;
+
+                        // Abrir carpeta contenedora (comportamiento previo)
                         if (Directory.Exists(RutaCarpetaGenerar))
                         {
-                            System.Diagnostics.Process.Start("explorer.exe", RutaCarpetaGenerar);
+                            var psi = new ProcessStartInfo { FileName = RutaCarpetaGenerar, UseShellExecute = true };
+                            Process.Start(psi);
                         }
                     }
                 }
@@ -219,6 +246,7 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             ResultadoGenerar = string.Empty;
             StatusMessage = string.Empty;
             FuncionalidadSeleccionada = 0;
+            OutputLocation = string.Empty;
         }
 
         private void ActualizarPlaceholder()
@@ -226,6 +254,36 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             PlaceholderCarpeta = EsFuncionalidad1 
                 ? "Seleccionar carpeta/GDB a comprimir..." 
                 : "Seleccionar carpeta con archivos...";
+        }
+
+        private ICommand? _openOutputLocationCommandBacking;
+        public ICommand OpenOutputLocationCommand => _openOutputLocationCommandBacking ??= new RelayCommand(OnOpenOutputLocation, () => HasOutputLocation);
+
+        private void OnOpenOutputLocation()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(OutputLocation))
+                {
+                    StatusMessage = "❌ No hay ubicación de salida";
+                    return;
+                }
+
+                var path = OutputLocation;
+                if (!Directory.Exists(path))
+                {
+                    StatusMessage = $"❌ La carpeta no existe: {path}";
+                    return;
+                }
+
+                var psi = new ProcessStartInfo { FileName = path, UseShellExecute = true };
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"❌ Error abriendo carpeta: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
         }
     }
 }

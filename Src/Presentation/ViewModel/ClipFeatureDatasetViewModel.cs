@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Diagnostics;
 
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
@@ -53,6 +54,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
     public ICommand OutputGeodatabaseCommand { get; private set; }
     public ICommand FeatureDatasetCommand { get; private set; }
+    public ICommand OpenOutputLocationCommand { get; private set; }
     public ICommand ExecuteClipCommand { get; private set; }
     public ICommand ClearFormCommand { get; private set; }
     public ICommand RefreshSelectionCommand { get; private set; }
@@ -127,6 +129,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         ClearSearchCommand = new RelayCommand(OnClearSearch);
         SelectAllFilteredCommand = new RelayCommand(OnSelectAllFiltered);
         DeselectAllFilteredCommand = new RelayCommand(OnDeselectAllFiltered);
+        OpenOutputLocationCommand = new RelayCommand(OnOpenOutputLocation, () => HasOutputLocation);
 
         MapSelectionChangedEvent.Subscribe(OnMapSelectionChanged);
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
@@ -284,6 +287,9 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             {
                 _outputLocation = value;
                 NotifyPropertyChanged(nameof(OutputLocation));
+                // Actualizar la bandera y habilitar/inhabilitar el comando
+                HasOutputLocation = !string.IsNullOrWhiteSpace(_outputLocation);
+                (OpenOutputLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -299,6 +305,38 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 _hasOutputLocation = value;
                 NotifyPropertyChanged(nameof(HasOutputLocation));
             }
+        }
+    }
+
+    private void OnOpenOutputLocation()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(OutputLocation))
+            {
+                StatusMessage = "❌ No hay ubicación de salida";
+                return;
+            }
+
+            var path = OutputLocation;
+            if (!Directory.Exists(path))
+            {
+                StatusMessage = $"❌ La carpeta no existe: {path}";
+                return;
+            }
+
+            // Abrir la carpeta en el Explorador de Windows
+            var psi = new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ Error abriendo carpeta: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine(ex);
         }
     }
 
@@ -824,12 +862,10 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return polygon.Area;
             }
 
-            // Si el sistema de referencia es geográfico (lat/lon), necesitamos proyectar
             if (spatialRef.IsGeographic)
             {
                 System.Diagnostics.Debug.WriteLine($"✓ Sistema geográfico detectado (WKID: {spatialRef.Wkid}), proyectando para calcular área");
                 
-                // Proyectar a Web Mercator (WKID 3857) para calcular área en metros
                 var webMercatorSR = SpatialReferenceBuilder.CreateSpatialReference(3857);
                 
                 try
@@ -848,7 +884,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 }
             }
             
-            // Si es un sistema proyectado, verificar las unidades
             var unit = spatialRef.Unit;
             
             if (unit == null)
@@ -864,8 +899,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             System.Diagnostics.Debug.WriteLine($"  Unidad: {unit.Name}, Factor de conversión: {conversionFactor}");
             System.Diagnostics.Debug.WriteLine($"  Área en unidades nativas: {area}");
             
-            // El factor de conversión convierte de la unidad nativa a metros
-            // Para área, necesitamos el cuadrado del factor
+
             var areaInSquareMeters = area * conversionFactor * conversionFactor;
             
             System.Diagnostics.Debug.WriteLine($"  Área en metros cuadrados: {areaInSquareMeters:N2} m²");

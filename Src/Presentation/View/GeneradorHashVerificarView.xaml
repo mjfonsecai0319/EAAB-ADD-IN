@@ -4,6 +4,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
+    xmlns:conv="clr-namespace:EAABAddIn.Src.Presentation.Converters"
     mc:Ignorable="d"
     d:DesignHeight="600" d:DesignWidth="400"
 >
@@ -11,10 +12,12 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary
-                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+            <conv:BoldLabelsConverter x:Key="BoldLabelsConverter" />
 
             <Style x:Key="HeaderTextStyle" TargetType="TextBlock"
                 BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -74,7 +77,6 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="15">
-            <!-- Archivo a Verificar -->
             <TextBlock Text="Archivo a verificar *" Style="{StaticResource HeaderTextStyle}" />
             <Grid Margin="0,0,0,15">
                 <Grid.ColumnDefinitions>
@@ -99,7 +101,6 @@
                 </Button>
             </Grid>
 
-            <!-- Archivo HASH (Automático) -->
             <TextBlock Text="Archivo HASH (búsqueda automática)" Style="{StaticResource HeaderTextStyle}" />
             <TextBox Text="{Binding ArchivoHash, Mode=OneWay}"
                      Height="32"
@@ -109,7 +110,6 @@
                      Margin="0,0,0,15"
                      Background="{DynamicResource Esri_BackgroundPressedBrush}" />
 
-            <!-- Descripción -->
             <Border Background="{DynamicResource Esri_BackgroundHoverBrush}"
                     BorderBrush="{DynamicResource Esri_BorderBrush}"
                     BorderThickness="1"
@@ -117,42 +117,47 @@
                     CornerRadius="4"
                     Margin="0,0,0,15">
                 <TextBlock TextWrapping="Wrap" FontSize="11">
-                    <Run Text="ℹ️  Verificación de Integridad:" FontWeight="Bold"/>
+                    <Run Text="ℹ️  Verificación de Integridad:" FontWeight="Bold" />
                     <LineBreak/>
-                    <Run Text="• Seleccione el archivo que desea verificar (ej: archivo.zip)"/>
+                    <Run Text="     • Seleccione el archivo que desea verificar (ej: archivo.zip)"/>
                     <LineBreak/>
-                    <Run Text="• El sistema buscará automáticamente el archivo HASH"/>
+                    <Run Text="     • El sistema buscará automáticamente el archivo HASH"/>
                     <LineBreak/>
-                    <Run Text="• Se comparará el hash actual con el hash esperado"/>
+                    <Run Text="     • Se comparará el hash actual con el hash esperado"/>
                     <LineBreak/>
-                    <Run Text="• El resultado indicará si el archivo es íntegro"/>
+                    <Run Text="     • El resultado indicará si el archivo es íntegro"/>
                 </TextBlock>
             </Border>
 
-            <!-- Resultado de Verificación -->
+            <!-- Cuadro azul: mostrar Información de archivo y hashes (salida principal) -->
             <Border Style="{StaticResource ResultBoxStyle}"
-                    Visibility="{Binding TieneResultado, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    Visibility="{Binding TieneResultado, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Margin="0,0,0,12">
                 <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
-                    <TextBlock Text="{Binding ResultadoVerificar}"
-                               TextWrapping="Wrap"
-                               FontSize="11"
-                               Foreground="{DynamicResource Esri_TextPrimaryBrush}"/>
+                    <ContentControl Content="{Binding ResultadoMain, Converter={StaticResource BoldLabelsConverter}}" />
                 </ScrollViewer>
             </Border>
 
-            <!-- Barra de progreso -->
+            <!-- Result box moved below StatusMessage (see later in file) -->
+
             <ProgressBar Height="4"
                          Margin="0,15,0,10"
                          IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <!-- Estado -->
             <TextBlock Text="{Binding StatusMessage}"
-                       Margin="0,10,0,15"
+                       Margin="0,10,0,12"
                        TextWrapping="Wrap"
+                       FontWeight="Bold"
                        Visibility="{Binding TieneMensajeEstado, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <!-- Botones de Acción -->
+            <!-- Advertencias (solo si existen) -->
+            <TextBlock Text="{Binding ResultadoWarnings}"
+                       TextWrapping="Wrap"
+                       FontSize="11"
+                       Margin="0,0,0,0"
+                       Visibility="{Binding HasWarnings, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
                 <Button Content="Limpiar"
                         Style="{StaticResource SecondaryButtonStyle}"

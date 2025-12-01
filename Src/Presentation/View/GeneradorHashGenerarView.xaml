@@ -11,7 +11,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <extensions:DesignOnlyResourceDictionary
-                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component\Themes\Default.xaml" />
+                    Source="pack://application:,,,/ArcGIS.Desktop.Framework;component/Themes/Default.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -108,7 +108,6 @@
                 </Button>
             </Grid>
 
-            <!-- Descripción según funcionalidad -->
             <Border Background="{DynamicResource Esri_BackgroundHoverBrush}"
                     BorderBrush="{DynamicResource Esri_BorderBrush}"
                     BorderThickness="1"
@@ -119,9 +118,9 @@
                 <TextBlock TextWrapping="Wrap" FontSize="11">
                     <Run Text="ℹ️  Esta función comprimirá la carpeta/GDB en un archivo ZIP y generará:" FontWeight="Bold"/>
                     <LineBreak/>
-                    <Run Text="• Archivo ZIP: nombreGDB_AAAAMMDDHHMMSS.zip"/>
+                    <Run Text="     • Archivo ZIP: nombreGDB_AAAAMMDDHHMMSS.zip"/>
                     <LineBreak/>
-                    <Run Text="• Archivo HASH: nombreGDB_AAAAMMDDHHMMSS_HASH.txt"/>
+                    <Run Text="     • Archivo HASH: nombreGDB_AAAAMMDDHHMMSS_HASH.txt"/>
                     <LineBreak/>
                     <Run Text="Ambos archivos se crearán en la carpeta padre."/>
                 </TextBlock>
@@ -145,7 +144,6 @@
                 </TextBlock>
             </Border>
 
-            <!-- Resultado -->
             <Border Style="{StaticResource ResultBoxStyle}"
                     Visibility="{Binding ResultadoGenerar, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
@@ -157,20 +155,17 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Barra de progreso -->
             <ProgressBar Height="4"
                          Margin="0,15,0,10"
                          IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <!-- Estado -->
             <TextBlock Text="{Binding StatusMessage}"
                        Margin="0,0,0,15"
                        TextWrapping="Wrap"
                        FontStyle="Italic"
                        Visibility="{Binding StatusMessage, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <!-- Botones de Acción -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
                 <Button Content="Limpiar"
                         Style="{StaticResource SecondaryButtonStyle}"

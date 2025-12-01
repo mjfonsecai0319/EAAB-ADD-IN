@@ -12,9 +12,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    /// <summary>
-    /// ViewModel para la pestaña de Verificar Hash
-    /// </summary>
+
     internal class GeneradorHashVerificarViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Verificar Hash";
@@ -22,12 +20,10 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private readonly GenerarHashUseCase _generarHashUseCase;
 
-        // ==================== COMANDOS ====================
         public ICommand ExaminarArchivoCommand { get; }
         public ICommand VerificarHashCommand { get; }
         public ICommand LimpiarCommand { get; }
 
-        // ==================== PROPIEDADES ====================
 
         private string _archivoVerificar = string.Empty;
         public string ArchivoVerificar
@@ -42,7 +38,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     NotifyPropertyChanged(nameof(PuedeVerificarHash));
                     (VerificarHashCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     
-                    // Buscar automáticamente el archivo hash
                     BuscarArchivoHashAutomatico();
                 }
             }
@@ -63,6 +58,52 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         }
 
         private string _resultadoVerificar = string.Empty;
+        private System.Windows.Media.Brush _resultadoForeground = System.Windows.Media.Brushes.Black;
+
+        public System.Windows.Media.Brush ResultadoForeground
+        {
+            get => _resultadoForeground;
+            set
+            {
+                if (_resultadoForeground != value)
+                {
+                    _resultadoForeground = value;
+                    NotifyPropertyChanged(nameof(ResultadoForeground));
+                }
+            }
+        }
+
+        private string _resultadoMain = string.Empty;
+        public string ResultadoMain
+        {
+            get => _resultadoMain;
+            set
+            {
+                if (_resultadoMain != value)
+                {
+                    _resultadoMain = value;
+                    NotifyPropertyChanged(nameof(ResultadoMain));
+                }
+            }
+        }
+
+        private string _resultadoWarnings = string.Empty;
+        public string ResultadoWarnings
+        {
+            get => _resultadoWarnings;
+            set
+            {
+                if (_resultadoWarnings != value)
+                {
+                    _resultadoWarnings = value;
+                    NotifyPropertyChanged(nameof(ResultadoWarnings));
+                    NotifyPropertyChanged(nameof(HasWarnings));
+                }
+            }
+        }
+
+        public bool HasWarnings => !string.IsNullOrWhiteSpace(ResultadoWarnings);
+
         public string ResultadoVerificar
         {
             get => _resultadoVerificar;
@@ -73,6 +114,53 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     _resultadoVerificar = value;
                     NotifyPropertyChanged(nameof(ResultadoVerificar));
                     NotifyPropertyChanged(nameof(TieneResultado));
+                    // Separar solo líneas de archivo/hashes y advertencias (sin encabezados)
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(_resultadoVerificar))
+                        {
+                            var lines = _resultadoVerificar.Replace("\r\n", "\n").Split('\n');
+                            var mainLines = new System.Collections.Generic.List<string>();
+                            var warningLines = new System.Collections.Generic.List<string>();
+
+                            foreach (var raw in lines)
+                            {
+                                var line = raw?.Trim() ?? string.Empty;
+                                if (string.IsNullOrEmpty(line))
+                                    continue;
+
+                                var low = line.ToLowerInvariant();
+                                // Detectar líneas de advertencia/error
+                                if (low.StartsWith("⚠") || low.Contains("⚠️") || low.Contains("los hashes no coinciden") || low.Contains("el archivo puede estar corrupto"))
+                                {
+                                    warningLines.Add(line);
+                                }
+                                // Saltarse encabezados de éxito/error
+                                else if (low.Contains("integridad verificada") || low.Contains("error de integridad") || low.Contains("✅") || low.Contains("❌"))
+                                {
+                                    continue;
+                                }
+                                // Incluir líneas de información (archivo, hashes, etc)
+                                else
+                                {
+                                    mainLines.Add(line);
+                                }
+                            }
+
+                            ResultadoMain = string.Join("\n", mainLines);
+                            ResultadoWarnings = warningLines.Count > 0 ? string.Join("\n", warningLines) : string.Empty;
+                        }
+                        else
+                        {
+                            ResultadoMain = string.Empty;
+                            ResultadoWarnings = string.Empty;
+                        }
+                    }
+                    catch
+                    {
+                        ResultadoMain = _resultadoVerificar;
+                        ResultadoWarnings = string.Empty;
+                    }
                 }
             }
         }
@@ -96,7 +184,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public bool TieneResultado => !string.IsNullOrWhiteSpace(ResultadoVerificar);
         public bool TieneMensajeEstado => !string.IsNullOrWhiteSpace(StatusMessage);
 
-        // Sobrescribir StatusMessage para notificar TieneMensajeEstado
         private string _statusMessageLocal = string.Empty;
         public new string StatusMessage
         {
@@ -111,7 +198,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // ==================== CONSTRUCTOR ====================
 
         public GeneradorHashVerificarViewModel()
         {
@@ -124,7 +210,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             System.Diagnostics.Debug.WriteLine("GeneradorHashVerificarViewModel: Constructor ejecutado");
         }
 
-        // ==================== MÉTODOS ====================
 
         private void OnExaminarArchivo()
         {
@@ -141,7 +226,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             {
                 var path = dlg.Items[0].Path;
                 
-                // Convertir URI a ruta local si es necesario
                 if (Uri.TryCreate(path, UriKind.Absolute, out Uri uri))
                 {
                     if (uri.IsFile)
@@ -169,7 +253,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 VerificacionExitosa = false;
                 StatusMessage = "Verificando integridad...";
 
-                // Logging para depuración
                 System.Diagnostics.Debug.WriteLine($"Iniciando verificación de: {ArchivoVerificar}");
 
                 var (ok, coinciden, hashEsperado, hashActual, message) = await _generarHashUseCase.VerificarIntegridadArchivo(ArchivoVerificar);
