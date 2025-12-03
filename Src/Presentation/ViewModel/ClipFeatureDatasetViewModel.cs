@@ -837,7 +837,33 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             if (IsMultiPolygonEnabled)
             {
                 var count = _selectedPolygons?.Count ?? 0;
-                SelectionStatus = count > 0 ? $"✓ {count} polígonos seleccionados" : "❌ No hay polígonos seleccionados";
+                if (count > 0)
+                {
+                    // Calcular área total mediante unión para un metraje representativo
+                    var unionPoly = await QueuedTask.Run(() =>
+                    {
+                        try
+                        {
+                            var geoms = _selectedPolygons!.Cast<Geometry>().ToList();
+                            return GeometryEngine.Instance.Union(geoms) as Polygon ?? _selectedPolygons!.FirstOrDefault();
+                        }
+                        catch
+                        {
+                            return _selectedPolygons!.FirstOrDefault();
+                        }
+                    });
+
+                    double area = 0.0;
+                    if (unionPoly != null && !unionPoly.IsEmpty)
+                        area = await CalculateAreaInSquareMetersAsync(unionPoly);
+
+                    var areaText = area >= 1 ? $"{area:N0} m²" : $"{area:N2} m²";
+                    SelectionStatus = $"✓ {count} polígonos seleccionados (Área total: {areaText})";
+                }
+                else
+                {
+                    SelectionStatus = "❌ No hay polígonos seleccionados";
+                }
             }
             else
             {
