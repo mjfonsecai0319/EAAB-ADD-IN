@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="documentaci%C3%B3n-t%C3%A9cnica---eaab-addin-para-arcgis-pro">Documentación Técnica - EAAB AddIn para ArcGIS Pro</h1>
+<h2 id="descripci%C3%B3n-general">Descripción General</h2>
+<p>AddIn para ArcGIS Pro que proporciona capacidades de geocodificación individual y masiva mediante conexión a bases de datos corporativas PostgreSQL y Oracle, con soporte para conexiones directas por credenciales y mediante archivos SDE. Incluye también búsqueda de Puntos de Interés (POIs), almacenamiento estructurado de resultados y un sistema completo de migración de datos de redes de acueducto y alcantarillado con validación automática y transformación de geometrías.</p>
+<h3 id="conformidad-con-norma-ns-046">Conformidad con Norma NS-046</h3>
+<p>El módulo de migración de datos está diseñado conforme a la <strong>Norma Técnica NS-046 de la Empresa de Acueducto y Alcantarillado de Bogotá (EAAB-ESP)</strong>, que establece:</p>
+<ul>
+<li><strong>Estructura de datos espaciales</strong> para redes de acueducto y alcantarillado</li>
+<li><strong>Clasificación de elementos</strong> según tipos de red (sanitario, pluvial, acueducto)</li>
+<li><strong>Nomenclatura y códigos</strong> de feature classes y dominios</li>
+<li><strong>Atributos mínimos requeridos</strong> para cada tipo de elemento de red</li>
+<li><strong>Sistemas de referencia espacial</strong> MAGNA-SIRGAS / Colombia Bogotá (WKID: 102233, EPSG: 6247)</li>
+<li><strong>Topología y conectividad</strong> de redes de infraestructura hidráulica</li>
+</ul>
+<p>El sistema implementa los mapeos de clasificación, nomenclatura de feature classes, estructura de atributos y validaciones especificadas en la norma NS-046.</p>
+<h2 id="stack-tecnol%C3%B3gico">Stack Tecnológico</h2>
+<ul>
+<li><strong>.NET 8</strong></li>
+<li><strong>ArcGIS Pro SDK 3.4+</strong></li>
+<li><strong>WPF</strong> con patrón MVVM</li>
+<li><strong>PostgreSQL 15+</strong> con PostGIS</li>
+<li><strong>Oracle 18+</strong></li>
+<li><strong>EPPlus / ExcelDataReader</strong> para lectura de Excel (según implementación)</li>
+<li><strong>Npgsql / Oracle Managed Data Access</strong></li>
+</ul>
+<h2 id="requisitos-de-desarrollo">Requisitos de Desarrollo</h2>
+<h3 id="entorno-de-desarrollo">Entorno de desarrollo</h3>
+<ul>
+<li>Visual Studio 2022 o superior</li>
+<li>ArcGIS Pro SDK for .NET instalado (Extension Manager)</li>
+<li>ArcGIS Pro 3.4+ instalado (mismo equipo)</li>
+<li>.NET 8 SDK</li>
+</ul>
+<h3 id="dependencias-del-proyecto">Dependencias del proyecto</h3>
+<pre class="hljs"><code><div><span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"ArcGIS.Desktop.SDK"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"3.4.*"</span> /&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"EPPlus"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"7.0+"</span> /&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"ExcelDataReader"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"3.6+"</span> /&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Npgsql"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"8.0+"</span> /&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Oracle.ManagedDataAccess.Core"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"3.21+"</span> /&gt;</span>
+</div></code></pre>
+<h2 id="arquitectura-del-sistema">Arquitectura del Sistema</h2>
+<h3 id="estructura-de-carpetas-simplificada">Estructura de Carpetas (simplificada)</h3>
+<pre class="hljs"><code><div>EAABAddIn/
+├── Src/
+│   ├── Application/              # Capa de aplicación (casos de uso / servicios orquestadores)
+│   │   ├── Services/
+│   │   │   ├── AddressNormalizer.cs
+│   │   │   ├── AddressSearchService.cs
+│   │   │   ├── CsvReportService.cs
+│   │   │   └── HashService.cs
+│   │   ├── UseCases/
+│   │   │   ├── MigrateAlcantarilladoUseCase.cs
+│   │   │   ├── MigrateAcueductoUseCase.cs
+│   │   │   ├── CreateGdbFromXmlUseCase.cs
+│   │   │   ├── ClipFeatureDatasetUseCase.cs
+│   │   │   ├── GenerarHashUseCase.cs
+│   │   │   └── Validation/
+│   │   │       └── ValidateDatasetsUseCase.cs
+│   │   └── DTOs/
+│   │
+│   ├── Core/                     # Transversal: conexión, capa de datos base, utilidades
+│   │   ├── Config/
+│   │   │   ├── ConfigurationManager.cs
+│   │   │   ├── DatabaseConfiguration.cs
+│   │   │   └── PersistentSettings.cs
+│   │   │
+│   │   ├── Data/
+│   │   │   ├── DatabaseConnectionService.cs
+│   │   │   ├── ConnectionPropertiesFactory.cs
+│   │   │   ├── ResultsLayerService.cs
+│   │   │   ├── AddressNotFoundTableService.cs
+│   │   │   ├── PoiResultsLayerService.cs
+│   │   │   └── Repositories/
+│   │   │       ├── PtAddressGralEntityRepository.cs
+│   │   │       ├── OraclePtAddressGralRepository.cs
+│   │   │       ├── PostgresPtAddressGralRepository.cs
+│   │   │       └── PoiRepository*.cs (si aplica)
+│   │   │
+│   │   └── Map/ (servicios de mapa, transformaciones)
+│   │
+│   └── Presentation/             # MVVM UI
+│       ├── Converters/
+│       ├── View/
+│       │   ├── AddressSearchView.xaml
+│       │   ├── MassiveGeocodingView.xaml
+│       │   ├── MigrationView.xaml
+│       │   ├── GeneradorHashView.xaml
+│       │   ├── ClipFeatureDatasetView.xaml
+│       │   └── Dockpanes/
+│       │       └── MigrationDockpaneView.xaml
+│       └── ViewModel/
+│           ├── AddressSearchViewModel.cs
+│           ├── MassiveGeocodingViewModel.cs
+│           ├── MigrationViewModel.cs
+│           ├── GeneradorHashViewModel.cs
+│           ├── GeneradorHashGenerarViewModel.cs
+│           ├── GeneradorHashVerificarViewModel.cs
+│           ├── ClipFeatureDatasetViewModel.cs
+│           └── Dockpanes/
+│               └── MigrationDockpaneViewModel.cs
+│
+├── Images/                       # Recursos gráficos
+├── Config.daml                   # Configuración AddIn / DAML (UI ArcGIS Pro)
+└── Module1.cs                    # Punto de entrada / ciclo de vida
+</div></code></pre>
+<h3 id="capas-y-responsabilidades">Capas y Responsabilidades</h3>
+<table>
+<thead>
+<tr>
+<th>Capa</th>
+<th>Responsabilidad</th>
+<th>Ejemplos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Presentation</td>
+<td>Interacción usuario, binding WPF</td>
+<td><em>ViewModels, XAML Views</em></td>
+</tr>
+<tr>
+<td>Application</td>
+<td>Orquestación de casos de uso</td>
+<td><em>MassiveGeocodingService</em></td>
+</tr>
+<tr>
+<td>Core.Data</td>
+<td>Conexión y repositorios</td>
+<td><em>DatabaseConnectionService</em></td>
+</tr>
+<tr>
+<td>Core.Map</td>
+<td>Creación de capas, escritura espacial</td>
+<td><em>ResultsLayerService</em></td>
+</tr>
+<tr>
+<td>Domain (implícita)</td>
+<td>Entidades lógicas</td>
+<td><em>PtAddressGralEntity</em></td>
+</tr>
+</tbody>
+</table>
+<h3 id="flujo-de-geocodificaci%C3%B3n-individual">Flujo de Geocodificación Individual</h3>
+<ol>
+<li>Usuario ingresa dirección y ciudad.</li>
+<li>ViewModel invoca <code>AddressSearchService</code>.</li>
+<li>El servicio consulta repositorio principal (EAAB).</li>
+<li>Si vacío, fallback a Catastro / ESRI según configuración o heurística.</li>
+<li>Resultados se normalizan (dirección preferida EAAB &gt; Catastro &gt; Original).</li>
+<li>Se envían a <code>ResultsLayerService</code> para persistir punto.</li>
+</ol>
+<h3 id="flujo-de-geocodificaci%C3%B3n-masiva">Flujo de Geocodificación Masiva</h3>
+<ol>
+<li>Lectura de Excel → generación de lista de registros.</li>
+<li>Validaciones: estructura, campos obligatorios, códigos de ciudad válidos.</li>
+<li>Iteración paralela controlada (en esta versión: secuencial por seguridad ArcGIS MCT).</li>
+<li>Clasificación de resultados y enriquecimiento de atributos.</li>
+<li>Batch insert (acumulación + commit).</li>
+<li>Resumen (found / not found).</li>
+</ol>
+<h3 id="flujo-de-b%C3%BAsqueda-de-pois">Flujo de Búsqueda de POIs</h3>
+<ol>
+<li>Usuario ingresa término (ej: &quot;hospital&quot;).</li>
+<li><code>PoiSearchService</code> genera un patrón (LIKE normalizado).</li>
+<li>Repositorio POI ejecuta consulta (index por nombre / categoría).</li>
+<li>Se limita número máximo (paginación futura).</li>
+<li>Se inserta en capa <code>POIResults</code> o memoria y luego commit.</li>
+<li>Selección de un resultado centra el mapa.</li>
+</ol>
+<h3 id="flujo-de-migraci%C3%B3n-de-datos">Flujo de Migración de Datos</h3>
+<p><strong>Conformidad NS-046</strong>: El proceso de migración implementa la estructura de datos y clasificaciones definidas en la Norma Técnica NS-046 de la EAAB-ESP.</p>
+<p><strong>Fase 1: Preparación y Validación</strong></p>
+<ol>
+<li>Usuario selecciona carpeta de salida, esquema XML (conforme NS-046) y capas de origen (acueducto/alcantarillado).</li>
+<li><code>ValidateDatasetsUseCase</code> ejecuta validación pre-migración:
+<ul>
+<li>Verifica existencia de campos requeridos según NS-046 (CLASE, SUBTIPO, SISTEMA)</li>
+<li>Detecta features sin clasificación o con valores nulos</li>
+<li>Valida valores de dominios contra catálogos normativos</li>
+<li>Genera reportes CSV con advertencias por dataset</li>
+</ul>
+</li>
+<li>Si hay advertencias y checkbox &quot;Migrar con Advertencias&quot; está desmarcado:
+<ul>
+<li>Bloquea ejecución y muestra diálogo al usuario</li>
+<li>Usuario debe revisar reportes y decidir si continuar</li>
+</ul>
+</li>
+<li>Si no hay advertencias o usuario autoriza continuar → pasa a Fase 2</li>
+</ol>
+<p><strong>Fase 2: Creación de Geodatabase Destino</strong></p>
+<ol>
+<li><code>CreateGdbFromXmlUseCase</code> procesa el esquema XML (estructura NS-046):
+<ul>
+<li>Verifica si ya existe GDB con nombre <code>Migracion_YYYYMMDD_HHmmss.gdb</code></li>
+<li>Si existe: reutiliza (permite migraciones incrementales)</li>
+<li>Si no existe: crea nueva GDB usando ArcGIS Geoprocessing con el XML normativo</li>
+<li>El XML define feature classes, dominios y relaciones según estándar NS-046</li>
+</ul>
+</li>
+<li>Valida que la creación fue exitosa antes de continuar</li>
+</ol>
+<p><strong>Fase 3: Migración de Features</strong></p>
+<ol>
+<li>Para cada capa de origen seleccionada:
+<ul>
+<li><code>MigrateAlcantarilladoUseCase</code> o <code>MigrateAcueductoUseCase</code> lee features</li>
+</ul>
+</li>
+<li>Por cada feature:
+<ul>
+<li>Lee campo CLASE para determinar tipo de elemento (conforme catálogo NS-046)</li>
+<li>Lee campo SISTEMA para determinar red (0=sanitario, 1=pluvial, 2=sanitario según NS-046)</li>
+<li>Consulta mapping interno NS-046 para obtener feature class destino</li>
+<li>Valida que FC destino existe en la GDB con estructura normativa</li>
+</ul>
+</li>
+<li>Transformación de geometría:
+<ul>
+<li>Obtiene SR del mapa activo y SR del FC destino (NS-046 requiere MAGNA-SIRGAS Bogotá)</li>
+<li>Si son diferentes: proyecta geometría automáticamente a WKID 102233/6247</li>
+<li>Detecta dimensiones Z/M incompatibles con especificación NS-046</li>
+<li>Reconstruye geometría sin Z/M si es necesario usando builders específicos (MapPointBuilderEx, PolylineBuilderEx, PolygonBuilderEx)</li>
+</ul>
+</li>
+<li>Mapeo de atributos (conforme NS-046):
+<ul>
+<li><code>BuildLineAttributes()</code> o <code>BuildPointAttributes()</code> mapea campos origen → destino según estructura normativa</li>
+<li>Aplica coerción de tipos según definición de campos destino en NS-046</li>
+<li>Trunca strings que exceden longitud máxima especificada en la norma</li>
+<li>Mapea códigos de dominios a valores válidos del catálogo NS-046</li>
+</ul>
+</li>
+<li>Inserción:
+<ul>
+<li>Intenta inserción con <code>EditOperation</code> (método seguro ArcGIS)</li>
+<li>Si falla, registra error detallado</li>
+<li>Continúa con siguiente feature (no detiene proceso completo)</li>
+</ul>
+</li>
+</ol>
+<p><strong>Fase 4: Post-Procesamiento</strong></p>
+<ol>
+<li><code>CsvReportService</code> genera reportes de migración:
+<ul>
+<li>Resumen por cada feature class destino</li>
+<li>Total intentado vs migrado vs fallido</li>
+<li>Features sin CLASE o sin clase destino</li>
+</ul>
+</li>
+<li><code>AddMigratedLayersToMap()</code> agrega capas al mapa:
+<ul>
+<li>Verifica si capa ya existe en el mapa</li>
+<li>Si existe y apunta a la misma fuente: reutiliza y aplica simbología</li>
+<li>Si no existe: crea nueva capa con <code>LayerFactory</code></li>
+<li>Aplica simbología predefinida (verde para líneas, naranja para puntos)</li>
+<li>Calcula extent combinado de todas las capas migradas</li>
+<li>Ejecuta ZoomTo con extent expandido 10%</li>
+</ul>
+</li>
+<li>Muestra resumen final al usuario</li>
+</ol>
+<p><strong>Mapeo de Clasificaciones (Alcantarillado - Conforme NS-046):</strong></p>
+<p><strong>Nomenclatura según NS-046</strong>:</p>
+<ul>
+<li>Prefijo <code>als_</code>: Alcantarillado Sanitario</li>
+<li>Prefijo <code>alp_</code>: Alcantarillado Pluvial</li>
+<li>Campo SISTEMA: 0 o 2 = Sanitario, 1 = Pluvial</li>
+</ul>
+<p><strong>Líneas (NS-046 Tabla de Clasificación de Redes):</strong></p>
+<ul>
+<li>CLASE=1 + SISTEMA=0/2 → <code>als_RedLocal</code> (red distribución local sanitaria)</li>
+<li>CLASE=1 + SISTEMA=1 → <code>alp_RedLocal</code> (red distribución local pluvial)</li>
+<li>CLASE=2 + SISTEMA=0/2 → <code>als_RedTroncal</code> (colector principal sanitario)</li>
+<li>CLASE=2 + SISTEMA=1 → <code>alp_RedTroncal</code> (colector principal pluvial)</li>
+<li>CLASE=3 + SISTEMA=0/2 → <code>als_LineaLateral</code> (acometida sanitaria)</li>
+<li>CLASE=3 + SISTEMA=1 → <code>alp_LineaLateral</code> (acometida pluvial)</li>
+<li>CLASE=4 → igual que CLASE=1 (RedLocal - equivalencia normativa)</li>
+</ul>
+<p><strong>Puntos (NS-046 Catálogo de Estructuras):</strong></p>
+<ul>
+<li>CLASE=1 → <code>als/alp_EstructuraRed</code> (estructura especial)</li>
+<li>CLASE=2 → <code>als/alp_Pozo</code> (cámara de inspección)</li>
+<li>CLASE=3 → <code>als/alp_Sumidero</code> (captación aguas lluvia)</li>
+<li>CLASE=4 → <code>als/alp_CajaDomiciliaria</code> (punto de conexión)</li>
+<li>CLASE=5 → <code>als/alp_SeccionTransversal</code> (punto de medición)</li>
+<li>CLASE=6 → <code>als/alp_EstructuraRed</code> (estructura auxiliar)</li>
+<li>CLASE=7 → <code>als/alp_Sumidero</code> (captación vial)</li>
+</ul>
+<p><strong>Valores de dominios NS-046</strong>:</p>
+<ul>
+<li>DOMTIPOSISTEMA: &quot;0&quot;=Sanitario, &quot;1&quot;=Pluvial, &quot;2&quot;=Sanitario (legacy)</li>
+<li>DOMESTADOENRED: Según catálogo de estados operacionales NS-046</li>
+<li>DOMMATERIAL: Códigos de materiales estándar EAAB</li>
+<li>DOMTIPOSECCION: Circular, Rectangular, Ovoide, etc. (catálogo NS-046)</li>
+</ul>
+<h3 id="patrones-de-dise%C3%B1o-implementados">Patrones de Diseño Implementados</h3>
+<h4 id="patrones-principales">Patrones Principales</h4>
+<ul>
+<li><strong>MVVM</strong> (Model-View-ViewModel): Separación de lógica de presentación</li>
+<li><strong>Factory</strong> (ConnectionPropertiesFactory): Creación de conexiones según motor de BD</li>
+<li><strong>Repository</strong> (PtAddressGralEntityRepository, PoiRepository): Abstracción de acceso a datos</li>
+<li><strong>Singleton Controlado</strong> (Module1, ConnectionService): Instancias únicas de servicios</li>
+<li><strong>Strategy (fallback)</strong>: Múltiples estrategias de búsqueda (exacta → LIKE → ESRI)</li>
+<li><strong>Lazy Initialization</strong>: Creación diferida de recursos (feature classes, capas)</li>
+</ul>
+<h4 id="patrones-en-migraci%C3%B3n">Patrones en Migración</h4>
+<ul>
+<li><strong>Use Case Pattern</strong>: Cada operación de migración es un caso de uso aislado</li>
+<li><strong>Template Method</strong>: <code>MigrateLines()</code> y <code>MigratePoints()</code> siguen estructura común</li>
+<li><strong>Builder Pattern</strong>: Reconstrucción de geometrías con builders específicos</li>
+<li><strong>Adapter</strong>: Normalización entre fuentes de resultados EAAB, Catastro, ESRI hacia <code>GeocodeResult</code></li>
+<li><strong>Chain of Responsibility</strong>: Validación → Creación GDB → Migración → Reportes</li>
+<li><strong>Command Pattern</strong>: EditOperation encapsula operaciones de edición</li>
+<li><strong>Fail-Fast Validation</strong>: Valida estructura antes de consumir recursos de migración</li>
+<li><strong>Safe Fallback</strong>: Si inserción directa falla, intenta con EditOperation</li>
+</ul>
+<h2 id="componentes-principales-de-migraci%C3%B3n">Componentes Principales de Migración</h2>
+<h3 id="1-migrationviewmodelcs">1. MigrationViewModel.cs</h3>
+<p>Orquesta el flujo completo de migración desde la interfaz de usuario.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">internal</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MigrationViewModel</span> : <span class="hljs-title">BusyViewModelBase</span>
+{
+    <span class="hljs-comment">// Propiedades vinculadas a UI</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">bool</span> MigrarConAdvertencias { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }  <span class="hljs-comment">// Checkbox crítico</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span>? Workspace { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }           <span class="hljs-comment">// Carpeta salida</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span>? XmlSchemaPath { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }       <span class="hljs-comment">// Esquema XML</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span>? L_Acu_Origen { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }        <span class="hljs-comment">// Líneas acueducto</span>
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span>? P_Acu_Origen { <span class="hljs-keyword">get</span>; <span class="hljs-keyword">set</span>; }        <span class="hljs-comment">// Puntos acueducto</span>
+    <span class="hljs-comment">// ... (6 capas posibles)</span>
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">RunAsync</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-comment">// 1. Validar parámetros</span>
+        <span class="hljs-keyword">if</span> (Workspace <span class="hljs-keyword">is</span> <span class="hljs-literal">null</span> || XmlSchemaPath <span class="hljs-keyword">is</span> <span class="hljs-literal">null</span>) <span class="hljs-keyword">return</span>;
+        
+        <span class="hljs-comment">// 2. Construir lista de datasets a validar</span>
+        <span class="hljs-keyword">var</span> datasetsToValidate = <span class="hljs-keyword">new</span> List&lt;DatasetInput&gt;();
+        <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">string</span>.IsNullOrWhiteSpace(L_Acu_Origen))
+            datasetsToValidate.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">"L_ACU_ORIGEN"</span>, L_Acu_Origen));
+        <span class="hljs-comment">// ... repite para cada capa</span>
+        
+        <span class="hljs-comment">// 3. Ejecutar validación</span>
+        <span class="hljs-keyword">var</span> validation = <span class="hljs-keyword">await</span> _datasetValidatorUseCase.Invoke(<span class="hljs-keyword">new</span>() {
+            OutputFolder = Workspace,
+            Datasets = datasetsToValidate
+        });
+        
+        <span class="hljs-comment">// 4. Verificar advertencias vs checkbox</span>
+        <span class="hljs-keyword">if</span> (validation.TotalWarnings &gt; <span class="hljs-number">0</span> &amp;&amp; !MigrarConAdvertencias)
+        {
+            <span class="hljs-comment">// Bloquear con diálogo detallado</span>
+            MessageBox.Show(<span class="hljs-string">$"BLOQUEADO: <span class="hljs-subst">{validation.TotalWarnings}</span> advertencias..."</span>);
+            <span class="hljs-keyword">return</span>;
+        }
+        
+        <span class="hljs-comment">// 5. Crear GDB destino</span>
+        <span class="hljs-keyword">var</span> (okGdb, gdbPath, msgGdb) = <span class="hljs-keyword">await</span> _createGdbFromXmlUseCase
+            .Invoke(Workspace, XmlSchemaPath);
+        
+        <span class="hljs-comment">// 6. Migrar cada capa seleccionada</span>
+        <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">string</span>.IsNullOrWhiteSpace(L_Alc_Origen))
+        {
+            <span class="hljs-keyword">var</span> (ok, msg, warnings) = <span class="hljs-keyword">await</span> _migrateAlcantarilladoUseCase
+                .MigrateLines(L_Alc_Origen, gdbPath);
+            mensajes.Add(msg);
+        }
+        <span class="hljs-comment">// ... repite para cada tipo</span>
+        
+        <span class="hljs-comment">// 7. Agregar capas al mapa</span>
+        <span class="hljs-keyword">await</span> _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
+        
+        <span class="hljs-comment">// 8. Mostrar resumen</span>
+        MessageBox.Show(<span class="hljs-string">$"Completado:\n<span class="hljs-subst">{<span class="hljs-keyword">string</span>.Join(<span class="hljs-string">"\n"</span>, mensajes)}</span>"</span>);
+    }
+}
+</div></code></pre>
+<p><strong>Características clave:</strong></p>
+<ul>
+<li><strong>Validación obligatoria</strong> antes de migración</li>
+<li><strong>Bloqueo de seguridad</strong> si hay advertencias sin autorización explícita</li>
+<li><strong>Procesamiento secuencial</strong> de múltiples capas</li>
+<li><strong>Reportes CSV</strong> automáticos por cada dataset</li>
+<li><strong>Gestión de errores</strong> sin detener proceso completo</li>
+</ul>
+<h3 id="2-validatedatasetsusecasecs">2. ValidateDatasetsUseCase.cs</h3>
+<p>Valida estructura y contenido de datos antes de migración.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ValidateDatasetsUseCase</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;ValidationResult&gt; <span class="hljs-title">Invoke</span>(<span class="hljs-params">ValidationInput input</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> result = <span class="hljs-keyword">new</span> ValidationResult
+        {
+            ReportFolder = Path.Combine(input.OutputFolder, <span class="hljs-string">"Reportes_Validacion"</span>),
+            ReportFiles = <span class="hljs-keyword">new</span> List&lt;<span class="hljs-keyword">string</span>&gt;()
+        };
+        
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> dataset <span class="hljs-keyword">in</span> input.Datasets)
+        {
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> fc = OpenFeatureClass(dataset.Path);
+            <span class="hljs-keyword">var</span> warnings = <span class="hljs-keyword">new</span> List&lt;ValidationWarning&gt;();
+            
+            <span class="hljs-comment">// Verificar campos requeridos</span>
+            <span class="hljs-keyword">if</span> (!HasField(fc, <span class="hljs-string">"CLASE"</span>))
+                warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">"Campo CLASE no encontrado"</span>, <span class="hljs-string">"CRITICAL"</span>));
+            
+            <span class="hljs-comment">// Validar contenido</span>
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> cursor = fc.Search();
+            <span class="hljs-keyword">while</span> (cursor.MoveNext())
+            {
+                <span class="hljs-keyword">var</span> clase = GetFieldValue&lt;<span class="hljs-keyword">int</span>?&gt;(feature, <span class="hljs-string">"CLASE"</span>);
+                <span class="hljs-keyword">if</span> (!clase.HasValue || clase.Value == <span class="hljs-number">0</span>)
+                    warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">"Feature sin CLASE válida"</span>, <span class="hljs-string">"WARNING"</span>));
+                
+                <span class="hljs-keyword">var</span> targetClass = GetTargetClassName(clase, sistema);
+                <span class="hljs-keyword">if</span> (<span class="hljs-keyword">string</span>.IsNullOrEmpty(targetClass))
+                    warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">"Sin clase destino para CLASE="</span> + clase, <span class="hljs-string">"WARNING"</span>));
+            }
+            
+            <span class="hljs-comment">// Generar reporte CSV</span>
+            <span class="hljs-keyword">var</span> csvFile = WriteCsvReport(result.ReportFolder, dataset.Name, warnings);
+            result.ReportFiles.Add(csvFile);
+            result.TotalWarnings += warnings.Count;
+        }
+        
+        <span class="hljs-keyword">return</span> result;
+    }
+}
+</div></code></pre>
+<p><strong>Validaciones ejecutadas:</strong></p>
+<ul>
+<li>Existencia de campos <code>CLASE</code>, <code>SUBTIPO</code>, <code>SISTEMA</code></li>
+<li>Tipos de datos correctos</li>
+<li>Features con CLASE nulo o cero</li>
+<li>CLASE sin mapping a feature class destino</li>
+<li>Geometrías nulas o vacías</li>
+</ul>
+<h3 id="3-migratealcantarilladousecasecs">3. MigrateAlcantarilladoUseCase.cs</h3>
+<p>Ejecuta la migración real de features de alcantarillado.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MigrateAlcantarilladoUseCase</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;(<span class="hljs-keyword">bool</span> ok, <span class="hljs-keyword">string</span> message)&gt; MigrateLines(
+        <span class="hljs-keyword">string</span> sourceLineasPath, <span class="hljs-keyword">string</span> targetGdbPath)
+    {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> QueuedTask.Run(() =&gt;
+        {
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> sourceFC = OpenFeatureClass(sourceLineasPath);
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> targetGdb = <span class="hljs-keyword">new</span> Geodatabase(
+                <span class="hljs-keyword">new</span> FileGeodatabaseConnectionPath(<span class="hljs-keyword">new</span> Uri(targetGdbPath)));
+            
+            <span class="hljs-keyword">var</span> mapSpatialReference = MapView.Active?.Map?.SpatialReference;
+            <span class="hljs-keyword">int</span> migrated = <span class="hljs-number">0</span>, failed = <span class="hljs-number">0</span>, noClase = <span class="hljs-number">0</span>, noTarget = <span class="hljs-number">0</span>;
+            
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> cursor = sourceFC.Search();
+            <span class="hljs-keyword">while</span> (cursor.MoveNext())
+            {
+                <span class="hljs-keyword">var</span> feature = cursor.Current <span class="hljs-keyword">as</span> Feature;
+                <span class="hljs-keyword">var</span> clase = GetFieldValue&lt;<span class="hljs-keyword">int</span>?&gt;(feature, <span class="hljs-string">"CLASE"</span>);
+                <span class="hljs-keyword">var</span> sistema = GetFieldValue&lt;<span class="hljs-keyword">int</span>?&gt;(feature, <span class="hljs-string">"SISTEMA"</span>);
+                
+                <span class="hljs-keyword">if</span> (!clase.HasValue) { noClase++; <span class="hljs-keyword">continue</span>; }
+                
+                <span class="hljs-keyword">string</span> targetClassName = GetTargetLineClassName(clase.Value, sistema?.ToString());
+                <span class="hljs-keyword">if</span> (<span class="hljs-keyword">string</span>.IsNullOrEmpty(targetClassName)) { noTarget++; <span class="hljs-keyword">continue</span>; }
+                
+                <span class="hljs-keyword">if</span> (MigrateLineFeature(feature, targetGdb, targetClassName, 
+                    subtipo, <span class="hljs-keyword">out</span> <span class="hljs-keyword">var</span> error, mapSpatialReference))
+                    migrated++;
+                <span class="hljs-keyword">else</span>
+                    failed++;
+            }
+            
+            <span class="hljs-comment">// Generar reporte CSV</span>
+            <span class="hljs-keyword">var</span> csv = <span class="hljs-keyword">new</span> CsvReportService();
+            csv.WriteMigrationSummary(folder, <span class="hljs-string">"alcantarillado_lineas"</span>, stats);
+            
+            <span class="hljs-keyword">return</span> (<span class="hljs-literal">true</span>, <span class="hljs-string">$"Migradas: <span class="hljs-subst">{migrated}</span>, Fallidas: <span class="hljs-subst">{failed}</span>"</span>);
+        });
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">bool</span> <span class="hljs-title">MigrateLineFeature</span>(<span class="hljs-params">Feature source, Geodatabase targetGdb,
+        <span class="hljs-keyword">string</span> targetClassName, <span class="hljs-keyword">int</span> subtipo, <span class="hljs-keyword">out</span> <span class="hljs-keyword">string</span>? error,
+        SpatialReference? mapSR</span>)</span>
+    {
+        <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> targetFC = OpenTargetFeatureClass(targetGdb, targetClassName);
+        <span class="hljs-keyword">var</span> geometry = source.GetShape();
+        
+        <span class="hljs-comment">// Proyección si es necesaria</span>
+        <span class="hljs-keyword">var</span> targetSR = targetFC.GetDefinition().GetSpatialReference();
+        <span class="hljs-keyword">if</span> (mapSR != <span class="hljs-literal">null</span> &amp;&amp; geometry.SpatialReference.Wkid != targetSR.Wkid)
+        {
+            geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+        }
+        
+        <span class="hljs-comment">// Ajuste Z/M si es necesario</span>
+        <span class="hljs-keyword">if</span> ((geometry.HasZ &amp;&amp; !targetFC.GetDefinition().HasZ()) ||
+            (geometry.HasM &amp;&amp; !targetFC.GetDefinition().HasM()))
+        {
+            geometry = RebuildGeometryWithoutZM(geometry);
+        }
+        
+        <span class="hljs-comment">// Mapeo de atributos</span>
+        <span class="hljs-keyword">var</span> attributes = BuildLineAttributes(source, targetFC.GetDefinition(), subtipo);
+        
+        <span class="hljs-comment">// Inserción con EditOperation</span>
+        <span class="hljs-keyword">var</span> editOp = <span class="hljs-keyword">new</span> EditOperation { Name = <span class="hljs-string">"Migrar línea"</span> };
+        editOp.Callback(context =&gt;
+        {
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> rowBuffer = targetFC.CreateRowBuffer();
+            rowBuffer[<span class="hljs-string">"SHAPE"</span>] = geometry;
+            <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> attr <span class="hljs-keyword">in</span> attributes)
+                rowBuffer[attr.Key] = CoerceToFieldType(attr.Value, fieldDef);
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> row = targetFC.CreateRow(rowBuffer);
+            context.Invalidate(row);
+        }, targetFC);
+        
+        <span class="hljs-keyword">bool</span> success = editOp.Execute();
+        error = success ? <span class="hljs-literal">null</span> : editOp.ErrorMessage;
+        <span class="hljs-keyword">return</span> success;
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> Geometry <span class="hljs-title">RebuildGeometryWithoutZM</span>(<span class="hljs-params">Geometry geom</span>)</span>
+    {
+        <span class="hljs-keyword">if</span> (geom <span class="hljs-keyword">is</span> MapPoint pt)
+            <span class="hljs-keyword">return</span> MapPointBuilderEx.CreateMapPoint(pt.X, pt.Y, geom.SpatialReference);
+        
+        <span class="hljs-keyword">if</span> (geom <span class="hljs-keyword">is</span> Polyline line)
+        {
+            <span class="hljs-keyword">var</span> builder = <span class="hljs-keyword">new</span> PolylineBuilderEx(geom.SpatialReference);
+            <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> part <span class="hljs-keyword">in</span> line.Parts)
+            {
+                <span class="hljs-keyword">var</span> points = <span class="hljs-keyword">new</span> List&lt;MapPoint&gt;();
+                <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> segment <span class="hljs-keyword">in</span> part)
+                {
+                    <span class="hljs-keyword">var</span> startPt = segment.StartPoint;
+                    points.Add(MapPointBuilderEx.CreateMapPoint(
+                        startPt.X, startPt.Y, geom.SpatialReference));
+                }
+                <span class="hljs-comment">// Agregar último punto</span>
+                <span class="hljs-keyword">var</span> lastSeg = part[part.Count - <span class="hljs-number">1</span>];
+                <span class="hljs-keyword">var</span> endPt = lastSeg.EndPoint;
+                points.Add(MapPointBuilderEx.CreateMapPoint(
+                    endPt.X, endPt.Y, geom.SpatialReference));
+                
+                builder.AddPart(points);
+            }
+            <span class="hljs-keyword">return</span> builder.ToGeometry();
+        }
+        
+        <span class="hljs-comment">// Similar para Polygon...</span>
+        <span class="hljs-keyword">return</span> geom;
+    }
+    
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;(<span class="hljs-keyword">bool</span> ok, <span class="hljs-keyword">string</span> message)&gt; AddMigratedLayersToMap(<span class="hljs-keyword">string</span> gdbPath)
+    {
+        <span class="hljs-keyword">var</span> map = MapView.Active?.Map;
+        <span class="hljs-keyword">var</span> combinedExtent = (Envelope?)<span class="hljs-literal">null</span>;
+        
+        <span class="hljs-keyword">var</span> lineClasses = <span class="hljs-keyword">new</span>[] { <span class="hljs-string">"als_RedLocal"</span>, <span class="hljs-string">"als_RedTroncal"</span>, ... };
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> className <span class="hljs-keyword">in</span> lineClasses)
+        {
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> fc = OpenFeatureClass(gdb, className);
+            <span class="hljs-keyword">if</span> (fc == <span class="hljs-literal">null</span> || fc.GetCount() == <span class="hljs-number">0</span>) <span class="hljs-keyword">continue</span>;
+            
+            <span class="hljs-comment">// Calcular extent</span>
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> cursor = fc.Search();
+            <span class="hljs-keyword">while</span> (cursor.MoveNext())
+            {
+                <span class="hljs-keyword">var</span> geom = (cursor.Current <span class="hljs-keyword">as</span> Feature)?.GetShape();
+                <span class="hljs-keyword">if</span> (geom?.Extent != <span class="hljs-literal">null</span>)
+                    combinedExtent = combinedExtent?.Union(geom.Extent) ?? geom.Extent;
+            }
+            
+            <span class="hljs-comment">// Crear o reutilizar capa</span>
+            <span class="hljs-keyword">var</span> existingLayer = map.GetLayersAsFlattenedList().OfType&lt;FeatureLayer&gt;()
+                .FirstOrDefault(l =&gt; l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+            
+            <span class="hljs-keyword">if</span> (existingLayer == <span class="hljs-literal">null</span>)
+            {
+                <span class="hljs-keyword">var</span> layer = LayerFactory.Instance.CreateLayer&lt;FeatureLayer&gt;(
+                    <span class="hljs-keyword">new</span> FeatureLayerCreationParams(fc) { Name = className }, map);
+                ApplySymbology(layer, isLine: <span class="hljs-literal">true</span>);
+            }
+        }
+        
+        <span class="hljs-comment">// Zoom a extent combinado</span>
+        <span class="hljs-keyword">if</span> (combinedExtent != <span class="hljs-literal">null</span>)
+        {
+            <span class="hljs-keyword">var</span> expanded = <span class="hljs-keyword">new</span> EnvelopeBuilderEx(
+                combinedExtent.XMin - width * <span class="hljs-number">0.1</span>,
+                combinedExtent.YMin - height * <span class="hljs-number">0.1</span>,
+                combinedExtent.XMax + width * <span class="hljs-number">0.1</span>,
+                combinedExtent.YMax + height * <span class="hljs-number">0.1</span>,
+                combinedExtent.SpatialReference
+            ).ToGeometry();
+            
+            MapView.Active.ZoomTo(expanded, TimeSpan.FromSeconds(<span class="hljs-number">1.5</span>));
+        }
+        
+        <span class="hljs-keyword">return</span> (<span class="hljs-literal">true</span>, <span class="hljs-string">"Capas agregadas exitosamente"</span>);
+    }
+}
+</div></code></pre>
+<p><strong>Operaciones críticas:</strong></p>
+<ul>
+<li><strong>OpenFeatureClass()</strong>: Maneja shapefiles, GDB, feature datasets automáticamente</li>
+<li><strong>GetTargetLineClassName()</strong>: Mapea CLASE+SISTEMA → nombre de FC destino</li>
+<li><strong>RebuildGeometryWithoutZM()</strong>: Reconstruye geometría eliminando dimensiones extra</li>
+<li><strong>CoerceToFieldType()</strong>: Convierte y trunca valores según tipo de campo destino</li>
+<li><strong>EditOperation</strong>: Método seguro para inserción en contexto de ArcGIS</li>
+</ul>
+<h3 id="4-csvreportservicecs">4. CsvReportService.cs</h3>
+<p>Genera reportes CSV de validación y migración.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CsvReportService</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span> <span class="hljs-title">WriteMigrationSummary</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> folder, <span class="hljs-keyword">string</span> prefix,
+        IEnumerable&lt;(<span class="hljs-keyword">string</span> className, <span class="hljs-keyword">int</span> attempts, <span class="hljs-keyword">int</span> migrated, <span class="hljs-keyword">int</span> failed</span>)&gt; stats,
+        <span class="hljs-keyword">int</span> noClase, <span class="hljs-keyword">int</span> noTarget)</span>
+    {
+        <span class="hljs-keyword">var</span> timestamp = DateTime.Now.ToString(<span class="hljs-string">"yyyyMMdd_HHmmss"</span>);
+        <span class="hljs-keyword">var</span> fileName = <span class="hljs-string">$"<span class="hljs-subst">{prefix}</span>_resumen_<span class="hljs-subst">{timestamp}</span>.csv"</span>;
+        <span class="hljs-keyword">var</span> filePath = Path.Combine(folder, fileName);
+        
+        <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> writer = <span class="hljs-keyword">new</span> StreamWriter(filePath);
+        writer.WriteLine(<span class="hljs-string">"Clase Destino,Intentos,Migradas,Fallidas"</span>);
+        
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> (className, attempts, migrated, failed) <span class="hljs-keyword">in</span> stats)
+        {
+            writer.WriteLine(<span class="hljs-string">$"<span class="hljs-subst">{className}</span>,<span class="hljs-subst">{attempts}</span>,<span class="hljs-subst">{migrated}</span>,<span class="hljs-subst">{failed}</span>"</span>);
+        }
+        
+        writer.WriteLine();
+        writer.WriteLine(<span class="hljs-string">$"Sin campo CLASE,<span class="hljs-subst">{noClase}</span>"</span>);
+        writer.WriteLine(<span class="hljs-string">$"Sin clase destino,<span class="hljs-subst">{noTarget}</span>"</span>);
+        
+        <span class="hljs-keyword">return</span> filePath;
+    }
+}
+
+<span class="hljs-meta">### 5. ClipFeatureDataset (Corte de Feature Dataset)</span>
+
+Descripción: <span class="hljs-function">Herramienta para <span class="hljs-title">recortar</span> (<span class="hljs-params">clip</span>) un conjunto de Feature Classes contenidos en un Feature Dataset usando un polígono seleccionado en el mapa. Genera una geodatabase de salida en la carpeta seleccionada con un nombre `Clip_YYYYMMDD_HHmmss.gdb` e incluye opciones de buffer y selección por feature class.
+
+Componente principal: `ClipFeatureDatasetViewModel`
+
+- Propiedades clave:
+    - `OutputGeodatabase`: carpeta donde se creará la GDB de salida.
+    - `FeatureDataset`: ruta al Feature Dataset de <span class="hljs-title">origen</span> (<span class="hljs-params">.gdb/.../FeatureDataset</span>).
+    - `AvailableFeatureClasses` / `FilteredFeatureClasses`: lista de feature classes seleccionables dentro del dataset.
+    - `BufferMeters`, `IsBufferEnabled`, `IsRoundedBufferEnabled`: opciones de tamponamiento aplicadas al polígono de recorte.
+    - `OutputLocation`: ruta de la GDB o carpeta de <span class="hljs-title">salida</span> (<span class="hljs-params">expuesta para UI / hipervínculo</span>).
+
+- Comandos:
+    - `OutputGeodatabaseCommand`: examina la carpeta de salida.
+    - `FeatureDatasetCommand`: examina y selecciona el Feature Dataset de origen.
+    - `ExecuteClipCommand`: ejecuta el proceso de <span class="hljs-title">clip</span> (<span class="hljs-params">llama a `ClipFeatureDatasetUseCase`</span>).
+    - `OpenOutputLocationCommand`: abre la carpeta de salida en el Explorador de <span class="hljs-title">Windows</span> (<span class="hljs-params">hipervínculo en la UI</span>).
+
+- Flujo técnico resumido:
+    1. El usuario selecciona el Feature Dataset de entrada y la carpeta de salida.
+    2. El ViewModel carga las Feature Classes del dataset y permite seleccionar cuáles recortar.
+    3. El usuario selecciona un polígono en el <span class="hljs-title">mapa</span> (<span class="hljs-params">debe existir exactamente un polígono seleccionado</span>).
+    4. Opcionalmente define un buffer en metros y el <span class="hljs-title">tipo</span> (<span class="hljs-params">redondeado/plano</span>).
+    5. Al ejecutar, el caso de uso crea una GDB nueva `Clip_YYYYMMDD_HHmmss.gdb` en la carpeta padre, ejecuta el clip por cada feature class seleccionada y registra el resultado en `StatusMessage`.
+    6. `OutputLocation` se expone y la UI muestra un hipervínculo para abrir la carpeta en Explorer.
+
+Notas de implementación:
+- El proceso utiliza `QueuedTask.Run` para operaciones con ArcGIS <span class="hljs-title">SDK</span> (<span class="hljs-params">apertura de geodatabases, lectura de definiciones, operaciones de clip</span>).
+- La UI expone `HasOutputLocation` para controlar la visibilidad del hipervínculo.
+- Se recomienda comprobar permisos de escritura en la carpeta de salida antes de ejecutar.
+</span></div></code></pre>
+<h3 id="6-hash-sha-256-generar-y-verificar">6. Hash SHA-256 (Generar y Verificar)</h3>
+<p>Descripción: Módulo para generar y verificar firmas SHA-256 de archivos de salida del AddIn (por ejemplo: <code>Migracion_*.gdb</code> empaquetadas, archivos <code>.zip</code> generados por procesos, y el propio paquete <code>.esriAddInX</code>). Permite asegurar integridad y facilitar validación en despliegues.</p>
+<p>Componentes principales:</p>
+<ul>
+<li><code>HashViewModel</code> (Presentation): expone comandos de UI y estado de operación.</li>
+<li><code>FileHashService</code> (Application/Core): calcula y verifica hash con lectura en streaming.</li>
+<li>Comandos: <code>GenerateHashCommand</code>, <code>VerifyHashCommand</code> (mapeados en DAML).</li>
+</ul>
+<p>UI (DAML - conceptual):</p>
+<pre class="hljs"><code><div><span class="hljs-tag">&lt;<span class="hljs-name">toolGroup</span> <span class="hljs-attr">id</span>=<span class="hljs-string">"EAABAddIn_HashGroup"</span> <span class="hljs-attr">caption</span>=<span class="hljs-string">"Hash"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">id</span>=<span class="hljs-string">"EAABAddIn_GenerateHash"</span> <span class="hljs-attr">caption</span>=<span class="hljs-string">"Generar Hash"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">id</span>=<span class="hljs-string">"EAABAddIn_VerifyHash"</span> <span class="hljs-attr">caption</span>=<span class="hljs-string">"Verificar Hash"</span> /&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">toolGroup</span>&gt;</span>
+</div></code></pre>
+<p>Flujo técnico: Generar Hash</p>
+<ol>
+<li>Selección de archivo(s) objetivo(s) mediante diálogo (ZIP, GDB empaquetada, esriAddInX, etc.).</li>
+<li>Cálculo SHA-256 en streaming usando <code>System.Security.Cryptography.SHA256.Create()</code> con <code>FileStream</code> y buffer (ej. 1–4 MB) para evitar cargas completas en memoria.</li>
+<li>Se genera un archivo resumen por cada archivo de entrada con nombre <code>&lt;NombreArchivo&gt;_HASH.txt</code> en la misma carpeta, con el siguiente formato de texto:
+<ul>
+<li><code>Archivo: &lt;nombre.ext&gt;</code></li>
+<li><code>Ubicación: &lt;ruta completa&gt;</code></li>
+<li><code>Algoritmo: SHA-256</code></li>
+<li><code>TamañoBytes: &lt;entero&gt;</code></li>
+<li><code>Hash: &lt;hex en mayúsculas sin separadores&gt;</code></li>
+<li><code>Fecha: &lt;YYYY-MM-DD HH:mm:ss&gt;</code></li>
+</ul>
+</li>
+<li>Manejo de errores: archivos bloqueados, permisos insuficientes, rutas largas → registrar mensaje y continuar con el resto.</li>
+</ol>
+<p>Flujo técnico: Verificar Hash</p>
+<ol>
+<li>Selección de archivo a verificar o carpeta que contenga el par <code>&lt;archivo&gt;</code> y <code>&lt;archivo&gt;_HASH.txt</code>.</li>
+<li>Búsqueda no recursiva del archivo de resumen en la misma carpeta; si existe más de uno, se prioriza el que coincide exactamente con el nombre base.</li>
+<li>Recalcular SHA-256 del archivo objetivo en streaming y comparar con el valor en <code>Hash:</code> del archivo de resumen.</li>
+<li>Resultado de verificación:
+<ul>
+<li><code>OK</code>: hash coincide.</li>
+<li><code>NO MATCH</code>: contenido difiere.</li>
+<li><code>NO HASH</code>: no se encontró archivo resumen.</li>
+</ul>
+</li>
+<li>Registro de detalles en <code>StatusMessage</code> y, opcionalmente, generación de <code>Verificacion_HASH_[timestamp].txt</code> con el resultado.</li>
+</ol>
+<p>Consideraciones de implementación</p>
+<ul>
+<li>Lectura por bloques (<code>FileStream</code> con <code>useAsync:true</code>) para archivos grandes.</li>
+<li>Cancelación y reporte de progreso opcionales vía <code>IProgress&lt;T&gt;</code>/<code>CancellationToken</code>.</li>
+<li>Operaciones de IO pesadas en <code>Task.Run</code>/<code>QueuedTask</code> según corresponda, actualizando UI en el hilo apropiado.</li>
+<li>Nombres y rutas conservando carpeta origen; no se realiza búsqueda recursiva.</li>
+</ul>
+<p>Ejemplo (C# simplificado de cómputo):</p>
+<pre class="hljs"><code><div><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">string</span> <span class="hljs-title">ComputeSha256</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> path</span>)</span>
+{
+     <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> sha = SHA256.Create();
+     <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> fs = <span class="hljs-keyword">new</span> FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, <span class="hljs-number">1</span>_048_576, FileOptions.SequentialScan);
+     <span class="hljs-keyword">var</span> hash = sha.ComputeHash(fs);
+     <span class="hljs-keyword">return</span> Convert.ToHexString(hash); <span class="hljs-comment">// .NET 5+: HEX en mayúsculas</span>
+}
+</div></code></pre>
+<p>Pruebas recomendadas</p>
+<ul>
+<li>Archivos pequeños y grandes (&gt;1 GB) para validar rendimiento/streaming.</li>
+<li>Casos: archivo inexistente, archivo bloqueado, carpeta sin <code>_HASH.txt</code>, valor <code>Hash:</code> mal formado.</li>
+<li>Verificación cruzada con herramienta externa (ej. <code>Get-FileHash</code> en PowerShell) para validar el resultado.</li>
+</ul>
+<h2 id="componentes-principales-geocodificaci%C3%B3n">Componentes Principales Geocodificación</h2>
+<h3 id="1-module1cs---punto-de-entrada">1. Module1.cs - Punto de Entrada</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">internal</span> <span class="hljs-keyword">class</span> <span class="hljs-title">Module1</span> : <span class="hljs-title">Module</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">bool</span> <span class="hljs-title">Initialize</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-comment">// Cargar configuración persistente</span>
+        LoadConfiguration();
+        
+        <span class="hljs-comment">// Inicializar servicios</span>
+        InitializeServices();
+        
+        <span class="hljs-comment">// Intentar reconexión diferida</span>
+        _ = Task.Run(<span class="hljs-keyword">async</span> () =&gt; <span class="hljs-keyword">await</span> AttemptReconnectionAsync());
+        
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">base</span>.Initialize();
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">AttemptReconnectionAsync</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> config = ConfigurationManager.LoadConfiguration();
+        <span class="hljs-keyword">if</span> (config.IsValid)
+        {
+            <span class="hljs-keyword">await</span> ConnectionService.ConnectAsync(config);
+        }
+    }
+}
+</div></code></pre>
+<h3 id="2-databaseconnectionservice">2. DatabaseConnectionService</h3>
+<p>Gestiona las conexiones a bases de datos con soporte multi-motor.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">DatabaseConnectionService</span> : <span class="hljs-title">IDisposable</span>
+{
+    <span class="hljs-keyword">private</span> Geodatabase _geodatabase;
+    <span class="hljs-keyword">private</span> DatabaseEngine _currentEngine;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">string</span> _sdeFilePath;
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;<span class="hljs-keyword">bool</span>&gt; <span class="hljs-title">ConnectAsync</span>(<span class="hljs-params">DatabaseConfiguration config</span>)</span>
+    {
+        <span class="hljs-keyword">try</span>
+        {
+            DatabaseConnectionProperties connectionProps;
+            
+            <span class="hljs-keyword">if</span> (config.Engine <span class="hljs-keyword">is</span> DatabaseEngine.PostgreSQLSDE or DatabaseEngine.OracleSDE)
+            {
+                <span class="hljs-comment">// Conexión mediante archivo SDE</span>
+                connectionProps = <span class="hljs-keyword">new</span> DatabaseConnectionFile(
+                    <span class="hljs-keyword">new</span> Uri(config.SdeFilePath, UriKind.Absolute));
+            }
+            <span class="hljs-keyword">else</span>
+            {
+                <span class="hljs-comment">// Conexión por credenciales</span>
+                connectionProps = ConnectionPropertiesFactory.Create(
+                    config.Engine, config.Host, config.Port, 
+                    config.Database, config.User, config.Password);
+            }
+            
+            <span class="hljs-keyword">await</span> QueuedTask.Run(() =&gt;
+            {
+                _geodatabase = <span class="hljs-keyword">new</span> Geodatabase(connectionProps);
+            });
+            
+            _currentEngine = config.Engine;
+            IsConnected = <span class="hljs-literal">true</span>;
+            
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>;
+        }
+        <span class="hljs-keyword">catch</span> (Exception ex)
+        {
+            Debug.WriteLine(<span class="hljs-string">$"Error de conexión: <span class="hljs-subst">{ex.Message}</span>"</span>);
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>;
+        }
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;Geodatabase&gt; <span class="hljs-title">GetConnectionAsync</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">if</span> (!IsConnected || _geodatabase == <span class="hljs-literal">null</span>)
+            <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvalidOperationException(<span class="hljs-string">"No hay conexión activa"</span>);
+        
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> Task.FromResult(_geodatabase);
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Dispose</span>(<span class="hljs-params"></span>)</span>
+    {
+        _geodatabase?.Dispose();
+        _geodatabase = <span class="hljs-literal">null</span>;
+        IsConnected = <span class="hljs-literal">false</span>;
+    }
+}
+</div></code></pre>
+<h3 id="3-resultslayerservice">3. ResultsLayerService</h3>
+<p>Gestiona la capa de resultados de geocodificación con batch insert optimizado.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ResultsLayerService</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">string</span> FEATURE_CLASS_NAME = <span class="hljs-string">"GeocodedAddresses"</span>;
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task <span class="hljs-title">InsertBatchAsync</span>(<span class="hljs-params">List&lt;GeocodeResult&gt; results</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> featureClass = <span class="hljs-keyword">await</span> GetOrCreateFeatureClassAsync();
+        
+        <span class="hljs-keyword">await</span> QueuedTask.Run(() =&gt;
+        {
+            <span class="hljs-keyword">using</span> <span class="hljs-keyword">var</span> operation = <span class="hljs-keyword">new</span> EditOperation
+            {
+                Name = <span class="hljs-string">"Insertar resultados de geocodificación"</span>
+            };
+            
+            <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> result <span class="hljs-keyword">in</span> results)
+            {
+                <span class="hljs-keyword">var</span> attributes = <span class="hljs-keyword">new</span> Dictionary&lt;<span class="hljs-keyword">string</span>, <span class="hljs-keyword">object</span>&gt;
+                {
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"Identificador"</span></span>] = result.Identifier,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"Direccion"</span></span>] = result.Address,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"FullAdressEAAB"</span></span>] = result.FullAddressEAAB,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"FullAdressUACD"</span></span>] = result.FullAddressUACD,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"Geocoder"</span></span>] = result.Geocoder.ToString(),
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"Score"</span></span>] = result.Score,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"ScoreText"</span></span>] = result.ScoreText,
+                    [<span class="hljs-meta"><span class="hljs-meta-string">"FechaHora"</span></span>] = DateTime.Now
+                };
+                
+                <span class="hljs-keyword">var</span> geometry = MapPointBuilderEx.CreateMapPoint(
+                    result.X, result.Y, SpatialReferences.WGS84);
+                
+                operation.Create(featureClass, attributes, geometry);
+            }
+            
+            operation.Execute();
+        });
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> FeatureClass <span class="hljs-title">CreateOrRetrieveFeatureClass</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> gdb = GetDefaultGeodatabase();
+        
+        <span class="hljs-comment">// Intentar abrir existente</span>
+        <span class="hljs-keyword">try</span>
+        {
+            <span class="hljs-keyword">return</span> gdb.OpenDataset&lt;FeatureClass&gt;(FEATURE_CLASS_NAME);
+        }
+        <span class="hljs-keyword">catch</span>
+        {
+            <span class="hljs-comment">// Crear nuevo</span>
+            <span class="hljs-keyword">return</span> CreateNewFeatureClass(gdb);
+        }
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> FeatureClass <span class="hljs-title">CreateNewFeatureClass</span>(<span class="hljs-params">Geodatabase gdb</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> fcDescription = <span class="hljs-keyword">new</span> FeatureClassDescription(
+            FEATURE_CLASS_NAME,
+            <span class="hljs-keyword">new</span> List&lt;FieldDescription&gt;
+            {
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"Identificador"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"Direccion"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"FullAdressEAAB"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"FullAdressUACD"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"Geocoder"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"Score"</span>, FieldType.Double),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"ScoreText"</span>, FieldType.String),
+                <span class="hljs-keyword">new</span> FieldDescription(<span class="hljs-string">"FechaHora"</span>, FieldType.Date)
+            },
+            <span class="hljs-keyword">new</span> ShapeDescription(GeometryType.Point, SpatialReferences.WGS84)
+        );
+        
+        <span class="hljs-keyword">return</span> gdb.CreateFeatureClass(fcDescription);
+    }
+}
+</div></code></pre>
+<h3 id="4-addresssearchservice">4. AddressSearchService</h3>
+<p>Orquesta la búsqueda de direcciones con fallback inteligente.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">AddressSearchService</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IPtAddressGralEntityRepository _repository;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> AddressNormalizer _normalizer;
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;SearchResult&gt; <span class="hljs-title">SearchAsync</span>(<span class="hljs-params">
+        <span class="hljs-keyword">string</span> address, <span class="hljs-keyword">string</span> city, CancellationToken cancellationToken</span>)</span>
+    {
+        <span class="hljs-comment">// Primer intento: búsqueda exacta</span>
+        <span class="hljs-keyword">var</span> results = <span class="hljs-keyword">await</span> _repository.SearchAddressesAsync(
+            address, city, cancellationToken);
+        
+        <span class="hljs-keyword">if</span> (results.Any())
+            <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> SearchResult(results, SearchStrategy.Exact);
+        
+        <span class="hljs-comment">// Segundo intento: búsqueda LIKE ampliada</span>
+        Debug.WriteLine(<span class="hljs-string">"Búsqueda exacta sin resultados, intentando LIKE..."</span>);
+        results = <span class="hljs-keyword">await</span> _repository.SearchAddressesLikeAsync(
+            address, city, cancellationToken);
+        
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> SearchResult(results, SearchStrategy.Like);
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;<span class="hljs-keyword">string</span>&gt; <span class="hljs-title">NormalizeAddressAsync</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> address</span>)</span>
+    {
+        <span class="hljs-keyword">try</span>
+        {
+            <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> _normalizer.NormalizeAsync(address);
+        }
+        <span class="hljs-keyword">catch</span> (Exception ex)
+        {
+            Debug.WriteLine(<span class="hljs-string">$"Error de normalización: <span class="hljs-subst">{ex.Message}</span>"</span>);
+            <span class="hljs-keyword">return</span> address; <span class="hljs-comment">// Fallback a dirección original</span>
+        }
+    }
+}
+</div></code></pre>
+<h3 id="5-massivegeocodingservice">5. MassiveGeocodingService</h3>
+<p>Procesamiento masivo con optimizaciones de rendimiento.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MassiveGeocodingService</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> AddressSearchService _searchService;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> ResultsLayerService _resultsService;
+    
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">async</span> Task&lt;MassiveResult&gt; <span class="hljs-title">ProcessFileAsync</span>(<span class="hljs-params">
+        <span class="hljs-keyword">string</span> filePath, IProgress&lt;ProgressInfo&gt; progress</span>)</span>
+    {
+        <span class="hljs-keyword">var</span> records = <span class="hljs-keyword">await</span> ReadExcelFileAsync(filePath);
+        <span class="hljs-keyword">var</span> results = <span class="hljs-keyword">new</span> List&lt;GeocodeResult&gt;();
+        <span class="hljs-keyword">var</span> notFound = <span class="hljs-keyword">new</span> List&lt;NotFoundRecord&gt;();
+        
+        <span class="hljs-keyword">int</span> processed = <span class="hljs-number">0</span>;
+        <span class="hljs-keyword">int</span> total = records.Count;
+        
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> record <span class="hljs-keyword">in</span> records)
+        {
+            <span class="hljs-keyword">var</span> searchResult = <span class="hljs-keyword">await</span> _searchService.SearchAsync(
+                record.Address, record.City, CancellationToken.None);
+            
+            <span class="hljs-keyword">if</span> (searchResult.HasResults)
+            {
+                <span class="hljs-comment">// Determinar mejor dirección: EAAB &gt; Catastro &gt; Original</span>
+                <span class="hljs-keyword">var</span> bestAddress = DetermineBestAddress(searchResult);
+                results.Add(CreateGeocodeResult(record, bestAddress));
+            }
+            <span class="hljs-keyword">else</span>
+            {
+                notFound.Add(<span class="hljs-keyword">new</span> NotFoundRecord
+                {
+                    Identifier = record.Identifier,
+                    Address = record.Address,
+                    City = record.City,
+                    Timestamp = DateTime.Now
+                });
+            }
+            
+            processed++;
+            progress?.Report(<span class="hljs-keyword">new</span> ProgressInfo(processed, total));
+        }
+        
+        <span class="hljs-comment">// Inserción en lote optimizada</span>
+        <span class="hljs-keyword">await</span> _resultsService.InsertBatchAsync(results);
+        <span class="hljs-keyword">await</span> _notFoundService.InsertBatchAsync(notFound);
+        
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> MassiveResult
+        {
+            Found = results.Count,
+            NotFound = notFound.Count,
+            Total = total
+        };
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">string</span> <span class="hljs-title">DetermineBestAddress</span>(<span class="hljs-params">SearchResult result</span>)</span>
+    {
+        <span class="hljs-comment">// Prioridad: FullAddressEAAB &gt; FullAddressUACD &gt; Original &gt; Calle básica</span>
+        <span class="hljs-keyword">var</span> first = result.Addresses.First();
+        
+        <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">string</span>.IsNullOrEmpty(first.FullAddressEAAB))
+            <span class="hljs-keyword">return</span> first.FullAddressEAAB;
+        
+        <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">string</span>.IsNullOrEmpty(first.FullAddressUACD))
+            <span class="hljs-keyword">return</span> first.FullAddressUACD;
+        
+        <span class="hljs-keyword">return</span> first.Direccion;
+    }
+}
+</div></code></pre>
+<h2 id="sistema-de-configuraci%C3%B3n">Sistema de Configuración</h2>
+<ul>
+<li>Persistencia JSON + respaldo en settings App.</li>
+<li>Validación contextual según tipo de motor.</li>
+<li>Admite cambio caliente (runtime) disparando reconexión.</li>
+</ul>
+<h3 id="seguridad-de-configuraci%C3%B3n">Seguridad de Configuración</h3>
+<ul>
+<li>Contraseñas no se registran en logs.</li>
+<li>Posible mejora: cifrado AES local (pendiente) usando DPAPI Windows.</li>
+<li>Recomendado: restringir permisos de carpeta <code>%AppData%/EAABAddIn</code>.</li>
+</ul>
+<h2 id="modelo-de-datos-l%C3%B3gico-simplificado">Modelo de Datos (Lógico Simplificado)</h2>
+<table>
+<thead>
+<tr>
+<th>Entidad</th>
+<th>Campos clave</th>
+<th>Fuente</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PtAddressGralEntity</td>
+<td>ID, Direccion, FullAddressEAAB, FullAddressCadastre, Poblacion</td>
+<td>BD corporativa</td>
+<td>Base principal de direcciones</td>
+</tr>
+<tr>
+<td>GeocodeResult</td>
+<td>Identifier, Address, Source, Score, Lat/Long</td>
+<td>Derivado</td>
+<td>Unión de varias fuentes</td>
+</tr>
+<tr>
+<td>NotFoundRecord</td>
+<td>Identifier, Address, City, Timestamp</td>
+<td>Generado</td>
+<td>Auditoría de intentos fallidos</td>
+</tr>
+<tr>
+<td>PoiEntity</td>
+<td>PoiId, Name, Category, City, X, Y</td>
+<td>BD corporativa / vista</td>
+<td>Indexable para búsqueda</td>
+</tr>
+</tbody>
+</table>
+<h2 id="capa-de-resultados-espaciales">Capa de Resultados Espaciales</h2>
+<h3 id="resultslayerservice"><code>ResultsLayerService</code></h3>
+<ul>
+<li>Lazy create de Feature Class <code>GeocodedAddresses</code> (WGS84).</li>
+<li>Inserciones agrupadas dentro de <code>EditOperation</code>.</li>
+<li>Campos calculados en el ViewModel (score interpretado).</li>
+</ul>
+<h3 id="poiresultslayerservice"><code>PoiResultsLayerService</code></h3>
+<ul>
+<li>Similar estrategia: <code>POIResults</code> con campos <code>PoiId</code>, <code>Nombre</code>, <code>Categoria</code>, <code>Ciudad</code>, <code>FechaHora</code>.</li>
+<li>Reutiliza builder de geometrías estándar.</li>
+</ul>
+<h2 id="logging-y-observabilidad">Logging y Observabilidad</h2>
+<p>Estado actual: logging mínimo mediante <code>Debug.WriteLine</code> y mensajes UI.<br>
+Sugerido:</p>
+<ul>
+<li>Introducir <code>ILogger</code> (MS.Extensions.Logging) con proveedor simple.</li>
+<li>Niveles: Info (operaciones), Warning (faltantes), Error (excepciones).</li>
+<li>Métricas futuras: tiempo promedio por geocodificación, % éxito.</li>
+</ul>
+<h2 id="rendimiento-y-escalabilidad">Rendimiento y Escalabilidad</h2>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Riesgo</th>
+<th>Mitigación Actual</th>
+<th>Mejora Potencial</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Masivo secuencial</td>
+<td>Lento con &gt;50k filas</td>
+<td>Procesamiento controlado</td>
+<td>Paralelizar lectura + cola MCT</td>
+</tr>
+<tr>
+<td>Acceso BD</td>
+<td>Latencia variable</td>
+<td>Repositorio único</td>
+<td>Cache ciudades en memoria</td>
+</tr>
+<tr>
+<td>Insert espacial</td>
+<td>Bloqueos si muchas ediciones</td>
+<td>Batch + single commit</td>
+<td>Chunk configurable</td>
+</tr>
+<tr>
+<td>Normalización externa</td>
+<td>Timeout/errores</td>
+<td>Fallback inmediato</td>
+<td>Circuit breaker + retry</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tratamiento-de-errores">Tratamiento de Errores</h2>
+<ul>
+<li>Validaciones previas detienen proceso temprano (fail-fast).</li>
+<li>Excepciones en loop masivo contabilizan como &quot;no encontrados&quot; sin detener el resto.</li>
+<li>Mostrar mensajes al usuario solo cuando agregan valor (no spam por cada fila).</li>
+</ul>
+<h2 id="pruebas-testing">Pruebas (Testing)</h2>
+<h3 id="estrategia-propuesta">Estrategia Propuesta</h3>
+<table>
+<thead>
+<tr>
+<th>Tipo</th>
+<th>Objetivo</th>
+<th>Ejemplos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td>Lógica pura (normalizador, filtros)</td>
+<td><code>AddressNormalizerTests</code></td>
+</tr>
+<tr>
+<td>Repository (mock)</td>
+<td>Queries adaptadas por motor</td>
+<td><code>PtAddressGralRepositoryTests</code></td>
+</tr>
+<tr>
+<td>Integration (opcional)</td>
+<td>Conexión real a GDB de prueba</td>
+<td>Escenarios mínimos</td>
+</tr>
+<tr>
+<td>UI (manual)</td>
+<td>Flujo MVVM básico</td>
+<td>Buscar, Masivo, POI</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recomendaciones">Recomendaciones</h3>
+<ul>
+<li>Introducir interfaces para capa ResultsLayer para facilitar mocks.</li>
+<li>Usar <code>xUnit</code> + <code>Moq</code>.</li>
+<li>Datos de prueba ligeros (JSON) para direcciones.</li>
+</ul>
+<h2 id="build-y-empaquetado">Build y Empaquetado</h2>
+<h3 id="compilaci%C3%B3n-local">Compilación Local</h3>
+<ol>
+<li>Abrir solución en Visual Studio con ArcGIS Pro instalado.</li>
+<li>Restaurar paquetes NuGet.</li>
+<li>Asegurar target: <code>net8.0-windows</code> con <code>UseWPF</code> habilitado.</li>
+<li>Compilar en modo Release.</li>
+</ol>
+<h3 id="generaci%C3%B3n-del-addin-esriaddinx">Generación del AddIn (.esriAddInX)</h3>
+<ol>
+<li>Verificar <code>Config.daml</code> actualizado (botones/paneles).</li>
+<li>Build Release genera carpeta <code>bin/Release</code>.</li>
+<li>Utilizar herramienta de empaquetado del SDK (si configurada) o copiar output.</li>
+<li>Validar firma (si política corporativa lo exige).</li>
+</ol>
+<h3 id="versionado">Versionado</h3>
+<ul>
+<li>Mantener versión en AssemblyInfo o proyecto (PropertyGroup <code>&lt;Version&gt;</code>).</li>
+<li>Sincronizar con sección &quot;Información de Versión&quot; de manual usuario.</li>
+</ul>
+<h2 id="despliegue">Despliegue</h2>
+<table>
+<thead>
+<tr>
+<th>Entorno</th>
+<th>Acción</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Usuario final</td>
+<td>Distribuir <code>.esriAddInX</code></td>
+<td>Instrucciones en READMEUSER</td>
+</tr>
+<tr>
+<td>Piloto</td>
+<td>Revisión funcional</td>
+<td>Capturar métricas básicas</td>
+</tr>
+<tr>
+<td>Producción</td>
+<td>Publicación controlada</td>
+<td>Registrar hash archivo</td>
+</tr>
+</tbody>
+</table>
+<h3 id="checklist-de-publicaci%C3%B3n">Checklist de Publicación</h3>
+<ul>
+<li>Generar build Release (<code>.esriAddInX</code>).</li>
+<li>Usar la opción <code>Generar Hash</code> para el <code>.esriAddInX</code> y adjuntar el archivo <code>&lt;AddIn&gt;.esriAddInX_HASH.txt</code> al entregable.</li>
+<li>Si se distribuyen datos (GDB/ZIP) generados por el AddIn, generar su <code>*_HASH.txt</code> correspondiente y conservar junto al archivo original.</li>
+<li>Verificar integridad con <code>Verificar Hash</code> en un equipo distinto antes de entrega final.</li>
+<li>Registrar el valor SHA-256 en el acta o sistema de despliegue.</li>
+</ul>
+<h2 id="seguridad-y-acceso-a-datos">Seguridad y Acceso a Datos</h2>
+<ul>
+<li>Principio de mínimo privilegio para usuarios de BD.</li>
+<li>No almacenar contraseñas en texto plano fuera de <code>%AppData%</code> (cifrar futuro).</li>
+<li>Validar origen de archivos Excel (no macros, no binarios maliciosos).</li>
+</ul>
+<h2 id="internacionalizaci%C3%B3n-i18n">Internacionalización (i18n)</h2>
+<ul>
+<li>Textos actualmente en español embebidos.</li>
+<li>Mejora futura: recursos (.resx) para soportar EN/ES.</li>
+</ul>
+<h2 id="roadmap-propuesto">Roadmap Propuesto</h2>
+<table>
+<thead>
+<tr>
+<th>Prioridad</th>
+<th>Feature</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alta</td>
+<td>Cancelación masiva</td>
+<td>Token cancelar proceso en curso</td>
+</tr>
+<tr>
+<td>Media</td>
+<td>Cache ciudades</td>
+<td>Reducir llamadas repetidas</td>
+</tr>
+<tr>
+<td>Media</td>
+<td>Exportar no encontrados</td>
+<td>CSV automático</td>
+</tr>
+<tr>
+<td>Media</td>
+<td>Paginación POIs</td>
+<td>Controlar grandes resultados</td>
+</tr>
+<tr>
+<td>Baja</td>
+<td>Cifrado credenciales</td>
+<td>DPAPI / AES</td>
+</tr>
+<tr>
+<td>Baja</td>
+<td>Telemetría</td>
+<td>Eventos anónimos de uso</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ejemplo-simplificado-de-poi-repository">Ejemplo Simplificado de POI Repository</h2>
+<pre class="hljs"><code><div><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">IPoiRepository</span> {
+    <span class="hljs-function">IEnumerable&lt;PoiEntity&gt; <span class="hljs-title">Search</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> term, <span class="hljs-keyword">string</span> city = <span class="hljs-literal">null</span>, <span class="hljs-keyword">int</span> max = <span class="hljs-number">500</span></span>)</span>;
+}
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PostgresPoiRepository</span> : <span class="hljs-title">IPoiRepository</span> {
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> DatabaseConnectionService _connection;
+    <span class="hljs-function"><span class="hljs-keyword">public</span> IEnumerable&lt;PoiEntity&gt; <span class="hljs-title">Search</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> term, <span class="hljs-keyword">string</span> city = <span class="hljs-literal">null</span>, <span class="hljs-keyword">int</span> max = <span class="hljs-number">500</span></span>)</span> {
+        <span class="hljs-comment">// Implementación con ILIKE y limit</span>
+    }
+}
+</div></code></pre>
+<h2 id="consideraciones-especiales-de-migraci%C3%B3n">Consideraciones Especiales de Migración</h2>
+<h3 id="transformaci%C3%B3n-de-geometr%C3%ADas">Transformación de Geometrías</h3>
+<p><strong>Proyección automática:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span> (sourceSR.Wkid != targetSR.Wkid)
+{
+    geometry = GeometryEngine.Instance.Project(geometry, targetSR);
+}
+</div></code></pre>
+<p><strong>Eliminación de dimensiones Z/M:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-comment">// Si origen tiene Z pero destino no lo acepta</span>
+<span class="hljs-keyword">if</span> (sourceGeom.HasZ &amp;&amp; !targetDef.HasZ())
+{
+    <span class="hljs-comment">// Reconstruir sin Z usando builders</span>
+    <span class="hljs-keyword">if</span> (geom <span class="hljs-keyword">is</span> Polyline)
+    {
+        <span class="hljs-keyword">var</span> builder = <span class="hljs-keyword">new</span> PolylineBuilderEx(SR);
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-keyword">var</span> part <span class="hljs-keyword">in</span> line.Parts)
+        {
+            <span class="hljs-keyword">var</span> points2D = ExtractXYOnly(part);
+            builder.AddPart(points2D);
+        }
+        geometry = builder.ToGeometry();
+    }
+}
+</div></code></pre>
+<h3 id="mapeo-de-atributos">Mapeo de Atributos</h3>
+<p><strong>Líneas de alcantarillado (60+ campos mapeados):</strong></p>
+<ul>
+<li>Campos técnicos: LONGITUD_M, PENDIENTE, PROFUNDIDADMEDIA, RUGOSIDAD</li>
+<li>Diámetros: DOMDIAMETRONOMINAL, NUMEROCONDUCTOS</li>
+<li>Secciones: DOMTIPOSECCION, BASE, ALTURA1, ALTURA2, TALUD1, TALUD2</li>
+<li>Cotas: COTARASANTEINICIAL/FINAL, COTACLAVEINICIAL/FINAL, COTABATEAINICIAL/FINAL</li>
+<li>Nodos: N_INICIAL, N_FINAL</li>
+<li>Estados: DOMESTADOENRED, DOMCALIDADDATO, DOMESTADOLEGAL</li>
+<li>Materiales: DOMMATERIAL, DOMMATERIAL2</li>
+<li>Instalación: DOMMETODOINSTALACION, FECHAINSTALACION</li>
+<li>Inspección: DOMTIPOINSPECCION, DOMGRADOESTRUCTURAL, DOMGRADOOPERACIONAL</li>
+</ul>
+<p><strong>Puntos de alcantarillado (80+ campos mapeados):</strong></p>
+<ul>
+<li>Cotas: COTARASANTE, COTATERRENO, COTAFONDO, PROFUNDIDAD, COTACRESTA</li>
+<li>Estructuras: LARGOESTRUCTURA, ANCHOESTRUCTURA, ALTOESTRUCTURA</li>
+<li>Bombeo: ALTURABOMBEO, VOLUMENBOMBEO, CAUDALBOMBEO, UNIDADESBOMBEO</li>
+<li>Estados: DOMESTADOPOZO, DOMESTADOFISICO, DOMESTADOTAPA, DOMESTADOESCALON</li>
+<li>Componentes: DOMTIPOCONO, DOMESTADOCONO, ESTREJILLA, MATREJILLA</li>
+<li>Georreferenciación: NORTE, ESTE, ABSCISA</li>
+<li>Identificación: NOMBRE, IDENTIFIC, CODACTIVO_FIJO</li>
+</ul>
+<h3 id="validaci%C3%B3n-de-datos">Validación de Datos</h3>
+<p><strong>Campos críticos validados:</strong></p>
+<pre class="hljs"><code><div><span class="hljs-comment">// Validación pre-migración</span>
+<span class="hljs-keyword">var</span> warnings = <span class="hljs-keyword">new</span> List&lt;ValidationWarning&gt;();
+
+<span class="hljs-comment">// Campo CLASE obligatorio</span>
+<span class="hljs-keyword">if</span> (!HasField(fc, <span class="hljs-string">"CLASE"</span>))
+    warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">"Campo CLASE no encontrado"</span>, <span class="hljs-string">"CRITICAL"</span>));
+
+<span class="hljs-comment">// Valores válidos de CLASE</span>
+<span class="hljs-keyword">if</span> (clase == <span class="hljs-literal">null</span> || clase == <span class="hljs-number">0</span>)
+    warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">$"Feature <span class="hljs-subst">{oid}</span>: CLASE nulo o cero"</span>, <span class="hljs-string">"WARNING"</span>));
+
+<span class="hljs-comment">// Mapping a clase destino</span>
+<span class="hljs-keyword">var</span> targetClass = GetTargetClassName(clase, sistema);
+<span class="hljs-keyword">if</span> (<span class="hljs-keyword">string</span>.IsNullOrEmpty(targetClass))
+    warnings.Add(<span class="hljs-keyword">new</span>(<span class="hljs-string">$"CLASE=<span class="hljs-subst">{clase}</span>, SISTEMA=<span class="hljs-subst">{sistema}</span> sin mapping"</span>, <span class="hljs-string">"WARNING"</span>));
+</div></code></pre>
+<p><strong>Reporte CSV generado:</strong></p>
+<pre class="hljs"><code><div>Dataset,Campo,Problema,Severidad,Cantidad
+L_ALC_ORIGEN,CLASE,Valor nulo,WARNING,15
+L_ALC_ORIGEN,CLASE,Sin clase destino (CLASE=99),WARNING,3
+P_ALC_ORIGEN,SISTEMA,Valor nulo,WARNING,42
+</div></code></pre>
+<h3 id="sistema-de-reportes">Sistema de Reportes</h3>
+<p><strong>Por cada migración se generan:</strong></p>
+<ol>
+<li><strong>Reporte de validación</strong> (antes): <code>validacion_[dataset]_[timestamp].csv</code></li>
+<li><strong>Reporte de migración</strong> (después): <code>alcantarillado_lineas_resumen_[timestamp].csv</code></li>
+</ol>
+<p><strong>Estructura reporte de migración:</strong></p>
+<pre class="hljs"><code><div>Clase Destino,Intentos,Migradas,Fallidas
+als_RedLocal,1250,1248,2
+als_RedTroncal,340,340,0
+als_LineaLateral,89,87,2
+
+Sin campo CLASE,15
+Sin clase destino,3
+</div></code></pre>
+<h2 id="notas-de-mantenimiento">Notas de Mantenimiento</h2>
+<ul>
+<li>Revisar compatibilidad ArcGIS Pro antes de subir versión SDK.</li>
+<li>Ejecutar pruebas de regresión después de cambios en repositorios.</li>
+<li>Documentar nuevas columnas añadidas a Feature Class.</li>
+<li><strong>Sincronizar mapeo de campos</strong> si cambia esquema XML corporativo.</li>
+<li><strong>Actualizar tablas de clasificación</strong> si se agregan nuevos tipos de red.</li>
+<li><strong>Validar proyecciones</strong> si se cambia SR estándar del mapa.</li>
+</ul>
+<h2 id="versi%C3%B3n-del-documento">Versión del Documento</h2>
+<p><strong>Versión</strong>: 1.3<br>
+<strong>Última actualización</strong>: 1 de diciembre de 2025<br>
+<strong>Cambios principales:</strong></p>
+<ul>
+<li>Se agrega documentación técnica del módulo de Hash (SHA-256): generar y verificar, mapeo DAML, flujos y consideraciones.</li>
+<li>Se documenta <code>ClipFeatureDataset</code> con propiedades, comandos y flujo técnico.</li>
+<li>Se añade checklist de despliegue con generación y verificación de hash para entregables.</li>
+</ul>
+
+</body>
+</html>

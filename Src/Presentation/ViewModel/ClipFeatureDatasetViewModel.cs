@@ -65,6 +65,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
     public ICommand DeselectAllFilteredCommand { get; private set; }
 
     private Polygon? _selectedPolygon = null;
+    private List<Polygon>? _selectedPolygons = null;
     private string? _sourceGdbPath = null;
     private List<(string datasetName, List<string> featureClasses)>? _featureDatasets = null;
 
@@ -247,6 +248,21 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         }
     }
 
+    private bool _isMultiPolygonEnabled = false;
+    public bool IsMultiPolygonEnabled
+    {
+        get => _isMultiPolygonEnabled;
+        set
+        {
+            if (_isMultiPolygonEnabled != value)
+            {
+                _isMultiPolygonEnabled = value;
+                NotifyPropertyChanged(nameof(IsMultiPolygonEnabled));
+                _ = OnRefreshSelectionAsync();
+            }
+        }
+    }
+
     private double _bufferMeters = 0;
     public double BufferMeters
     {
@@ -344,7 +360,8 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
         !string.IsNullOrWhiteSpace(OutputGeodatabase) &&
         !string.IsNullOrWhiteSpace(FeatureDataset) &&
         BufferMeters >= 0 &&
-        _selectedPolygon != null &&
+        ((_isMultiPolygonEnabled && _selectedPolygons != null && _selectedPolygons.Any()) ||
+         (!_isMultiPolygonEnabled && _selectedPolygon != null)) &&
         NetworksLoaded >= 1 &&
         AvailableFeatureClasses.Any(fc => fc.IsSelected)
     );
@@ -634,9 +651,14 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
     private async Task OnExecuteClip()
     {
-        if (_selectedPolygon == null)
+        if (!_isMultiPolygonEnabled && _selectedPolygon == null)
         {
             StatusMessage = "❌ No hay polígono seleccionado";
+            return;
+        }
+        if (_isMultiPolygonEnabled && (_selectedPolygons == null || !_selectedPolygons.Any()))
+        {
+            StatusMessage = "❌ No hay polígonos seleccionados";
             return;
         }
 
@@ -665,7 +687,32 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             var gdbName = $"Clip_{timestamp}.gdb";
             var outputGdbPath = Path.Combine(parentFolder, gdbName);
 
-            var bufferInMapUnits = await ConvertMetersToMapUnitsAsync(_selectedPolygon, BufferMeters);
+            // Determinar polígono de corte (único o unión)
+            Polygon? clipPolygon = _selectedPolygon;
+            if (_isMultiPolygonEnabled && _selectedPolygons != null && _selectedPolygons.Any())
+            {
+                clipPolygon = await QueuedTask.Run(() =>
+                {
+                    try
+                    {
+                        var geoms = _selectedPolygons.Cast<Geometry>().ToList();
+                        var union = GeometryEngine.Instance.Union(geoms) as Polygon;
+                        return union ?? _selectedPolygons.FirstOrDefault();
+                    }
+                    catch
+                    {
+                        return _selectedPolygons.FirstOrDefault();
+                    }
+                });
+            }
+
+            if (clipPolygon == null || clipPolygon.IsEmpty)
+            {
+                StatusMessage = "❌ Polígono(s) inválido(s) para cortar";
+                return;
+            }
+
+            var bufferInMapUnits = await ConvertMetersToMapUnitsAsync(clipPolygon, BufferMeters);
 
             var selectedFeatureDatasets = new List<(string datasetName, List<string> featureClasses)>();
             
@@ -692,7 +739,7 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 outputGdbPath,
                 _sourceGdbPath,
                 selectedFeatureDatasets,
-                _selectedPolygon,
+                clipPolygon,
                 bufferInMapUnits,
                 IsRoundedBufferEnabled);
 
@@ -776,17 +823,34 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
     {
         try
         {
-            _selectedPolygon = await GetSelectedPolygonAsync();
-
-            if (_selectedPolygon != null)
+            if (IsMultiPolygonEnabled)
             {
-                var area = await CalculateAreaInSquareMetersAsync(_selectedPolygon);
-                var areaText = area >= 1 ? $"{area:N0} m²" : $"{area:N2} m²";
-                SelectionStatus = $"✓ Polígono seleccionado (Área: {areaText})";
+                _selectedPolygons = await GetSelectedPolygonsAsync();
+                _selectedPolygon = null;
             }
             else
             {
-                SelectionStatus = "❌ No hay polígono seleccionado";
+                _selectedPolygon = await GetSelectedPolygonAsync();
+                _selectedPolygons = null;
+            }
+
+            if (IsMultiPolygonEnabled)
+            {
+                var count = _selectedPolygons?.Count ?? 0;
+                SelectionStatus = count > 0 ? $"✓ {count} polígonos seleccionados" : "❌ No hay polígonos seleccionados";
+            }
+            else
+            {
+                if (_selectedPolygon != null)
+                {
+                    var area = await CalculateAreaInSquareMetersAsync(_selectedPolygon);
+                    var areaText = area >= 1 ? $"{area:N0} m²" : $"{area:N2} m²";
+                    SelectionStatus = $"✓ Polígono seleccionado (Área: {areaText})";
+                }
+                else
+                {
+                    SelectionStatus = "❌ No hay polígono seleccionado";
+                }
             }
 
             NotifyPropertyChanged(nameof(CanExecuteClip));
@@ -797,6 +861,52 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             System.Diagnostics.Debug.WriteLine($"Error al actualizar selección: {ex.Message}");
             SelectionStatus = "⚠️ Error al detectar selección";
         }
+    }
+
+    private async Task<List<Polygon>?> GetSelectedPolygonsAsync()
+    {
+        return await QueuedTask.Run(() =>
+        {
+            var mv = MapView.Active;
+            if (mv?.Map == null)
+                return new List<Polygon>();
+
+            var selectionSet = mv.Map.GetSelection();
+            if (selectionSet.Count == 0)
+                return new List<Polygon>();
+
+            var polygons = new List<Polygon>();
+            foreach (var layerSelection in selectionSet.ToDictionary())
+            {
+                var layer = layerSelection.Key;
+                var oids = layerSelection.Value;
+
+                if (layer is FeatureLayer featureLayer &&
+                    featureLayer.ShapeType == ArcGIS.Core.CIM.esriGeometryType.esriGeometryPolygon)
+                {
+                    var queryFilter = new QueryFilter
+                    {
+                        ObjectIDs = oids
+                    };
+
+                    using (var featureCursor = featureLayer.Search(queryFilter))
+                    {
+                        while (featureCursor.MoveNext())
+                        {
+                            using (var feature = featureCursor.Current as Feature)
+                            {
+                                if (feature?.GetShape() is Polygon poly && !poly.IsEmpty)
+                                {
+                                    polygons.Add(poly);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return polygons;
+        });
     }
 
     private async Task<Polygon?> GetSelectedPolygonAsync()

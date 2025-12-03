@@ -180,6 +180,22 @@
                 <TextBlock Text="Polígono de referencia" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,6" />
                 <TextBlock Text="{Binding SelectionStatus}" Style="{StaticResource DisabledTextStyle}" Margin="0,0,0,12" />
 
+                <CheckBox
+                    x:Name="EnableMultiPolygonCheck"
+                    IsChecked="{Binding IsMultiPolygonEnabled, Mode=TwoWay}"
+                    Margin="0,0,0,12">
+                    <TextBlock Text="Seleccionar múltiples polígonos" FontSize="12" />
+                    <CheckBox.ToolTip>
+                        <TextBlock TextWrapping="Wrap" MaxWidth="320">
+                            <Run Text="Activado: " FontWeight="Bold"/>
+                            <Run Text="Usa todos los polígonos seleccionados y crea una sola GDB para el resultado."/>
+                            <LineBreak/>
+                            <Run Text="Desactivado: " FontWeight="Bold"/>
+                            <Run Text="Usa únicamente el primer polígono seleccionado (comportamiento actual)."/>
+                        </TextBlock>
+                    </CheckBox.ToolTip>
+                </CheckBox>
+
                 <StackPanel Margin="0,6,0,0">
                     <CheckBox
                         x:Name="EnableBufferCheck"
