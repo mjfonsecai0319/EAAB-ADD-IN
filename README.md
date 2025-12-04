@@ -620,10 +620,15 @@ Componente principal: `ClipFeatureDatasetViewModel`
 - Flujo técnico resumido:
     1. El usuario selecciona el Feature Dataset de entrada y la carpeta de salida.
     2. El ViewModel carga las Feature Classes del dataset y permite seleccionar cuáles recortar.
-    3. El usuario selecciona un polígono en el mapa (debe existir exactamente un polígono seleccionado).
+     3. El usuario selecciona uno o varios polígonos en el mapa. Por defecto la herramienta puede operar con un único polígono seleccionado; alternativamente, si se activa la casilla `Seleccionar múltiples polígonos`, la herramienta usará todas las geometrías seleccionadas.
+         Cuando se emplean varios polígonos, las geometrías seleccionadas se unen internamente y la geometría resultante se utiliza como una única máscara de recorte para todas las operaciones posteriores. El área que se muestra en la interfaz corresponde al área de la geometría resultante (m²). Si la unión no puede completarse, la herramienta intentará usar la primera geometría válida disponible y lo notificará en el estado del proceso.
     4. Opcionalmente define un buffer en metros y el tipo (redondeado/plano).
     5. Al ejecutar, el caso de uso crea una GDB nueva `Clip_YYYYMMDD_HHmmss.gdb` en la carpeta padre, ejecuta el clip por cada feature class seleccionada y registra el resultado en `StatusMessage`.
     6. `OutputLocation` se expone y la UI muestra un hipervínculo para abrir la carpeta en Explorer.
+
+Comportamiento respecto a buffer y salida:
+
+- Independientemente de si se usa uno o varios polígonos, el proceso genera una única geodatabase de salida por ejecución (`Clip_YYYYMMDD_HHmmss.gdb`) que contendrá todos los resultados del clip.
 
 Notas de implementación:
 - El proceso utiliza `QueuedTask.Run` para operaciones con ArcGIS SDK (apertura de geodatabases, lectura de definiciones, operaciones de clip).

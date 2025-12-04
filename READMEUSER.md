@@ -442,6 +442,19 @@ La funcionalidad de "Cortar" permite extraer (clip) las Feature Classes de un Fe
    - Área del polígono en m² 
 3. **Importante**: Debe haber exactamente 1 polígono seleccionado. Si hay 0 o más de 1, no se permitirá ejecutar
 
+**Seleccionar múltiples polígonos**
+
+La herramienta incluye una casilla `Seleccionar múltiples polígonos`:
+
+- **Sin marcar (comportamiento por defecto):** La herramienta usa el primer polígono seleccionado. Debe haber exactamente 1 polígono seleccionado para habilitar el botón de ejecutar.
+- **Marcada:** La herramienta tomará todos los polígonos aseleccionados en el mapa, los unirá internamente y usará la geometría resultante como una sola máscara de recorte. En este modo puedes seleccionar varios polígonos y ejecutar un único proceso de corte.
+
+Notas importantes sobre el modo multi-polígono:
+
+- El panel mostrará el número de polígonos seleccionados y el área total (m²) calculada sobre la unión de las geometrías.
+- El proceso crea **una sola geodatabase de salida** por ejecución incluso cuando se procesan múltiples polígonos juntos, tal como cuando se usa un único polígono.
+- Si la unión falla por cualquier motivo, la herramienta intentará usar la primera geometría válida como máscara de recorte y notificará en el área de estado.
+
 **Paso 6: (Opcional) Configurar Buffer**
 1. Marca el checkbox **"Aplicar Buffer"** si deseas expandir el área de recorte
 2. Ingresa la distancia en **metros** (ej: 100, 500, 1000)

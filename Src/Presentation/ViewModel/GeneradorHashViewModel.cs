@@ -13,9 +13,7 @@ using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel
 {
-    /// <summary>
-    /// ViewModel para la funcionalidad de Generador de Hash
-    /// </summary>
+
     internal class GeneradorHashViewModel : BusyViewModelBase
     {
         public override string DisplayName => "Generador de Hash";
@@ -23,7 +21,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         private readonly GenerarHashUseCase _generarHashUseCase;
 
-        // ==================== COMANDOS ====================
         public ICommand ExaminarCarpetaCommand { get; }
         public ICommand ExaminarArchivoVerificarCommand { get; }
         public ICommand GenerarHashCommand { get; }
@@ -31,7 +28,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
         public ICommand LimpiarGenerarCommand { get; }
         public ICommand LimpiarVerificarCommand { get; }
 
-        // ==================== PROPIEDADES - TAB GENERAR ====================
         
         private int _funcionalidadSeleccionada = 0;
         public int FuncionalidadSeleccionada
@@ -99,7 +95,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         public bool PuedeGenerarHash => !string.IsNullOrWhiteSpace(RutaCarpetaGenerar) && !IsBusy;
 
-        // ==================== PROPIEDADES - TAB VERIFICAR ====================
 
         private string _archivoVerificar = string.Empty;
         public string ArchivoVerificar
@@ -114,7 +109,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                     NotifyPropertyChanged(nameof(PuedeVerificarHash));
                     (VerificarHashCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     
-                    // Buscar automáticamente el archivo hash
                     BuscarArchivoHashAutomatico();
                 }
             }
@@ -164,7 +158,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
         public bool PuedeVerificarHash => !string.IsNullOrWhiteSpace(ArchivoVerificar) && !IsBusy;
 
-        // ==================== CONSTRUCTOR ====================
 
         public GeneradorHashViewModel()
         {
@@ -180,7 +173,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             ActualizarPlaceholder();
         }
 
-        // ==================== MÉTODOS - EXAMINAR ====================
 
         private void OnExaminarCarpeta()
         {
@@ -218,7 +210,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // ==================== MÉTODOS - GENERAR HASH ====================
 
         private async Task OnGenerarHashAsync()
         {
@@ -236,7 +227,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                 if (EsFuncionalidad1)
                 {
-                    // Funcionalidad 1: Comprimir GDB y Generar Hash
                     StatusMessage = "Comprimiendo carpeta...";
                     var (ok, zipPath, hashPath, message) = await _generarHashUseCase.ComprimirGdbYGenerarHash(RutaCarpetaGenerar);
                     
@@ -245,7 +235,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (ok)
                     {
-                        // Abrir carpeta contenedora
                         var carpeta = Path.GetDirectoryName(zipPath);
                         if (!string.IsNullOrWhiteSpace(carpeta) && Directory.Exists(carpeta))
                         {
@@ -255,7 +244,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
                 }
                 else if (EsFuncionalidad2)
                 {
-                    // Funcionalidad 2: Generar Hash de Archivos en Carpeta
                     StatusMessage = "Calculando hashes de archivos...";
                     var (ok, resumenPath, hashes, message) = await _generarHashUseCase.GenerarHashArchivosEnCarpeta(RutaCarpetaGenerar);
                     
@@ -264,7 +252,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
 
                     if (ok)
                     {
-                        // Abrir carpeta contenedora
                         if (Directory.Exists(RutaCarpetaGenerar))
                         {
                             System.Diagnostics.Process.Start("explorer.exe", RutaCarpetaGenerar);
@@ -284,7 +271,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // ==================== MÉTODOS - VERIFICAR HASH ====================
 
         private async Task OnVerificarHashAsync()
         {
@@ -320,7 +306,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             }
         }
 
-        // ==================== MÉTODOS - LIMPIAR ====================
 
         private void OnLimpiarGenerar()
         {
@@ -339,7 +324,6 @@ namespace EAABAddIn.Src.Presentation.ViewModel
             VerificacionExitosa = false;
         }
 
-        // ==================== MÉTODOS AUXILIARES ====================
 
         private void ActualizarPlaceholder()
         {

@@ -303,7 +303,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             {
                 _outputLocation = value;
                 NotifyPropertyChanged(nameof(OutputLocation));
-                // Actualizar la bandera y habilitar/inhabilitar el comando
                 HasOutputLocation = !string.IsNullOrWhiteSpace(_outputLocation);
                 (OpenOutputLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
@@ -341,7 +340,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 return;
             }
 
-            // Abrir la carpeta en el Explorador de Windows
             var psi = new ProcessStartInfo
             {
                 FileName = path,
@@ -674,7 +672,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
         try
         {
-            // Use the selected folder directly (OutputGeodatabase is now a folder path, not a GDB path)
             var parentFolder = OutputGeodatabase;
             
             if (string.IsNullOrWhiteSpace(parentFolder) || !Directory.Exists(parentFolder))
@@ -687,7 +684,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
             var gdbName = $"Clip_{timestamp}.gdb";
             var outputGdbPath = Path.Combine(parentFolder, gdbName);
 
-            // Determinar polígono de corte (único o unión)
             Polygon? clipPolygon = _selectedPolygon;
             if (_isMultiPolygonEnabled && _selectedPolygons != null && _selectedPolygons.Any())
             {
@@ -745,7 +741,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
 
             StatusMessage = success ? $"✓ {message}" : $"❌ {message}";
 
-            // Expose the output location separately so the view can render the label in bold via XAML
             OutputLocation = outputGdbPath ?? string.Empty;
             HasOutputLocation = !string.IsNullOrWhiteSpace(OutputLocation);
         }
@@ -839,7 +834,6 @@ internal class ClipFeatureDatasetViewModel : BusyViewModelBase
                 var count = _selectedPolygons?.Count ?? 0;
                 if (count > 0)
                 {
-                    // Calcular área total mediante unión para un metraje representativo
                     var unionPoly = await QueuedTask.Run(() =>
                     {
                         try
