@@ -1,16 +1,17 @@
 # MANUAL DEL USUARIO PARA EL USO DEL ADD-IN EAAB
 
-| Fecha   | 21/10/2025 |
+| Fecha   | 05/03/2026 |
 | ------- | ---------- |
-| Version | 2.0.1      |
+| Version | 3.0.0      |
 
 ## Tabla de Contenido
 
 1. [Introducción](#introducción)
 2. [Objetivo](#objetivo)
-3. [Capacidades](#capacidades)
-4. [Instalación](#instalación)
-5. [Uso](#uso)
+3. [Requisitos del Sistema](#requisitos-del-sistema)
+4. [Capacidades](#capacidades)
+5. [Instalación](#instalación)
+6. [Uso](#uso)
    1. [Funciones de geocodificación](#funciones-de-geocodificacion)
       1. [Buscar una Dirección Individual](#1-buscar-una-dirección-individual)
       2. [Geocodificar Direcciones Masivamente](#2-geocodificar-direcciones-masivamente)
@@ -20,7 +21,10 @@
       1. [Crear Nuevo Cierre](#1-crear-nuevo-cierre)
       2. [Calcular Área Afectada](#2-calcular-área-afectada)
       3. [Unir Polígonos](#3-unir-polígonos)
-6. [Problemas](#problemas)
+   3. [Migración de Datos](#migración-de-datos)
+   4. [Cortar Feature Dataset (Clip)](#cortar-feature-dataset-clip)
+   5. [Generador de Hash SHA256](#generador-de-hash-sha256)
+7. [Problemas](#problemas)
    1. [Fallo en la conexión con la base de datos](#1-fallo-en-la-conexión-con-la-base-de-datos)
    2. [Error "Edición no habilitada" al unir polígonos](#2-error-edición-no-habilitada-al-unir-polígonos)
 
@@ -28,13 +32,21 @@
 
 Este manual ha sido creado para guiar al usuario en la instalación, configuración y uso del Add-In EAAB para ArcGIS Pro, desarrollado por la Dirección de Información Técnica y Geográfica de la Empresa de Acueducto y Alcantarillado de Bogotá - E.S.P. (EAAB E.S.P.).
 
-El objetivo de esta guía es describir de forma clara y práctica las funcionalidades incluidas hasta la versión 2.0 y los pasos necesarios para integrarlas en los flujos de trabajo GIS de la organización. El Add-In facilita principalmente dos procesos clave: la geocodificación de direcciones (transformar direcciones en coordenadas geográficas) y la creación de cierres (generación y validación de polígonos de cierre para parcelas, redes u otras geometrías). Estas funciones están orientadas a automatizar tareas repetitivas, mejorar la calidad de los datos espaciales y reducir el tiempo requerido por los analistas.
+El objetivo de esta guía es describir de forma clara y práctica las funcionalidades incluidas hasta la versión 3.0 y los pasos necesarios para integrarlas en los flujos de trabajo GIS de la organización. El Add-In facilita cinco procesos clave: la geocodificación de direcciones (transformar direcciones en coordenadas geográficas), la creación de cierres (generación y validación de polígonos de cierre), la migración de datos de redes de acueducto y alcantarillado a la estructura corporativa, el corte espacial de conjuntos de datos por área de interés y la verificación de integridad de archivos mediante hashes SHA256. Estas funciones están orientadas a automatizar tareas repetitivas, mejorar la calidad de los datos espaciales y reducir el tiempo requerido por los analistas.
 
-Este documento está organizado en secciones que cubren: objetivos y capacidades del Add-In; requisitos e instalación; instrucciones paso a paso para el uso de las herramientas; ejemplos prácticos; y solución de problemas y preguntas frecuentes. Antes de usar el Add-In, se recomienda revisar la sección de requisitos para confirmar la versión compatible de ArcGIS Pro y los permisos necesarios. Para mayor claridad, cada procedimiento incluye capturas de pantalla, ejemplos de entrada/salida y notas sobre limitaciones conocidas.
+Este documento está organizado en secciones que cubren: requisitos del sistema; instalación y configuración inicial; objetivos y capacidades del Add-In; instrucciones paso a paso para el uso de las herramientas; y solución de problemas frecuentes. Antes de usar el Add-In, se recomienda revisar la sección de requisitos para confirmar la versión compatible de ArcGIS Pro y los permisos necesarios. Para mayor claridad, cada procedimiento incluye capturas de pantalla, ejemplos de entrada/salida y notas sobre limitaciones conocidas.
 
 ## Objetivo
 
-Proporcionar una herramienta de apoyo dentro de ArcGIS Pro que facilite a los trabajadores de la Dirección de Información Técnica y Geográfica la realización de procesos de geocodificación y generación de cierres espaciales. Para ello, permite automatizar la localización de direcciones, la creación de polígonos de áreas afectadas y la gestión estructurada de los resultados en las bases de datos corporativas, con el fin de optimizar el tiempo de análisis, mejorar la precisión de la información geográfica y estandarizar los procedimientos operativos dentro de la entidad.
+Proporcionar una herramienta de apoyo dentro de ArcGIS Pro que facilite a los trabajadores de la Dirección de Información Técnica y Geográfica la realización de procesos de geocodificación, generación de cierres espaciales, migración de datos de redes, corte de información geográfica y verificación de integridad de archivos. Para ello, el Add-In permite automatizar la localización de direcciones, la creación de polígonos de áreas afectadas, la transformación de datos hacia la estructura corporativa, la extracción de subconjuntos geográficos y la gestión estructurada de los resultados en las bases de datos corporativas, con el fin de optimizar el tiempo de análisis, mejorar la precisión de la información geográfica y estandarizar los procedimientos operativos dentro de la entidad.
+
+## Requisitos del Sistema
+
+Antes de proceder con la instalación, es indispensable verificar que el equipo cumpla con los siguientes requisitos mínimos:
+
+- **ArcGIS Pro 3.4 o superior** instalado y funcionando correctamente.
+- **Conexión a la base de datos corporativa** de la EAAB (PostgreSQL u Oracle), con acceso activo a la red institucional.
+- **Credenciales de acceso** a la base de datos (usuario y contraseña) proporcionadas por el área de sistemas.
 
 ## Capacidades
 
@@ -46,12 +58,59 @@ El Add-In permite transformar direcciones en ubicaciones espaciales precisas den
 
 El Add-In facilita la creación y gestión de polígonos de cierre que representan áreas afectadas o zonas de interés dentro del territorio. A través de herramientas integradas en la interfaz, los usuarios pueden generar polígonos a partir de puntos o capas existentes, utilizando métodos como envolventes convexas o cóncavas.
 
+### Migración de Datos
+
+El Add-In incorpora una herramienta de migración que permite transformar y consolidar datos de redes de acueducto y alcantarillado desde formatos externos o versiones anteriores del modelo de datos hacia la estructura corporativa estándar de la EAAB. Durante el proceso, el sistema valida automáticamente la estructura de los datos, clasifica cada elemento según su tipo y sistema, y genera una geodatabase de destino organizada por categorías de red.
+
+### Cortar Feature Dataset (Clip)
+
+La herramienta de corte permite extraer subconjuntos de datos a partir de un polígono seleccionado como máscara de recorte, lo que resulta útil para delimitar la información geográfica a un área de interés específica. De este modo, es posible generar entregas de datos acotadas por localidad, sector o cualquier otra unidad territorial operativa.
+
+### Verificación de Integridad (Hash SHA256)
+
+El Add-In incluye un módulo para generar y verificar hashes SHA256 de archivos y geodatabases, con el propósito de garantizar su integridad durante el almacenamiento y la transferencia. Esta funcionalidad permite auditar cambios en archivos críticos, validar copias de seguridad y confirmar que los datos recibidos no han sido alterados ni corrompidos.
+
 ## Instalación
 
 Para instalar el Add-In, el usuario debe ejecutar el archivo correspondiente y, en la ventana del asistente de instalación de ESRI ArcGIS Add-In Installation Utility, hacer clic en el botón “Install Add-In”. Una vez completado el proceso, la herramienta quedará disponible dentro de ArcGIS Pro en la pestaña asignada por la EAAB.
 
 ![Ventana de Instalcion](<res/Captura de pantalla 2025-10-21 092423.png>)
+### Configuración Inicial de la Conexión
 
+La primera vez que se utilice el Add-In, es necesario configurar la conexión a la base de datos corporativa. Para ello, siga los pasos a continuación:
+
+1. Abra **ArcGIS Pro** y diríjase al menú **Archivo → Opciones**.
+2. En el panel izquierdo, localice y seleccione la opción **"EAAB Add-In"**.
+3. Complete los campos de conexión según el tipo de motor de base de datos disponible:
+
+#### Si utiliza PostgreSQL
+
+- **Motor**: Seleccione "PostgreSQL".
+- **Host**: Dirección del servidor (por ejemplo: `192.168.1.100`).
+- **Puerto**: Normalmente `5432` (se completa automáticamente).
+- **Base de datos**: Nombre de la base de datos.
+- **Usuario**: Nombre de usuario de acceso.
+- **Contraseña**: Contraseña asociada al usuario.
+
+#### Si utiliza Oracle
+
+- **Motor**: Seleccione "Oracle".
+- **Host**: Dirección del servidor.
+- **Puerto**: Normalmente `1521` (se completa automáticamente).
+- **Base de datos**: Nombre del servicio Oracle (SID).
+- **Usuario**: Nombre de usuario de acceso.
+- **Contraseña**: Contraseña asociada al usuario.
+
+#### Si utiliza un archivo .sde
+
+- **Motor**: Seleccione "Oracle SDE" o "PostgreSQL SDE", según corresponda.
+- Haga clic en **"Examinar"** y seleccione el archivo `.sde` correspondiente.
+- Los demás campos desaparecerán automáticamente, dado que la configuración queda contenida en el archivo seleccionado.
+
+4. Haga clic en **"Probar Conexión"** para verificar que los datos ingresados sean correctos.
+5. Si la prueba es exitosa, presione **"Guardar y Conectar"** para aplicar la configuración.
+
+Una vez guardada la configuración, el Add-In la recordará automáticamente en las sesiones posteriores de ArcGIS Pro, por lo que no será necesario volver a ingresarla.
 ## Uso
 
 Una vez completada la instalación, el Add-In agrega una nueva pestaña llamada “EAAB Add-In” en la parte superior de ArcGIS Pro. Desde esta pestaña, el usuario puede acceder a todas las funciones disponibles, organizadas en botones y paneles de fácil acceso.
@@ -304,9 +363,242 @@ Esta herramienta permite fusionar múltiples polígonos seleccionados en uno sol
 
 Si la Feature Class de salida no tiene permisos de escritura o ya existe el registro, el sistema intentará automáticamente:
 
-- Usar la geodatabase por defecto del proyecto
-- Generar un nombre único agregando sufijo numérico
-- Informarte de la ubicación alternativa donde se guardó
+- Usar la geodatabase por defecto del proyecto.
+- Generar un nombre único agregando un sufijo numérico.
+- Informar al usuario de la ubicación alternativa donde se guardó el resultado.
+
+### Migración de Datos
+
+Esta herramienta permite migrar datos de redes de acueducto y alcantarillado desde formatos externos o versiones anteriores del modelo hacia la estructura corporativa de la EAAB. En particular, resulta útil para integrar datos de proyectos nuevos al sistema corporativo, actualizar información de versiones anteriores del modelo de datos y consolidar información proveniente de diversas fuentes.
+
+#### ¿Qué hace la migración?
+
+La herramienta **transforma y copia** los elementos (líneas y puntos) de las capas de origen hacia una geodatabase de destino con la estructura estándar de la EAAB. Durante el proceso se ejecutan automáticamente las siguientes operaciones:
+
+1. **Validación de la estructura** de los datos de origen.
+2. **Clasificación automática** de cada elemento según su tipo (CLASE, SUBTIPO, SISTEMA).
+3. **Mapeo de atributos** desde los campos de origen hacia los campos del modelo destino.
+4. **Creación de la geodatabase destino** a partir de un esquema XML predefinido.
+5. **Proyección de geometrías** al sistema de coordenadas del mapa activo, si fuese necesario.
+6. **Ajuste de dimensiones Z/M** según los requisitos de las capas de destino.
+7. **Adición automática de las capas** al mapa con la simbología correspondiente.
+
+#### Preparación antes de migrar
+
+Antes de ejecutar la herramienta, el usuario debe contar con los siguientes elementos:
+
+- **Capas de origen**: Shapefiles o feature classes con los datos de acueducto o alcantarillado a migrar.
+- **Esquema XML**: Archivo proporcionado por el área de sistemas de la EAAB, que define la estructura de la geodatabase de destino.
+- **Carpeta de salida**: Directorio donde se creará la geodatabase resultante.
+
+Asimismo, las capas de origen deben contener al menos los siguientes campos clave:
+
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| CLASE | Entero | Tipo de elemento (1=Red, 2=Troncal, 3=Lateral, etc.) | Sí |
+| SUBTIPO | Entero | Subtipo específico del elemento | No |
+| SISTEMA | Entero | Tipo de sistema (0/2=Sanitario, 1=Pluvial) | No* |
+
+*Si el campo SISTEMA se encuentra vacío, el sistema asumirá el tipo sanitario por defecto.
+
+#### Pasos de ejecución
+
+**Paso 1: Abrir la herramienta**
+
+Haga clic en el botón **"Migración"** dentro de la pestaña *EAAB Add-In*. A continuación, se abrirá un panel lateral con el formulario de configuración.
+
+**Paso 2: Seleccionar la carpeta de salida**
+
+Haga clic en **"Examinar..."** junto al campo "Carpeta de Salida" y seleccione el directorio donde se creará la geodatabase. Dicha geodatabase se denominará automáticamente `GDB_Cargue.gdb`.
+
+**Paso 3: Seleccionar el esquema XML**
+
+Haga clic en **"Examinar..."** junto al campo "Esquema XML" y seleccione el archivo XML con la definición de la estructura de destino. Este archivo debe ser proporcionado por el área de sistemas de la EAAB.
+
+**Paso 4: Seleccionar las capas de origen**
+
+Seleccione las capas correspondientes a cada tipo de red. Puede seleccionar una o varias según las necesidades de la operación:
+
+- **Para Acueducto**: Líneas ACU y Puntos ACU.
+- **Para Alcantarillado Sanitario**: Líneas ALC y Puntos ALC.
+- **Para Alcantarillado Pluvial**: Líneas ALC Pluvial y Puntos ALC Pluvial.
+
+**Paso 5: Validación automática**
+
+Antes de iniciar la migración, el sistema ejecuta automáticamente una validación que comprende:
+
+- ✓ Verificación de la estructura de los campos requeridos.
+- ✓ Comprobación de los tipos de datos.
+- ✓ Revisión de los valores en los campos clave (CLASE, SUBTIPO, SISTEMA).
+- ⚠ Detección de elementos sin clasificación.
+- ⚠ Identificación de valores inesperados o nulos.
+
+**Paso 6: Gestión de advertencias**
+
+En caso de que la validación detecte advertencias, el sistema presentará un cuadro de diálogo con el número total de inconvenientes identificados, los conjuntos de datos afectados y la ubicación de los reportes de validación (archivos CSV). A partir de dicha información, el usuario dispone de las siguientes opciones:
+
+- **Revisar los reportes**: Abrir los archivos CSV generados en la carpeta de salida para analizar los detalles.
+- **Corregir los datos**: Editar las capas de origen y reiniciar el proceso.
+- **Continuar con advertencias**: Marcar la casilla ☑ **"Migrar con Advertencias"** y ejecutar nuevamente.
+
+> **Nota importante:** Por razones de seguridad, la migración **no se ejecutará** si existen advertencias, a menos que el usuario marque explícitamente la casilla correspondiente.
+
+**Paso 7: Ejecutar la migración**
+
+Haga clic en el botón **"Ejecutar"** y observe la barra de progreso y los mensajes de estado. Dependiendo del volumen de datos, el proceso puede tomar varios minutos.
+
+#### Resultados de la migración
+
+Al finalizar, el sistema habrá generado la siguiente información en la carpeta de salida:
+
+**Geodatabase creada** (`GDB_Cargue.gdb`), que contiene las feature classes organizadas por tipo de red:
+
+*Acueducto:*
+- `acu_RedLocal`, `acu_RedMatriz`, `acu_Tanque`, `acu_Valvula` *(y otros según esquema XML)*.
+
+*Alcantarillado Sanitario:*
+- `als_RedLocal`, `als_RedTroncal`, `als_LineaLateral`, `als_Pozo`, `als_Sumidero`, `als_EstructuraRed`, `als_CajaDomiciliaria`, `als_SeccionTransversal`.
+
+*Alcantarillado Pluvial:*
+- `alp_RedLocal`, `alp_RedTroncal`, `alp_LineaLateral`, `alp_Pozo`, `alp_Sumidero`, `alp_EstructuraRed`, `alp_CajaDomiciliaria`, `alp_SeccionTransversal`.
+
+Adicionalmente, todas las capas con datos se agregan automáticamente al mapa activo —las líneas en color verde y los puntos en color naranja—, y el mapa realiza un zoom automático al extent de los datos migrados. En la carpeta de salida se generan también **reportes CSV** con el resumen por clase de elemento migrado, el número de elementos procesados exitosamente y aquellos que no pudieron migrarse con su respectiva razón.
+
+#### Mapeo de clasificaciones
+
+El sistema asigna automáticamente cada elemento a su capa de destino según los valores de los campos CLASE y SISTEMA:
+
+**Líneas:**
+
+| CLASE | SISTEMA | Capa Destino |
+|-------|---------|--------------|
+| 1 | 0 o 2 | als_RedLocal (sanitario) |
+| 1 | 1 | alp_RedLocal (pluvial) |
+| 2 | 0 o 2 | als_RedTroncal (sanitario) |
+| 2 | 1 | alp_RedTroncal (pluvial) |
+| 3 | 0 o 2 | als_LineaLateral (sanitario) |
+| 3 | 1 | alp_LineaLateral (pluvial) |
+| 4 | 0 o 2 | als_RedLocal (sanitario) |
+| 4 | 1 | alp_RedLocal (pluvial) |
+
+**Puntos:**
+
+| CLASE | SISTEMA | Capa Destino |
+|-------|---------|--------------|
+| 1 | 0 o 2 | als_EstructuraRed (sanitario) |
+| 1 | 1 | alp_EstructuraRed (pluvial) |
+| 2 | 0 o 2 | als_Pozo (sanitario) |
+| 2 | 1 | alp_Pozo (pluvial) |
+| 3 | 0 o 2 | als_Sumidero (sanitario) |
+| 3 | 1 | alp_Sumidero (pluvial) |
+| 4 | 0 o 2 | als_CajaDomiciliaria (sanitario) |
+| 4 | 1 | alp_CajaDomiciliaria (pluvial) |
+| 5 | 0 o 2 | als_SeccionTransversal (sanitario) |
+| 5 | 1 | alp_SeccionTransversal (pluvial) |
+| 6 | 0 o 2 | als_EstructuraRed (sanitario) |
+| 6 | 1 | alp_EstructuraRed (pluvial) |
+| 7 | 0 o 2 | als_Sumidero (sanitario) |
+| 7 | 1 | alp_Sumidero (pluvial) |
+
+### Cortar Feature Dataset (Clip)
+
+Esta funcionalidad permite extraer las Feature Classes de un Feature Dataset utilizando un polígono seleccionado en el mapa como máscara de recorte. Su utilización resulta apropiada en los siguientes escenarios:
+
+- Extraer datos de una zona específica para su análisis.
+- Crear subconjuntos más compactos para procesar o compartir.
+- Recortar redes de acueducto o alcantarillado por localidad o sector.
+- Generar entregas de proyecto con datos limitados geográficamente.
+
+#### Pasos de uso
+
+**Paso 1: Abrir la herramienta**
+
+En la pestaña *EAAB Add-In*, haga clic en el botón **"Clip"**. Se abrirá un panel lateral con el título "Clip Feature Dataset".
+
+**Paso 2: Seleccionar el Feature Dataset de origen**
+
+Haga clic en **"Examinar..."** junto al campo "Feature Dataset", navegue hasta la geodatabase (.gdb) que contiene los datos que desea recortar y selecciónela. El sistema cargará automáticamente la lista de Feature Datasets disponibles.
+
+**Paso 3: Seleccionar las Feature Classes a recortar**
+
+Expanda el Feature Dataset en la lista y seleccione las Feature Classes que desea incluir en el recorte. Para facilitar la selección, la herramienta dispone de los botones **"Seleccionar todo"** y **"Deseleccionar todo"**, así como un campo de filtro para buscar por nombre.
+
+**Paso 4: Seleccionar la carpeta de salida**
+
+Haga clic en **"Examinar..."** junto al campo "Carpeta de Salida" y seleccione el directorio donde se creará la nueva geodatabase. La herramienta generará automáticamente una GDB con el nombre `Clip_YYYYMMDD_HHmmss.gdb`.
+
+**Paso 5: Seleccionar el polígono de recorte**
+
+En el mapa activo de ArcGIS Pro, seleccione el polígono que se utilizará como máscara de recorte. El panel indicará el estado de la selección y el área del polígono en m². Por defecto, debe haber exactamente un polígono seleccionado para habilitar la ejecución.
+
+Si se requiere utilizar múltiples polígonos como máscara de recorte, marque la casilla **"Seleccionar múltiples polígonos"**. En ese caso, la herramienta unirá internamente todos los polígonos seleccionados y procesará la geometría resultante como una sola máscara. El panel mostrará el número de polígonos seleccionados y el área total de la unión.
+
+**Paso 6: Configurar el buffer (opcional)**
+
+Si se desea expandir el área de recorte, marque la casilla **"Aplicar Buffer"**, ingrese la distancia en metros y seleccione el tipo de buffer (*Redondeado* o *Plano*). El buffer se sumará al polígono de referencia para definir una zona más amplia.
+
+**Paso 7: Ejecutar el corte**
+
+Haga clic en el botón **"Cortar / Ejecutar"** y observe la barra de progreso. La herramienta procesará cada Feature Class seleccionada de forma secuencial.
+
+#### Resultados
+
+Al completar la operación, se habrá creado una nueva geodatabase (`Clip_YYYYMMDD_HHmmss.gdb`) en la carpeta de salida especificada. Dicha geodatabase contendrá todas las Feature Classes recortadas con su estructura original, incluyendo únicamente los elementos comprendidos dentro del área definida por el polígono o buffer. Los atributos permanecen sin modificación, y la ubicación de salida se muestra como hipervínculo en el panel de estado para facilitar su acceso directo.
+
+| Problema | Solución |
+|----------|----------|
+| Sin selección o selección múltiple no válida | Seleccione exactamente 1 polígono, o active la opción de múltiples polígonos |
+| Carpeta de salida no existe | Verifique la ruta de salida ingresada |
+| Permiso denegado en carpeta de salida | Compruebe los permisos de escritura en el directorio |
+| Geodatabase no encontrada | Verifique que la ruta al Feature Dataset sea correcta |
+| Resultado vacío | Es posible que no existan elementos dentro del área de recorte |
+
+### Generador de Hash SHA256
+
+Esta herramienta permite generar y verificar hashes SHA256 de archivos y geodatabases, con el propósito de garantizar su integridad durante el almacenamiento y la transferencia. Su uso resulta especialmente relevante en los siguientes contextos: verificar que los archivos no hayan sido alterados o corrompidos, auditar cambios en archivos críticos, validar copias de seguridad y confirmar la integridad de entregas entre equipos o áreas.
+
+#### Generar Hash
+
+El panel de generación ofrece dos modalidades de operación:
+
+**Modalidad 1: Comprimir GDB y Generar Hash**
+
+Esta modalidad permite comprimir una geodatabase en formato ZIP y generar su hash SHA256. Para utilizarla, siga los pasos a continuación:
+
+1. En la pestaña *EAAB Add-In*, haga clic en el botón **"Generar Hash"**.
+2. En el panel, seleccione la opción **"Comprimir GDB y Generar Hash"** en el menú desplegable.
+3. Haga clic en **"Examinar..."** y seleccione la geodatabase o carpeta que desea comprimir.
+4. Haga clic en **"Generar Hash"** para iniciar el proceso.
+
+Como resultado, se generarán dos archivos en la misma ubicación de la geodatabase original: un archivo ZIP con el nombre `nombreGDB_YYYYMMDDHHMMSS.zip` y un archivo de texto `nombreGDB_YYYYMMDDHHMMSS_HASH.txt` que registra el hash SHA256, la fecha, el tamaño y el nombre del archivo comprimido.
+
+**Modalidad 2: Generar Hash de Archivos en Carpeta**
+
+Esta modalidad calcula el hash SHA256 de todos los archivos contenidos en una carpeta. Para utilizarla:
+
+1. Seleccione la opción **"Generar Hash de Archivos en Carpeta"** en el menú desplegable.
+2. Haga clic en **"Examinar..."** y seleccione la carpeta de interés.
+3. Haga clic en **"Generar Hash"** para iniciar el proceso.
+
+Como resultado, se generará un archivo resumen `carpeta_YYYYMMDDHHMMSS_HASH.txt` que lista cada archivo con su hash individual, facilitando así la auditoría de cambios en múltiples archivos de manera simultánea.
+
+#### Verificar Integridad
+
+Para comprobar que un archivo no ha sido modificado, el usuario debe utilizar la pestaña **"Verificar Hash"** del panel. El procedimiento es el siguiente:
+
+1. Haga clic en **"Examinar..."** junto al campo "Archivo a Verificar" y seleccione el archivo que desea comprobar (ZIP, SHP, entre otros).
+2. El sistema buscará automáticamente el archivo de hash asociado, siguiendo los patrones `nombrearchivo_HASH.txt` o `nombrearchivo_[timestamp]_HASH.txt`. Si lo encuentra, lo cargará de forma automática.
+3. En caso de que el archivo de hash no se encuentre de forma automática, haga clic en **"Examinar..."** junto al campo "Archivo Hash" para seleccionarlo de forma manual, o ingrese el hash directamente en el campo de texto correspondiente.
+4. Haga clic en **"VERIFICAR INTEGRIDAD"** para ejecutar la comparación.
+
+Si los hashes coinciden, el sistema confirmará que el archivo conserva su integridad original. En caso contrario, emitirá una alerta indicando que el archivo ha sido modificado o corrompido, mostrando ambos valores hash para facilitar el diagnóstico.
+
+#### Consejos y mejores prácticas
+
+- Conserve los archivos `*_HASH.txt` en un lugar seguro, dado que son indispensables para realizar verificaciones posteriores.
+- Verifique siempre la integridad de los archivos después de copiarlos entre equipos o transmitirlos a través de la red.
+- Incluya un archivo de hash con cada copia de seguridad, con el fin de poder validar su restauración futura.
+- Tenga en cuenta que cualquier modificación en el archivo, por mínima que sea, producirá un hash completamente diferente; este es el comportamiento esperado y correcto del algoritmo SHA256.
 
 ## Problemas
 

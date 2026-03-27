@@ -994,11 +994,12 @@ No hay límite estricto, pero archivos con más de 100,000 features pueden tomar
 
 ## Información de Versión
 
-**Versión**: 1.3  
-**Última actualización**: 1 de diciembre de 2025  
+**Versión**: 2.0  
+**Última actualización**: 5 de marzo de 2026  
 **Compatible con**: ArcGIS Pro 3.4 o superior
 
 **Novedades de la versión 1.3:**
+
 - ✨ **Nueva herramienta de Generador de Hash SHA256** para verificación de integridad
   - Compresión de GDB y generación de hash automática
   - Generación de hashes para múltiples archivos en carpeta
