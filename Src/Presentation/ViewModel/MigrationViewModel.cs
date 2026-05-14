@@ -9,11 +9,10 @@ using System.Windows.Input;
 
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
 
 using EAABAddIn.Src.Application.UseCases;
-using EAABAddIn.Src.Presentation.Base;
 using EAABAddIn.Src.Application.UseCases.Validation;
+using EAABAddIn.Src.Presentation.Base;
 
 namespace EAABAddIn.Src.Presentation.ViewModel;
 
@@ -27,16 +26,15 @@ internal class MigrationViewModel : BusyViewModelBase
     private readonly MigrateAlcantarilladoUseCase _migrateAlcantarilladoUseCase = new MigrateAlcantarilladoUseCase();
     private readonly MigrateAcueductoUseCase _migrateAcueductoUseCase = new MigrateAcueductoUseCase();
 
-    public ICommand WorkspaceCommand { get; private set; }
-    public ICommand XmlSchemaCommand { get; private set; }
-    public ICommand BrowseLAcuOrigenCommand { get; private set; }
-    public ICommand BrowsePAcuOrigenCommand { get; private set; }
-    public ICommand BrowseLAlcOrigenCommand { get; private set; }
-    public ICommand BrowsePAlcOrigenCommand { get; private set; }
-    public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
-    public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
-    public ICommand ClearFormCommand { get; private set; }
-    public ICommand RunCommand { get; private set; }
+    private bool _migrarConAdvertencias = false;
+    private string? _workspace = null;
+    private string? _xmlSchemaPath = null;
+    private string? _lAcuOrigen = null;
+    private string? _pAcuOrigen = null;
+    private string? _lAlcOrigen = null;
+    private string? _pAlcOrigen = null;
+    private string? _lAlcPluvOrigen = null;
+    private string? _pAlcPluvOrigen = null;
 
     public MigrationViewModel()
     {
@@ -51,134 +49,6 @@ internal class MigrationViewModel : BusyViewModelBase
         BrowsePAlcPluvOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => P_Alc_Pluv_Origen = path));
         ClearFormCommand = new RelayCommand(ClearForm);
         RunCommand = new AsyncRelayCommand(RunAsync);
-    }
-
-    private bool _migrarConAdvertencias = false;
-    public bool MigrarConAdvertencias
-    {
-        get => _migrarConAdvertencias;
-        set
-        {
-            if (_migrarConAdvertencias != value)
-            {
-                _migrarConAdvertencias = value;
-                NotifyPropertyChanged(nameof(MigrarConAdvertencias));
-            }
-        }
-    }
-
-    private string? _workspace = null;
-    public string? Workspace
-    {
-        get => _workspace;
-        set
-        {
-            if (_workspace != value)
-            {
-                _workspace = value;
-                NotifyPropertyChanged(nameof(Workspace));
-            }
-        }
-    }
-
-    private string? _xmlSchemaPath = null;
-    public string? XmlSchemaPath
-    {
-        get => _xmlSchemaPath;
-        set
-        {
-            if (_xmlSchemaPath != value)
-            {
-                _xmlSchemaPath = value;
-                NotifyPropertyChanged(nameof(XmlSchemaPath));
-            }
-        }
-    }
-
-    private string? _lAcuOrigen = null;
-    public string? L_Acu_Origen
-    {
-        get => _lAcuOrigen;
-        set
-        {
-            if (_lAcuOrigen != value)
-            {
-                _lAcuOrigen = value;
-
-                NotifyPropertyChanged(nameof(L_Acu_Origen));
-            }
-        }
-    }
-
-    private string? _pAcuOrigen = null;
-    public string? P_Acu_Origen
-    {
-        get => _pAcuOrigen;
-        set
-        {
-            if (_pAcuOrigen != value)
-            {
-                _pAcuOrigen = value;
-                NotifyPropertyChanged(nameof(P_Acu_Origen));
-            }
-        }
-    }
-
-    private string? _lAlcOrigen = null;
-    public string? L_Alc_Origen
-    {
-        get => _lAlcOrigen;
-        set
-        {
-            if (_lAlcOrigen != value)
-            {
-                _lAlcOrigen = value;
-                NotifyPropertyChanged(nameof(L_Alc_Origen));
-            }
-        }
-    }
-
-    private string? _pAlcOrigen = null;
-    public string? P_Alc_Origen
-    {
-        get => _pAlcOrigen;
-
-        set
-        {
-            if (_pAlcOrigen != value)
-            {
-                _pAlcOrigen = value;
-                NotifyPropertyChanged(nameof(P_Alc_Origen));
-            }
-        }
-    }
-
-    private string? _lAlcPluvOrigen = null;
-    public string? L_Alc_Pluv_Origen
-    {
-        get => _lAlcPluvOrigen;
-        set
-        {
-            if (_lAlcPluvOrigen != value)
-            {
-                _lAlcPluvOrigen = value;
-                NotifyPropertyChanged(nameof(L_Alc_Pluv_Origen));
-            }
-        }
-    }
-
-    private string? _pAlcPluvOrigen = null;
-    public string? P_Alc_Pluv_Origen
-    {
-        get => _pAlcPluvOrigen;
-        set
-        {
-            if (_pAlcPluvOrigen != value)
-            {
-                _pAlcPluvOrigen = value;
-                NotifyPropertyChanged(nameof(P_Alc_Pluv_Origen));
-            }
-        }
     }
 
     private void BrowseOutputFolder()
@@ -269,9 +139,9 @@ internal class MigrationViewModel : BusyViewModelBase
         try
         {
             StatusMessage = "Validando estructura...";
-            
+
             var datasetsToValidate = new List<DatasetInput>();
-            
+
             if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
                 datasetsToValidate.Add(new DatasetInput("L_ACU_ORIGEN", L_Acu_Origen));
             if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
@@ -299,13 +169,14 @@ internal class MigrationViewModel : BusyViewModelBase
             });
 
             int totalWarnings = validation.TotalWarnings;
-            
+
             System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
             System.Diagnostics.Debug.WriteLine($"📊 RESULTADO VALIDACIÓN:");
             System.Diagnostics.Debug.WriteLine($"   • Total advertencias detectadas: {totalWarnings}");
             System.Diagnostics.Debug.WriteLine($"   • Checkbox 'Migrar con advertencias': {MigrarConAdvertencias}");
             System.Diagnostics.Debug.WriteLine($"   • Datasets validados: {datasetsToValidate.Count}");
             System.Diagnostics.Debug.WriteLine($"   • Reportes generados: {validation.ReportFiles.Count}");
+
             foreach (var report in validation.ReportFiles)
             {
                 System.Diagnostics.Debug.WriteLine($"      - {Path.GetFileName(report)}");
@@ -315,11 +186,11 @@ internal class MigrationViewModel : BusyViewModelBase
             if (totalWarnings > 0 && !MigrarConAdvertencias)
             {
                 StatusMessage = $"⚠ Migración bloqueada: {totalWarnings} advertencia(s) detectada(s).";
-                
+
                 System.Diagnostics.Debug.WriteLine($"🚫 BLOQUEANDO MIGRACIÓN:");
                 System.Diagnostics.Debug.WriteLine($"   ❌ Checkbox desmarcado con {totalWarnings} advertencias");
                 System.Diagnostics.Debug.WriteLine($"   📋 Mostrando diálogo de bloqueo al usuario");
-                
+
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
                     messageText: $"⚠ {totalWarnings} advertencia(s) detectada(s)\n\n" +
                                  $"📁 Reportes en: {validation.ReportFolder}\n\n" +
@@ -331,12 +202,12 @@ internal class MigrationViewModel : BusyViewModelBase
                     button: System.Windows.MessageBoxButton.OK,
                     icon: System.Windows.MessageBoxImage.Warning
                 );
-                
+
                 System.Diagnostics.Debug.WriteLine($"   ✓ Usuario cerró el diálogo - Migración cancelada");
                 IsBusy = false;
                 return;
             }
-            
+
             if (totalWarnings > 0 && MigrarConAdvertencias)
             {
                 StatusMessage = $"⚠ Continuando con {totalWarnings} advertencia(s)...";
@@ -365,7 +236,7 @@ internal class MigrationViewModel : BusyViewModelBase
                 IsBusy = false;
                 return;
             }
-            
+
             System.Diagnostics.Debug.WriteLine($"📂 {msgGdb}");
             StatusMessage = "✓ GDB preparada. Iniciando migración...";
 
@@ -484,12 +355,12 @@ internal class MigrationViewModel : BusyViewModelBase
                 }
             }
 
-            var mensajeFinal = mensajesMigracion.Count > 0 
-                ? string.Join("\n", mensajesMigracion) 
+            var mensajeFinal = mensajesMigracion.Count > 0
+                ? string.Join("\n", mensajesMigracion)
                 : "No se migraron datos.";
 
             StatusMessage = "✓ Migración finalizada.";
-            
+
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
                 messageText: $"✓ Migración completada\n\n{mensajeFinal}",
                 caption: "Completado",
@@ -502,5 +373,135 @@ internal class MigrationViewModel : BusyViewModelBase
             StatusMessage = $"Error: {ex.Message}";
         }
         finally { IsBusy = false; }
+    }
+
+    public ICommand WorkspaceCommand { get; private set; }
+    public ICommand XmlSchemaCommand { get; private set; }
+    public ICommand BrowseLAcuOrigenCommand { get; private set; }
+    public ICommand BrowsePAcuOrigenCommand { get; private set; }
+    public ICommand BrowseLAlcOrigenCommand { get; private set; }
+    public ICommand BrowsePAlcOrigenCommand { get; private set; }
+    public ICommand BrowseLAlcPluvOrigenCommand { get; private set; }
+    public ICommand BrowsePAlcPluvOrigenCommand { get; private set; }
+    public ICommand ClearFormCommand { get; private set; }
+    public ICommand RunCommand { get; private set; }
+
+    public string? Workspace
+    {
+        get => _workspace;
+        set
+        {
+            if (_workspace != value)
+            {
+                _workspace = value;
+                NotifyPropertyChanged(nameof(Workspace));
+            }
+        }
+    }
+
+    public string? XmlSchemaPath
+    {
+        get => _xmlSchemaPath;
+        set
+        {
+            if (_xmlSchemaPath != value)
+            {
+                _xmlSchemaPath = value;
+                NotifyPropertyChanged(nameof(XmlSchemaPath));
+            }
+        }
+    }
+
+    public string? L_Acu_Origen
+    {
+        get => _lAcuOrigen;
+        set
+        {
+            if (_lAcuOrigen != value)
+            {
+                _lAcuOrigen = value;
+
+                NotifyPropertyChanged(nameof(L_Acu_Origen));
+            }
+        }
+    }
+
+    public string? P_Acu_Origen
+    {
+        get => _pAcuOrigen;
+        set
+        {
+            if (_pAcuOrigen != value)
+            {
+                _pAcuOrigen = value;
+                NotifyPropertyChanged(nameof(P_Acu_Origen));
+            }
+        }
+    }
+
+    public string? L_Alc_Origen
+    {
+        get => _lAlcOrigen;
+        set
+        {
+            if (_lAlcOrigen != value)
+            {
+                _lAlcOrigen = value;
+                NotifyPropertyChanged(nameof(L_Alc_Origen));
+            }
+        }
+    }
+
+    public string? P_Alc_Origen
+    {
+        get => _pAlcOrigen;
+
+        set
+        {
+            if (_pAlcOrigen != value)
+            {
+                _pAlcOrigen = value;
+                NotifyPropertyChanged(nameof(P_Alc_Origen));
+            }
+        }
+    }
+
+    public string? L_Alc_Pluv_Origen
+    {
+        get => _lAlcPluvOrigen;
+        set
+        {
+            if (_lAlcPluvOrigen != value)
+            {
+                _lAlcPluvOrigen = value;
+                NotifyPropertyChanged(nameof(L_Alc_Pluv_Origen));
+            }
+        }
+    }
+
+    public string? P_Alc_Pluv_Origen
+    {
+        get => _pAlcPluvOrigen;
+        set
+        {
+            if (_pAlcPluvOrigen != value)
+            {
+                _pAlcPluvOrigen = value;
+                NotifyPropertyChanged(nameof(P_Alc_Pluv_Origen));
+            }
+        }
+    }
+
+    public bool MigrarConAdvertencias
+    {
+        get => _migrarConAdvertencias;
+        set
+        {
+            if (_migrarConAdvertencias != value)
+            {
+                _migrarConAdvertencias = value;
+                NotifyPropertyChanged(nameof(MigrarConAdvertencias));
+            }
+        }
     }
 }
