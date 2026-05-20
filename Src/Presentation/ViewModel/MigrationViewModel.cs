@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -11,6 +10,7 @@ using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 
 using EAABAddIn.Src.Application.UseCases;
+using EAABAddIn.Src.Application.UseCases.Acu;
 using EAABAddIn.Src.Application.UseCases.Validation;
 using EAABAddIn.Src.Presentation.Base;
 
@@ -18,13 +18,15 @@ namespace EAABAddIn.Src.Presentation.ViewModel;
 
 internal class MigrationViewModel : BusyViewModelBase
 {
-    public override string DisplayName => "Migración";
-    public override string Tooltip => "Migrar datos entre capas";
+    public override string DisplayName => "Asistente de Migración";
+    public override string Tooltip => "Iniciar proceso de migración de datos espaciales y tabulares";
 
     private readonly ValidateDatasetsUseCase _datasetValidatorUseCase = new ValidateDatasetsUseCase();
     private readonly CreateGdbFromXmlUseCase _createGdbFromXmlUseCase = new CreateGdbFromXmlUseCase();
     private readonly MigrateAlcantarilladoUseCase _migrateAlcantarilladoUseCase = new MigrateAlcantarilladoUseCase();
-    private readonly MigrateAcueductoUseCase _migrateAcueductoUseCase = new MigrateAcueductoUseCase();
+    private readonly MigrateAcuLinesUseCase _migrateAcuLinesUseCase = new MigrateAcuLinesUseCase();
+    private readonly MigrateAcuPointsUseCase _migrateAcuPointsUseCase = new MigrateAcuPointsUseCase();
+    private readonly AddAcuLayersToMapUseCase _addAcuLayersToMapUseCase = new AddAcuLayersToMapUseCase();
 
     private bool _migrarConAdvertencias = false;
     private string? _workspace = null;
@@ -38,7 +40,7 @@ internal class MigrationViewModel : BusyViewModelBase
 
     public MigrationViewModel()
     {
-        StatusMessage = "Seleccione origen y destino y pulse Migrar.";
+        StatusMessage = "Esperando configuración. Por favor, seleccione las capas de origen y destino.";
         WorkspaceCommand = new RelayCommand(BrowseOutputFolder);
         XmlSchemaCommand = new RelayCommand(BrowseXmlSchema);
         BrowseLAcuOrigenCommand = new RelayCommand(() => BrowseFeatureClass(path => L_Acu_Origen = path));
@@ -56,7 +58,7 @@ internal class MigrationViewModel : BusyViewModelBase
         var filter = new BrowseProjectFilter("esri_browseDialogFilters_folders");
         var dlg = new OpenItemDialog
         {
-            Title = "Seleccionar carpeta de salida",
+            Title = "Seleccionar directorio de destino",
             BrowseFilter = filter,
             MultiSelect = false,
             InitialLocation = Project.Current?.HomeFolderPath
@@ -73,7 +75,7 @@ internal class MigrationViewModel : BusyViewModelBase
         var filter = new BrowseProjectFilter("esri_browseDialogFilters_all");
         var dlg = new OpenItemDialog
         {
-            Title = "Seleccionar XML de esquema",
+            Title = "Seleccionar archivo XML de esquema",
             BrowseFilter = filter,
             MultiSelect = false,
             InitialLocation = Project.Current?.HomeFolderPath
@@ -90,7 +92,7 @@ internal class MigrationViewModel : BusyViewModelBase
         var filter = new BrowseProjectFilter("esri_browseDialogFilters_featureClasses");
         var dlg = new OpenItemDialog
         {
-            Title = "Seleccionar feature class",
+            Title = "Seleccionar clase de entidad de origen",
             BrowseFilter = filter,
             MultiSelect = false,
             InitialLocation = Project.Current?.HomeFolderPath
@@ -113,52 +115,18 @@ internal class MigrationViewModel : BusyViewModelBase
         L_Alc_Pluv_Origen = null;
         P_Alc_Pluv_Origen = null;
         MigrarConAdvertencias = false;
-        StatusMessage = "Seleccione datos de origen y ejecute.";
+        StatusMessage = "Formulario restablecido. Listo para una nueva configuración.";
     }
 
     private async Task RunAsync()
     {
         IsBusy = true;
-        StatusMessage = "Validando datos...";
-        System.Diagnostics.Debug.WriteLine($"⚙ Estado inicial del checkbox: {MigrarConAdvertencias}");
-
-        if (Workspace is null)
-        {
-            StatusMessage = "Error: Seleccione carpeta de salida.";
-            IsBusy = false;
-            return;
-        }
-
-        if (XmlSchemaPath is null)
-        {
-            StatusMessage = "Error: Seleccione XML de esquema.";
-            IsBusy = false;
-            return;
-        }
+        StatusMessage = "Analizando la integridad estructural de los datos...";
 
         try
         {
-            StatusMessage = "Validando estructura...";
-
-            var datasetsToValidate = new List<DatasetInput>();
-
-            if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
-                datasetsToValidate.Add(new DatasetInput("L_ACU_ORIGEN", L_Acu_Origen));
-            if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
-                datasetsToValidate.Add(new DatasetInput("P_ACU_ORIGEN", P_Acu_Origen));
-            if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
-                datasetsToValidate.Add(new DatasetInput("L_ALC_ORIGEN", L_Alc_Origen));
-            if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
-                datasetsToValidate.Add(new DatasetInput("P_ALC_ORIGEN", P_Alc_Origen));
-            if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
-                datasetsToValidate.Add(new DatasetInput("L_ALC_PLUV_ORIGEN", L_Alc_Pluv_Origen));
-            if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
-                datasetsToValidate.Add(new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen));
-
-            if (datasetsToValidate.Count == 0)
+            if (!TryPrepareRun(out var datasetsToValidate))
             {
-                StatusMessage = "Error: Seleccione al menos un dataset de origen.";
-                IsBusy = false;
                 return;
             }
 
@@ -168,211 +136,271 @@ internal class MigrationViewModel : BusyViewModelBase
                 Datasets = datasetsToValidate
             });
 
-            int totalWarnings = validation.TotalWarnings;
-
-            System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
-            System.Diagnostics.Debug.WriteLine($"📊 RESULTADO VALIDACIÓN:");
-            System.Diagnostics.Debug.WriteLine($"   • Total advertencias detectadas: {totalWarnings}");
-            System.Diagnostics.Debug.WriteLine($"   • Checkbox 'Migrar con advertencias': {MigrarConAdvertencias}");
-            System.Diagnostics.Debug.WriteLine($"   • Datasets validados: {datasetsToValidate.Count}");
-            System.Diagnostics.Debug.WriteLine($"   • Reportes generados: {validation.ReportFiles.Count}");
-
-            foreach (var report in validation.ReportFiles)
+            if (!HandleValidationResult(validation.TotalWarnings, validation.ReportFolder))
             {
-                System.Diagnostics.Debug.WriteLine($"      - {Path.GetFileName(report)}");
-            }
-            System.Diagnostics.Debug.WriteLine($"═══════════════════════════════════════════════════════");
-
-            if (totalWarnings > 0 && !MigrarConAdvertencias)
-            {
-                StatusMessage = $"⚠ Migración bloqueada: {totalWarnings} advertencia(s) detectada(s).";
-
-                System.Diagnostics.Debug.WriteLine($"🚫 BLOQUEANDO MIGRACIÓN:");
-                System.Diagnostics.Debug.WriteLine($"   ❌ Checkbox desmarcado con {totalWarnings} advertencias");
-                System.Diagnostics.Debug.WriteLine($"   📋 Mostrando diálogo de bloqueo al usuario");
-
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"⚠ {totalWarnings} advertencia(s) detectada(s)\n\n" +
-                                 $"📁 Reportes en: {validation.ReportFolder}\n\n" +
-                                 $"Para continuar:\n" +
-                                 $"  1. Revise los reportes CSV\n" +
-                                 $"  2. Active ☑ 'Migrar con Advertencias'\n" +
-                                 $"  3. Ejecute nuevamente",
-                    caption: "Validación con Advertencias",
-                    button: System.Windows.MessageBoxButton.OK,
-                    icon: System.Windows.MessageBoxImage.Warning
-                );
-
-                System.Diagnostics.Debug.WriteLine($"   ✓ Usuario cerró el diálogo - Migración cancelada");
-                IsBusy = false;
                 return;
             }
 
-            if (totalWarnings > 0 && MigrarConAdvertencias)
+            var gdbPath = await CreateTargetGdbAsync();
+            if (string.IsNullOrWhiteSpace(gdbPath))
             {
-                StatusMessage = $"⚠ Continuando con {totalWarnings} advertencia(s)...";
-                System.Diagnostics.Debug.WriteLine($"⚠ MIGRACIÓN PERMITIDA CON ADVERTENCIAS:");
-                System.Diagnostics.Debug.WriteLine($"   ✓ Checkbox marcado - Usuario autorizó continuar");
-                System.Diagnostics.Debug.WriteLine($"   ⚠ Se procederá con {totalWarnings} advertencias");
-            }
-            else if (totalWarnings == 0)
-            {
-                StatusMessage = "✓ Validación exitosa. Iniciando migración...";
-                System.Diagnostics.Debug.WriteLine($"✓ VALIDACIÓN EXITOSA - Sin advertencias detectadas");
-            }
-
-            StatusMessage = "Preparando GDB de destino...";
-            var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace, XmlSchemaPath);
-
-            if (!okGdb)
-            {
-                StatusMessage = $"Error: {msgGdb}";
-                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                    messageText: $"Error al preparar GDB: {msgGdb}",
-                    caption: "Error",
-                    button: System.Windows.MessageBoxButton.OK,
-                    icon: System.Windows.MessageBoxImage.Error
-                );
-                IsBusy = false;
                 return;
             }
-
-            System.Diagnostics.Debug.WriteLine($"📂 {msgGdb}");
-            StatusMessage = "✓ GDB preparada. Iniciando migración...";
 
             var mensajesMigracion = new List<string>();
-            bool acueductoMigrated = false;
-            bool alcantarilladoMigrated = false;
 
-            if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
-            {
-                StatusMessage = "Migrando acueducto (líneas)...";
-                var (okLines, msgLines) = await _migrateAcueductoUseCase.MigrateLines(L_Acu_Origen, gdbPath);
-                if (okLines)
-                {
-                    mensajesMigracion.Add(msgLines);
-                    acueductoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Líneas ACU: {msgLines}");
-                }
-            }
+            await MigrateAcueductoAsync(gdbPath, mensajesMigracion);
+            await MigrateAlcantarilladoAsync(gdbPath, mensajesMigracion);
 
-            if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
-            {
-                StatusMessage = "Migrando acueducto (puntos)...";
-                var (okPoints, msgPoints) = await _migrateAcueductoUseCase.MigratePoints(P_Acu_Origen, gdbPath);
-                if (okPoints)
-                {
-                    mensajesMigracion.Add(msgPoints);
-                    acueductoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Puntos ACU: {msgPoints}");
-                }
-            }
-
-            if (acueductoMigrated)
-            {
-                StatusMessage = "Agregando acueducto al mapa...";
-                var (okAdd, msgAdd) = await _migrateAcueductoUseCase.AddMigratedLayersToMap(gdbPath);
-                if (okAdd)
-                {
-                    mensajesMigracion.Add(msgAdd);
-                }
-            }
-
-
-            if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
-            {
-                StatusMessage = "Migrando alcantarillado (líneas)...";
-                var (okLines, msgLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
-                if (okLines)
-                {
-                    mensajesMigracion.Add(msgLines);
-                    alcantarilladoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Líneas: {msgLines}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
-            {
-                StatusMessage = "Migrando alcantarillado (puntos)...";
-                var (okPoints, msgPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
-                if (okPoints)
-                {
-                    mensajesMigracion.Add(msgPoints);
-                    alcantarilladoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Puntos: {msgPoints}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
-            {
-                StatusMessage = "Migrando pluvial (líneas)...";
-                var (okLinesPluv, msgLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
-                if (okLinesPluv)
-                {
-                    mensajesMigracion.Add(msgLinesPluv);
-                    alcantarilladoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Líneas pluvial: {msgLinesPluv}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
-            {
-                StatusMessage = "Migrando pluvial (puntos)...";
-                var (okPointsPluv, msgPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
-                if (okPointsPluv)
-                {
-                    mensajesMigracion.Add(msgPointsPluv);
-                    alcantarilladoMigrated = true;
-                }
-                else
-                {
-                    mensajesMigracion.Add($"⚠ Puntos pluvial: {msgPointsPluv}");
-                }
-            }
-
-            if (alcantarilladoMigrated)
-            {
-                StatusMessage = "Agregando alcantarillado al mapa...";
-                var (okAdd, msgAdd) = await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
-                if (okAdd)
-                {
-                    mensajesMigracion.Add(msgAdd);
-                }
-            }
-
-            var mensajeFinal = mensajesMigracion.Count > 0
-                ? string.Join("\n", mensajesMigracion)
-                : "No se migraron datos.";
-
-            StatusMessage = "✓ Migración finalizada.";
-
-            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                messageText: $"✓ Migración completada\n\n{mensajeFinal}",
-                caption: "Completado",
-                button: System.Windows.MessageBoxButton.OK,
-                icon: System.Windows.MessageBoxImage.Information
-            );
+            ShowMigrationSummary(mensajesMigracion);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = $"Anomalía en el proceso: {ex.Message}";
         }
         finally { IsBusy = false; }
+    }
+
+    private bool TryPrepareRun(out List<DatasetInput> datasetsToValidate)
+    {
+        datasetsToValidate = CollectDatasetsToValidate();
+
+        if (Workspace is null)
+        {
+            StatusMessage = "Precaución: El directorio de destino es obligatorio.";
+            return false;
+        }
+
+        if (XmlSchemaPath is null)
+        {
+            StatusMessage = "Precaución: Debe especificar un archivo XML de esquema.";
+            return false;
+        }
+
+        if (datasetsToValidate.Count == 0)
+        {
+            StatusMessage = "Precaución: Seleccione al menos un conjunto de datos de origen.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private List<DatasetInput> CollectDatasetsToValidate()
+    {
+        var datasetsToValidate = new List<DatasetInput>();
+
+        if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
+            datasetsToValidate.Add(new DatasetInput("L_ACU_ORIGEN", L_Acu_Origen));
+        if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
+            datasetsToValidate.Add(new DatasetInput("P_ACU_ORIGEN", P_Acu_Origen));
+        if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
+            datasetsToValidate.Add(new DatasetInput("L_ALC_ORIGEN", L_Alc_Origen));
+        if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
+            datasetsToValidate.Add(new DatasetInput("P_ALC_ORIGEN", P_Alc_Origen));
+        if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
+            datasetsToValidate.Add(new DatasetInput("L_ALC_PLUV_ORIGEN", L_Alc_Pluv_Origen));
+        if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
+            datasetsToValidate.Add(new DatasetInput("P_ALC_PLUV_ORIGEN", P_Alc_Pluv_Origen));
+
+        return datasetsToValidate;
+    }
+
+    private bool HandleValidationResult(int totalWarnings, string reportFolder)
+    {
+        if (totalWarnings > 0 && !MigrarConAdvertencias)
+        {
+            StatusMessage = $"Proceso interrumpido: Se hallaron {totalWarnings} advertencia(s) en la validación estructural.";
+
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                messageText: $"La fase de validación identificó {totalWarnings} advertencia(s).\n\n" +
+                             $"Los reportes con el detalle completo han sido guardados en:\n{reportFolder}\n\n" +
+                             $"Pasos recomendados:\n" +
+                             $"  1. Revise los análisis CSV generados.\n" +
+                             $"  2. Para continuar omitiendo este bloqueo, active 'Migrar con Advertencias'.\n" +
+                             $"  3. Reintente presionar el botón de ejecución.",
+                caption: "Criterios de Validación Insuficientes",
+                button: System.Windows.MessageBoxButton.OK,
+                icon: System.Windows.MessageBoxImage.Warning
+            );
+
+            return false;
+        }
+
+        if (totalWarnings > 0 && MigrarConAdvertencias)
+        {
+            StatusMessage = $"Continuando operación (Omitiendo {totalWarnings} advertencia(s) de integridad)...";
+        }
+        else
+        {
+            StatusMessage = "Verificación exitosa. Iniciando la arquitectura de migración...";
+        }
+
+        return true;
+    }
+
+    private async Task<string?> CreateTargetGdbAsync()
+    {
+        StatusMessage = "Aprovisionando la estructura de la Geodatabase objetivo...";
+        var (okGdb, gdbPath, msgGdb) = await _createGdbFromXmlUseCase.Invoke(Workspace!, XmlSchemaPath!);
+
+        if (!okGdb)
+        {
+            StatusMessage = $"Error de infraestructura: {msgGdb}";
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                messageText: $"Se produjo un fallo inesperado al inicializar la Geodatabase:\n{msgGdb}",
+                caption: "Excepción en Geodatabase",
+                button: System.Windows.MessageBoxButton.OK,
+                icon: System.Windows.MessageBoxImage.Error
+            );
+
+            return null;
+        }
+
+        StatusMessage = "Geodatabase aprovisionada. Comenzando el traspaso de entidades...";
+        return gdbPath;
+    }
+
+    private async Task MigrateAcueductoAsync(string gdbPath, List<string> messages)
+    {
+        bool success = false;
+
+        if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
+        {
+            StatusMessage = "Migrando red de acueducto (entidades de tipo línea)...";
+
+            var (ok, msg) = await _migrateAcuLinesUseCase.Invoke(L_Acu_Origen, gdbPath);
+
+            if (ok)
+            {
+                messages.Add(msg);
+                success = true;
+            }
+            else
+            {
+                messages.Add($"⚠ Acueducto Líneas: {msg}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(P_Acu_Origen))
+        {
+            StatusMessage = "Migrando red de acueducto (entidades de tipo punto)...";
+
+            var (ok, msg) = await _migrateAcuPointsUseCase.Invoke(P_Acu_Origen, gdbPath);
+
+            if (ok)
+            {
+                messages.Add(msg);
+                success = true;
+            }
+            else
+            {
+                messages.Add($"⚠ Acueducto Puntos: {msg}");
+            }
+        }
+
+        if (success)
+        {
+            StatusMessage = "Añadiendo resultados de acueducto al espacio de trabajo (mapa)...";
+
+            var (ok, msg) = await _addAcuLayersToMapUseCase.Invoke(gdbPath);
+
+            if (ok)
+            {
+                messages.Add(msg);
+            }
+        }
+    }
+
+    private async Task MigrateAlcantarilladoAsync(string gdbPath, List<string> mensajesMigracion)
+    {
+        bool alcantarilladoMigrated = false;
+
+        if (!string.IsNullOrWhiteSpace(L_Alc_Origen))
+        {
+            StatusMessage = "Migrando alcantarillado sanitario (entidades de tipo línea)...";
+            var (okLines, msgLines) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Origen, gdbPath);
+            if (okLines)
+            {
+                mensajesMigracion.Add(msgLines);
+                alcantarilladoMigrated = true;
+            }
+            else
+            {
+                mensajesMigracion.Add($"⚠ Alcantarillado Líneas: {msgLines}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(P_Alc_Origen))
+        {
+            StatusMessage = "Migrando alcantarillado sanitario (entidades de tipo punto)...";
+            var (okPoints, msgPoints) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Origen, gdbPath);
+            if (okPoints)
+            {
+                mensajesMigracion.Add(msgPoints);
+                alcantarilladoMigrated = true;
+            }
+            else
+            {
+                mensajesMigracion.Add($"⚠ Alcantarillado Puntos: {msgPoints}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(L_Alc_Pluv_Origen))
+        {
+            StatusMessage = "Migrando alcantarillado pluvial (entidades de tipo línea)...";
+            var (okLinesPluv, msgLinesPluv) = await _migrateAlcantarilladoUseCase.MigrateLines(L_Alc_Pluv_Origen, gdbPath);
+            if (okLinesPluv)
+            {
+                mensajesMigracion.Add(msgLinesPluv);
+                alcantarilladoMigrated = true;
+            }
+            else
+            {
+                mensajesMigracion.Add($"⚠ Pluvial Líneas: {msgLinesPluv}");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(P_Alc_Pluv_Origen))
+        {
+            StatusMessage = "Migrando alcantarillado pluvial (entidades de tipo punto)...";
+            var (okPointsPluv, msgPointsPluv) = await _migrateAlcantarilladoUseCase.MigratePoints(P_Alc_Pluv_Origen, gdbPath);
+            if (okPointsPluv)
+            {
+                mensajesMigracion.Add(msgPointsPluv);
+                alcantarilladoMigrated = true;
+            }
+            else
+            {
+                mensajesMigracion.Add($"⚠ Pluvial Puntos: {msgPointsPluv}");
+            }
+        }
+
+        if (alcantarilladoMigrated)
+        {
+            StatusMessage = "Añadiendo resultados de alcantarillado al espacio de trabajo (mapa)...";
+            var (okAdd, msgAdd) = await _migrateAlcantarilladoUseCase.AddMigratedLayersToMap(gdbPath);
+            if (okAdd)
+            {
+                mensajesMigracion.Add(msgAdd);
+            }
+        }
+    }
+
+    private void ShowMigrationSummary(List<string> mensajesMigracion)
+    {
+        var mensajeFinal = mensajesMigracion.Count > 0
+            ? string.Join("\n", mensajesMigracion)
+            : "La ejecución concluyó sin datos movilizados.";
+
+        StatusMessage = "Transacción finalizada satisfactoriamente.";
+
+        ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+            messageText: $"La migración se completó satisfactoriamente.\n\nDetalles del proceso:\n{mensajeFinal}",
+            caption: "Migración Exclusiva",
+            button: System.Windows.MessageBoxButton.OK,
+            icon: System.Windows.MessageBoxImage.Information
+        );
     }
 
     public ICommand WorkspaceCommand { get; private set; }

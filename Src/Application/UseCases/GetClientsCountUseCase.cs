@@ -31,7 +31,7 @@ public class GetClientsCountUseCase
         var geo = feature.GetShape();
         if (geo == null) return 0;
 
-        using var clientsFc = FeatureClassUtils.OpenFeatureClass(classPath);
+        using var clientsFc = FeatureClassUtils.TryOpenFeatureClass(classPath);
         if (clientsFc == null) return 0;
 
         var clientsTable = clientsFc as Table;

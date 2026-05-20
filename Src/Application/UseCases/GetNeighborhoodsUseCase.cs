@@ -33,11 +33,11 @@ public class GetNeighborhoodsUseCase
             return string.Empty;
 
         var geo = feature.GetShape();
-        
+
         if (geo == null)
             return string.Empty;
 
-        using var fc = FeatureClassUtils.OpenFeatureClass(classPath);
+        using var fc = FeatureClassUtils.TryOpenFeatureClass(classPath);
         if (fc == null) return string.Empty;
 
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

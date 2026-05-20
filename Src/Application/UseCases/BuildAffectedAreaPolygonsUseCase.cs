@@ -42,10 +42,10 @@ public class BuildAffectedAreaPolygonsUseCase
         var featureClass = f.GetTable();
 
         if (featureClass is null)
-        if (featureClass is null)
-        {
-            return (false, "La Feature Class no es válida.", 0);
-        }
+            if (featureClass is null)
+            {
+                return (false, "La Feature Class no es válida.", 0);
+            }
         try
         {
             await EnsureFieldExists(featureClass.GetPath().LocalPath, "identificador", "TEXT", 255);
@@ -84,7 +84,7 @@ public class BuildAffectedAreaPolygonsUseCase
     {
         try
         {
-            using var fc = FeatureClassUtils.OpenFeatureClass(featureClassPath);
+            using var fc = FeatureClassUtils.TryOpenFeatureClass(featureClassPath);
 
             if (fc != null)
             {
@@ -103,7 +103,7 @@ public class BuildAffectedAreaPolygonsUseCase
             {
                 var addFieldParams = Geoprocessing.MakeValueArray(featureClassPath, fieldName, fieldType, "", "", length > 0 ? length : 255);
                 var a = await Geoprocessing.ExecuteToolAsync("management.AddField", addFieldParams);
-                
+
                 foreach (var msg in a.Messages)
                 {
                     System.Diagnostics.Debug.WriteLine($"AddField {fieldName}: {msg}");

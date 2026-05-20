@@ -30,3 +30,5 @@ artifacts/
 *.log
 *.vspscc
 *.vssscc
+
+.agents/
