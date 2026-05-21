@@ -2,6 +2,9 @@
 
 namespace EAABAddIn.Src.Application.UseCases.Acu;
 
+/// <summary>
+/// Migrates Acueducto line features into the target geodatabase.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,9 +18,6 @@ using ArcGIS.Desktop.Mapping;
 
 using EAABAddIn.Src.Application.Services;
 using EAABAddIn.Src.Application.Utils;
-
-/// <summary>
-/// Migrates Acueducto line features into the target geodatabase.
 /// </summary>
 public class MigrateAcuLinesUseCase
 {
@@ -99,11 +99,6 @@ public class MigrateAcuLinesUseCase
                     {
                         noTarget++;
                         continue;
-                    }
-
-                    if (map != null && ensuredLayers.Add(targetName))
-                    {
-                        Shared.EnsureLayerForTargetClass(map, targetGdb, targetName, isLine: true);
                     }
 
                     if (MigrateLineFeature(feature, targetGdb, targetName, subtype ?? 0, out var migrateError))
@@ -266,6 +261,4 @@ public class MigrateAcuLinesUseCase
 
         return attrs;
     }
-
-
 }

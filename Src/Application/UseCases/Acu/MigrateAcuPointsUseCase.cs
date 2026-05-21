@@ -16,9 +16,6 @@ using ArcGIS.Desktop.Mapping;
 using EAABAddIn.Src.Application.Services;
 using EAABAddIn.Src.Application.Utils;
 
-/// <summary>
-/// Migra entidades de puntos de acueducto a la geodatabase de destino.
-/// </summary>
 public class MigrateAcuPointsUseCase
 {
     /// <summary>
@@ -99,11 +96,6 @@ public class MigrateAcuPointsUseCase
                     {
                         noTarget++;
                         continue;
-                    }
-
-                    if (map != null && ensuredLayers.Add(targetName))
-                    {
-                        Shared.EnsureLayerForTargetClass(map, targetGdb, targetName, isLine: false);
                     }
 
                     if (MigratePointFeature(feature, targetGdb, targetName, subtype ?? 0, out var migrateError))
@@ -257,51 +249,51 @@ public class MigrateAcuPointsUseCase
             ["IDENTIFIC"] = source.GetFieldValue<string>("IDENTIFIC"),
             ["NORTE"] = source.GetFieldValue<double?>("NORTE"),
             ["ESTE"] = source.GetFieldValue<double?>("ESTE"),
-            ["FECHAINST"] = source.GetFieldValue<DateTime?>("FECHAINST"),
-            ["ESTADOENRED"] = source.GetFieldValue<string>("ESTADOENRE"),
-            ["LOCALIZACIONRELATIVA"] = source.GetFieldValue<string>("LOCALIZACI"),
-            ["CALIDADDATO"] = source.GetFieldValue<string>("CALIDADDAT"),
-            ["ROTACION"] = source.GetFieldValue<double?>("ROTACION"),
-            ["C_RASANTE"] = source.GetFieldValue<double?>("C_RASANTE"),
+            ["FECHAINSTALACION"] = source.GetFieldValue<DateTime?>("FECHAINST"),
+            ["ESTADOENRED"] = source.GetFieldValue<string>("ESTADOENRED"),
+            ["LOCALIZACIONRELATIVA"] = source.GetFieldValue<string>("LOCALIZACIONRELATIVA"),
+            ["CALIDADDATO"] = source.GetFieldValue<string>("CALIDADDATO"),
+            ["ROTACIONSIMBOLO"] = source.GetFieldValue<double?>("ROTACION"),
+            ["COTARASANTE"] = source.GetFieldValue<double?>("C_RASANTE"),
             ["PROFUN"] = source.GetFieldValue<double?>("PROFUN"),
-            ["MATERIAL"] = source.GetFieldValue<string>("MATERIAL"),
+            ["DOMMATERIAL"] = source.GetFieldValue<string>("MATERIAL"),
             ["VINCULO"] = source.GetFieldValue<string>("VINCULO"),
-            ["OBSERVACIONES"] = source.GetFieldValue<string>("OBSERVACIO"),
-            ["CONTRATO_ID"] = source.GetFieldValue<string>("CONTRATO_I"),
-            ["NDISENO"] = source.GetFieldValue<string>("NDISENO"),
+            ["OBSERVACIONES"] = source.GetFieldValue<string>("OBSERVACIONES"),
+            ["CONTRATO_ID"] = source.GetFieldValue<string>("CONTRATO_ID"),
+            ["PROYECTO_ID"] = source.GetFieldValue<string>("NDISENO"),
             ["TIPOESPPUB"] = source.GetFieldValue<string>("TIPOESPPUB"),
             ["MATESPPUBL"] = source.GetFieldValue<string>("MATESPPUBL"),
             ["AUTOMATIZA"] = source.GetFieldValue<int?>("AUTOMATIZA"),
-            ["DIAMETRO1"] = source.GetFieldValue<string>("DIAMETRO1"),
+            ["DOMDIAMETRONOMINAL"] = source.GetFieldValue<string>("DIAMETRO1"),
             ["DIAMETRO2"] = source.GetFieldValue<string>("DIAMETRO2"),
-            ["SENTIDOOPERAC"] = source.GetFieldValue<string>("SENTIDOOPE"),
-            ["ESTADOOPERAC"] = source.GetFieldValue<string>("ESTADOOPER"),
+            ["SENTIDOOPERAC"] = source.GetFieldValue<string>("SENTIDOOPERAC"),
+            ["ESTADOOPERAC"] = source.GetFieldValue<string>("ESTADOOPERAC"),
             ["TIPOOPERAC"] = source.GetFieldValue<string>("TIPOOPERAC"),
-            ["ESTADOFIS_VAL"] = source.GetFieldValue<string>("ESTADOFIS_"),
+            ["ESTADOFIS_VAL"] = source.GetFieldValue<string>("ESTADOFIS_VAL"),
             ["TIPOVALVUL"] = source.GetFieldValue<string>("TIPOVALVUL"),
             ["VUELTASCIE"] = source.GetFieldValue<double?>("VUELTASCIE"),
             ["CLASEACCES"] = source.GetFieldValue<string>("CLASEACCES"),
-            ["ESTADOFISICOH"] = source.GetFieldValue<string>("ESTADOFISI"),
+            ["ESTADOFISICOH"] = source.GetFieldValue<string>("ESTADOFISICOH"),
             ["MARCA"] = source.GetFieldValue<string>("MARCA"),
             ["FUNCIONPIL"] = source.GetFieldValue<int?>("FUNCIONPIL"),
             ["ESTADOMED"] = source.GetFieldValue<string>("ESTADOMED"),
             ["SECTORENTR"] = source.GetFieldValue<string>("SECTORENTR"),
             ["SECTORSALI"] = source.GetFieldValue<string>("SECTORSALI"),
-            ["IDTUBERIAMEDIDA"] = source.GetFieldValue<string>("IDTUBERIAM"),
-            ["CAUDAL_PROMEDIO"] = source.GetFieldValue<double?>("CAUDAL_PRO"),
+            ["IDTUBERIAMEDIDA"] = source.GetFieldValue<string>("IDTUBERIAMEDIDA"),
+            ["CAUDAL_PROMEDIO"] = source.GetFieldValue<double?>("CAUDAL_PROMEDIO"),
             ["TIPO_M"] = source.GetFieldValue<string>("TIPO_M"),
-            ["FECHA_TOMA_C"] = source.GetFieldValue<DateTime?>("FECHA_TOMA"),
+            ["FECHA_TOMA_C"] = source.GetFieldValue<DateTime?>("FECHA_TOMA_C"),
             ["UBICACCAJI"] = source.GetFieldValue<string>("UBICACCAJI"),
             ["CENTRO"] = source.GetFieldValue<string>("CENTRO"),
             ["L_ALM"] = source.GetFieldValue<double?>("L_ALM"),
             ["AREARESP"] = source.GetFieldValue<double?>("AREARESP"),
-            ["TIPO_MUESTR"] = source.GetFieldValue<string>("TIPO_MUEST"),
+            ["TIPO_MUESTR"] = source.GetFieldValue<string>("TIPO_MUESTR"),
             ["FUENTEABAS"] = source.GetFieldValue<string>("FUENTEABAS"),
-            ["UBICAC_MUES"] = source.GetFieldValue<string>("UBICAC_MUE"),
+            ["UBICAC_MUES"] = source.GetFieldValue<string>("UBICAC_MUES"),
             ["PTOANALISI"] = source.GetFieldValue<string>("PTOANALISI"),
             ["LOCPUNTO"] = source.GetFieldValue<string>("LOCPUNTO"),
             ["ESTADO"] = source.GetFieldValue<string>("ESTADO"),
-            ["FECHAESTADO"] = source.GetFieldValue<DateTime?>("FECHAESTAD"),
+            ["FECHAESTADO"] = source.GetFieldValue<DateTime?>("FECHAESTADO"),
             ["CLASEPUNTO"] = source.GetFieldValue<string>("CLASEPUNTO"),
             ["NROFILTROS"] = source.GetFieldValue<int?>("NROFILTROS"),
             ["NROSEDIMEN"] = source.GetFieldValue<int?>("NROSEDIMEN"),
@@ -326,7 +318,7 @@ public class MigrateAcuPointsUseCase
             ["NOMBRE"] = source.GetFieldValue<string>("NOMBRE"),
             ["DIRECCION"] = source.GetFieldValue<string>("DIRECCION"),
             ["PRESION"] = source.GetFieldValue<double?>("PRESION"),
-            ["CODACTIVO_FIJO"] = source.GetFieldValue<string>("CODACTIVO_")
+            ["CODACTIVO_FIJO"] = source.GetFieldValue<string>("CODACTIVO_FIJO")
         };
 
         return attrs;

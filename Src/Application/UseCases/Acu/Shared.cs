@@ -6,10 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Mapping;
 
 using EAABAddIn.Src.Application.Utils;
 
@@ -144,62 +142,10 @@ internal static class Shared
         }
     }
 
-    internal static void EnsureLayerForTargetClass(Map map, Geodatabase gdb, string className, bool isLine)
-    {
-        try
-        {
-            var existingLayer = map.GetLayersAsFlattenedList()
-                .OfType<FeatureLayer>()
-                .FirstOrDefault(l => l.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
-            if (existingLayer != null)
-            {
-                try
-                {
-                    using var layerFc = existingLayer.GetFeatureClass();
-                    var layerGdb = layerFc?.GetDatastore() as Geodatabase;
-                    if (layerGdb != null)
-                    {
-                        var same = string.Equals(layerGdb.GetPath().LocalPath, gdb.GetPath().LocalPath, StringComparison.OrdinalIgnoreCase)
-                                   && string.Equals(layerFc?.GetName(), className, StringComparison.OrdinalIgnoreCase);
-                        if (same)
-                        {
-                            ApplySymbology(existingLayer, isLine);
-                            EnsureLayerIsVisibleAndSelectable(existingLayer, layerFc!);
-                            return;
-                        }
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            using var fc = FeatureClassUtils.TryOpenFromGeodatabase(gdb, className);
-            if (fc == null)
-            {
-                return;
-            }
-
-            var flParams = new FeatureLayerCreationParams(fc)
-            {
-                Name = className,
-                MapMemberPosition = MapMemberPosition.AddToTop
-            };
-            var layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(flParams, map);
-            if (layer != null)
-            {
-                ApplySymbology(layer, isLine);
-                EnsureLayerIsVisibleAndSelectable(layer, fc);
-            }
-        }
-        catch
-        {
-        }
-    }
-
     private static string CoerceString(object value, int maxLen)
     {
         string text = (value.ToString() ?? string.Empty).Trim();
+        
         if (maxLen > 0 && text.Length > maxLen)
         {
             text = text.Substring(0, maxLen);
@@ -222,6 +168,7 @@ internal static class Shared
     private static Polyline BuildPolylineWithoutZ(Polyline line)
     {
         var builder = new PolylineBuilderEx(line.SpatialReference);
+
         foreach (var part in line.Parts)
         {
             var points = new List<MapPoint>();
@@ -241,12 +188,14 @@ internal static class Shared
                 builder.AddPart(points);
             }
         }
+
         return builder.ToGeometry();
     }
 
     private static Polygon BuildPolygonWithoutZ(Polygon poly)
     {
         var builder = new PolygonBuilderEx(poly.SpatialReference);
+
         foreach (var part in poly.Parts)
         {
             var points = new List<MapPoint>();
@@ -266,103 +215,7 @@ internal static class Shared
                 builder.AddPart(points);
             }
         }
+
         return builder.ToGeometry();
-    }
-
-    internal static void ApplySymbology(FeatureLayer layer, bool isLine)
-    {
-        try
-        {
-            if (isLine)
-            {
-                var lineSymbol = SymbolFactory.Instance.ConstructLineSymbol(
-                    ColorFactory.Instance.CreateRGBColor(0, 112, 255),
-                    1.2,
-                    SimpleLineStyle.Solid);
-
-                var rendererDef = new SimpleRendererDefinition
-                {
-                    SymbolTemplate = lineSymbol.MakeSymbolReference()
-                };
-
-                var renderer = layer.CreateRenderer(rendererDef);
-                layer.SetRenderer(renderer);
-            }
-            else
-            {
-                var pointSymbol = SymbolFactory.Instance.ConstructPointSymbol(
-                    ColorFactory.Instance.CreateRGBColor(255, 0, 0),
-                    4,
-                    SimpleMarkerStyle.Circle);
-
-                var rendererDef = new SimpleRendererDefinition
-                {
-                    SymbolTemplate = pointSymbol.MakeSymbolReference()
-                };
-
-                var renderer = layer.CreateRenderer(rendererDef);
-                layer.SetRenderer(renderer);
-            }
-        }
-        catch
-        {
-        }
-    }
-
-    internal static void EnsureLayerIsVisibleAndSelectable(FeatureLayer layer, FeatureClass fc)
-    {
-        try
-        {
-            try { layer.SetVisibility(true); } catch { }
-            try { layer.SetDefinitionQuery(""); } catch { }
-
-            try
-            {
-                var cim = layer.GetDefinition() as CIMFeatureLayer;
-                if (cim != null)
-                {
-                    cim.MinScale = 0;
-                    cim.MaxScale = 0;
-                    layer.SetDefinition(cim);
-                }
-            }
-            catch
-            {
-            }
-
-            try
-            {
-                using var def = fc.GetDefinition();
-                var oidField = def.GetObjectIDField();
-                var oids = new List<long>();
-                using (var cursor = fc.Search(null, false))
-                {
-                    int cnt = 0;
-                    while (cursor.MoveNext() && cnt < 5)
-                    {
-                        using var row = cursor.Current as Row;
-                        if (row != null)
-                        {
-                            var oid = Convert.ToInt64(row[oidField]);
-                            oids.Add(oid);
-                            cnt++;
-                        }
-                    }
-                }
-
-                if (oids.Count > 0)
-                {
-                    var where = $"{oidField} IN (" + string.Join(",", oids) + ")";
-                    var qf = new QueryFilter { WhereClause = where };
-                    layer.Select(qf, SelectionCombinationMethod.New);
-                }
-            }
-            catch
-            {
-            }
-        }
-        catch
-        {
-        }
     }
 }

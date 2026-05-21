@@ -26,7 +26,8 @@ internal class MigrationViewModel : BusyViewModelBase
     private readonly MigrateAlcantarilladoUseCase _migrateAlcantarilladoUseCase = new MigrateAlcantarilladoUseCase();
     private readonly MigrateAcuLinesUseCase _migrateAcuLinesUseCase = new MigrateAcuLinesUseCase();
     private readonly MigrateAcuPointsUseCase _migrateAcuPointsUseCase = new MigrateAcuPointsUseCase();
-    private readonly AddAcuLayersToMapUseCase _addAcuLayersToMapUseCase = new AddAcuLayersToMapUseCase();
+    private readonly AddLayersToMapViewUseCase _addLayersToMapViewUseCase = new AddLayersToMapViewUseCase();
+    private readonly ZoomToLayersExtentUseCase _zoomToLayersExtentUseCase = new ZoomToLayersExtentUseCase();
 
     private bool _migrarConAdvertencias = false;
     private string? _workspace = null;
@@ -263,8 +264,6 @@ internal class MigrationViewModel : BusyViewModelBase
 
     private async Task MigrateAcueductoAsync(string gdbPath, List<string> messages)
     {
-        bool success = false;
-
         if (!string.IsNullOrWhiteSpace(L_Acu_Origen))
         {
             StatusMessage = "Migrando red de acueducto (entidades de tipo línea)...";
@@ -273,8 +272,12 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (ok)
             {
+                await AddLayersToMapview(
+                    path: gdbPath,
+                    layers: ["acd_RedMatriz", "acd_Conduccion", "acd_RedMenor", "acd_LineaLateral"],
+                    zoom: false
+                );
                 messages.Add(msg);
-                success = true;
             }
             else
             {
@@ -290,24 +293,15 @@ internal class MigrationViewModel : BusyViewModelBase
 
             if (ok)
             {
+                await AddLayersToMapview(
+                    path: gdbPath,
+                    layers: ["acd_Accesorio", "acd_ValvulaControl", "acd_ValvulaSistema", "acd_Hidrante", "acd_CamaraAcceso"]
+                );
                 messages.Add(msg);
-                success = true;
             }
             else
             {
                 messages.Add($"⚠ Acueducto Puntos: {msg}");
-            }
-        }
-
-        if (success)
-        {
-            StatusMessage = "Añadiendo resultados de acueducto al espacio de trabajo (mapa)...";
-
-            var (ok, msg) = await _addAcuLayersToMapUseCase.Invoke(gdbPath);
-
-            if (ok)
-            {
-                messages.Add(msg);
             }
         }
     }
@@ -384,6 +378,28 @@ internal class MigrationViewModel : BusyViewModelBase
             {
                 mensajesMigracion.Add(msgAdd);
             }
+        }
+    }
+
+    private async Task AddLayersToMapview(string path, string[] layers, bool zoom = true)
+    {
+        bool success;
+
+        try
+        {
+            success = await _addLayersToMapViewUseCase.Invoke(
+                path: path,
+                layers: layers
+            );
+        }
+        catch (Exception)
+        {
+            success = false;
+        }
+
+        if (zoom && success)
+        {
+            await _zoomToLayersExtentUseCase.Invoke(layers);
         }
     }
 
